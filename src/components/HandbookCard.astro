@@ -1,0 +1,19 @@
+---
+import { ArrowUpRight, BookOpen } from "@lucide/astro";
+import type { DocumentMetadata } from "@/types/documents";
+import { withBase } from "@/utils/path";
+
+interface Props { document: DocumentMetadata }
+const { document } = Astro.props;
+---
+
+<article class="handbook-card" data-title={document.title.toLowerCase()} data-category={document.categorySlug}>
+  <div class="card-icon"><BookOpen size={20} /></div>
+  <div>
+    <span class="eyebrow">{document.category}</span>
+    <h3><a href={withBase(document.route)}>{document.title}</a></h3>
+    <p>{document.description}</p>
+    <div class="card-meta"><span>{document.readingMinutes} min</span><span>{document.wordCount.toLocaleString()} words</span></div>
+  </div>
+  <ArrowUpRight class="card-arrow" size={18} aria-hidden="true" />
+</article>

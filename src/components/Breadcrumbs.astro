@@ -1,0 +1,16 @@
+---
+import { ChevronRight } from "@lucide/astro";
+import type { DocumentMetadata } from "@/types/documents";
+import { withBase } from "@/utils/path";
+
+interface Props { document: DocumentMetadata }
+const { document } = Astro.props;
+---
+
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+  <ol>
+    <li><a href={withBase("/")}>Home</a></li>
+    <li><ChevronRight size={14} aria-hidden="true" /><a href={withBase(`/categories/${document.categorySlug}/`)}>{document.category}</a></li>
+    <li><ChevronRight size={14} aria-hidden="true" /><span aria-current="page">{document.title}</span></li>
+  </ol>
+</nav>

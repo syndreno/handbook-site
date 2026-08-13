@@ -1,0 +1,264 @@
+---
+import { Palette, PanelLeft, PanelRight, RotateCcw, X } from "@lucide/astro";
+
+const accentPresets = [
+  { name: "Forest", value: "#176b55" },
+  { name: "Ocean", value: "#1769aa" },
+  { name: "Violet", value: "#7451b9" },
+  { name: "Ruby", value: "#b33a4b" },
+  { name: "Amber", value: "#a85d08" },
+  { name: "Graphite", value: "#4c5a61" }
+];
+---
+
+<button class="icon-button" type="button" data-appearance-open title="Customize appearance" aria-label="Customize appearance" aria-haspopup="dialog">
+  <Palette size={19} />
+</button>
+
+<dialog class="appearance-dialog" data-appearance-dialog aria-labelledby="appearance-title">
+  <form class="appearance-panel" method="dialog">
+    <header>
+      <div><span class="eyebrow">Display</span><h2 id="appearance-title">Appearance</h2></div>
+      <button class="icon-button" type="submit" title="Close appearance settings" aria-label="Close appearance settings"><X size={19} /></button>
+    </header>
+
+    <section class="appearance-section" aria-labelledby="appearance-colors-title">
+      <h3 id="appearance-colors-title">Colors</h3>
+      <div class="appearance-color-grid">
+        <label><span>Accent</span><input type="color" data-appearance-color="accent" value="#176b55" /></label>
+        <label><span>Page</span><input type="color" data-appearance-color="background" value="#f7f8fa" /></label>
+        <label><span>Text</span><input type="color" data-appearance-color="text" value="#1d2427" /></label>
+        <label><span>Reading progress</span><input type="color" data-appearance-color="progress" value="#b64e36" /></label>
+      </div>
+      <div class="appearance-swatches" aria-label="Accent color presets">
+        {accentPresets.map((preset) => (
+          <button
+            type="button"
+            class="color-swatch"
+            data-accent-preset={preset.value}
+            style={`--swatch: ${preset.value}`}
+            title={`${preset.name} accent`}
+            aria-label={`Use ${preset.name} accent`}
+          ></button>
+        ))}
+      </div>
+    </section>
+
+    <section class="appearance-section" aria-labelledby="appearance-type-title">
+      <h3 id="appearance-type-title">Reading</h3>
+      <label class="appearance-field">
+        <span>Font</span>
+        <select data-appearance-font>
+          <option value="system">System sans</option>
+          <option value="readable">Readable sans</option>
+          <option value="serif">Book serif</option>
+          <option value="mono">Monospace</option>
+        </select>
+      </label>
+      <label class="appearance-range">
+        <span>Text size <output data-font-size-output>16px</output></span>
+        <input type="range" min="14" max="22" step="1" value="16" data-appearance-font-size />
+      </label>
+      <label class="appearance-range">
+        <span>Line spacing <output data-line-height-output>1.75</output></span>
+        <input type="range" min="1.5" max="2" step="0.05" value="1.75" data-appearance-line-height />
+      </label>
+    </section>
+
+    <section class="appearance-section" aria-labelledby="appearance-layout-title">
+      <h3 id="appearance-layout-title">Handbook layout</h3>
+      <div class="appearance-toggles">
+        <label class="appearance-toggle"><span><PanelLeft size={17} />Left navigation</span><input type="checkbox" role="switch" checked data-appearance-sidebar /></label>
+        <label class="appearance-toggle"><span><PanelRight size={17} />Right navigation</span><input type="checkbox" role="switch" checked data-appearance-toc /></label>
+      </div>
+      <label class="appearance-range">
+        <span>Right navigation text size <output data-toc-size-output>11px</output></span>
+        <input type="range" min="11" max="18" step="1" value="11" data-appearance-toc-size />
+      </label>
+    </section>
+
+    <footer>
+      <button class="button secondary" type="button" data-appearance-reset><RotateCcw size={16} />Reset appearance</button>
+      <button class="button primary" type="submit">Done</button>
+    </footer>
+  </form>
+</dialog>
+
+<script>
+  type AppearanceSettings = {
+    accent?: string;
+    background?: string;
+    text?: string;
+    progress?: string;
+    font?: "system" | "readable" | "serif" | "mono";
+    fontSize?: number;
+    lineHeight?: number;
+    tocFontSize?: number;
+    showSidebar?: boolean;
+    showToc?: boolean;
+  };
+
+  const storageKey = "handbook-appearance";
+  const root = document.documentElement;
+  const dialog = document.querySelector<HTMLDialogElement>("[data-appearance-dialog]");
+  const colorInputs = Array.from(document.querySelectorAll<HTMLInputElement>("[data-appearance-color]"));
+  const fontSelect = document.querySelector<HTMLSelectElement>("[data-appearance-font]");
+  const fontSize = document.querySelector<HTMLInputElement>("[data-appearance-font-size]");
+  const lineHeight = document.querySelector<HTMLInputElement>("[data-appearance-line-height]");
+  const tocFontSize = document.querySelector<HTMLInputElement>("[data-appearance-toc-size]");
+  const showSidebar = document.querySelector<HTMLInputElement>("[data-appearance-sidebar]");
+  const showToc = document.querySelector<HTMLInputElement>("[data-appearance-toc]");
+  const fontSizeOutput = document.querySelector<HTMLOutputElement>("[data-font-size-output]");
+  const lineHeightOutput = document.querySelector<HTMLOutputElement>("[data-line-height-output]");
+  const tocSizeOutput = document.querySelector<HTMLOutputElement>("[data-toc-size-output]");
+  const presets = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-accent-preset]"));
+  const fontFamilies = {
+    system: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    readable: 'Verdana, Tahoma, "Segoe UI", sans-serif',
+    serif: 'Georgia, Cambria, "Times New Roman", serif',
+    mono: '"Cascadia Code", "SFMono-Regular", Consolas, monospace'
+  } as const;
+  const propertyNames = ["--accent", "--accent-contrast", "--bg", "--text", "--reading-progress-color", "--appearance-font-family", "--reading-font-size", "--reading-line-height", "--toc-font-size"];
+
+  const isHex = (value: unknown): value is string => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
+  const contrast = (hex: string) => {
+    const values = [1, 3, 5].map((index) => parseInt(hex.slice(index, index + 2), 16));
+    const luminance = (values[0] * 299 + values[1] * 587 + values[2] * 114) / 255000;
+    return luminance > 0.58 ? "#111315" : "#ffffff";
+  };
+  const defaults = () => root.dataset.theme === "dark"
+    ? { accent: "#5bc29f", background: "#111315", text: "#e9ecee", progress: "#ee8f76" }
+    : { accent: "#176b55", background: "#f7f8fa", text: "#1d2427", progress: "#b64e36" };
+  const readSettings = (): AppearanceSettings => {
+    try { return JSON.parse(localStorage.getItem(storageKey) || "{}"); } catch { return {}; }
+  };
+  const writeSettings = (settings: AppearanceSettings) => {
+    try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch { /* Browser storage may be unavailable. */ }
+  };
+
+  const applySettings = (settings: AppearanceSettings) => {
+    if (isHex(settings.accent)) {
+      root.style.setProperty("--accent", settings.accent);
+      root.style.setProperty("--accent-contrast", contrast(settings.accent));
+      root.dataset.customAccent = "";
+    }
+    if (isHex(settings.background)) {
+      root.style.setProperty("--bg", settings.background);
+      root.dataset.customBackground = "";
+    }
+    if (isHex(settings.text)) {
+      root.style.setProperty("--text", settings.text);
+      root.dataset.customText = "";
+    }
+    if (isHex(settings.progress)) root.style.setProperty("--reading-progress-color", settings.progress);
+    if (settings.font && settings.font in fontFamilies) root.style.setProperty("--appearance-font-family", fontFamilies[settings.font]);
+    if (typeof settings.fontSize === "number") root.style.setProperty("--reading-font-size", `${Math.min(22, Math.max(14, settings.fontSize))}px`);
+    if (typeof settings.lineHeight === "number") root.style.setProperty("--reading-line-height", String(Math.min(2, Math.max(1.5, settings.lineHeight))));
+    if (typeof settings.tocFontSize === "number") root.style.setProperty("--toc-font-size", `${Math.min(18, Math.max(11, settings.tocFontSize))}px`);
+    if (settings.showSidebar === false) {
+      root.dataset.hideSidebar = "";
+      document.body.classList.remove("menu-open");
+      document.querySelector("[data-menu-toggle]")?.setAttribute("aria-expanded", "false");
+    } else {
+      delete root.dataset.hideSidebar;
+    }
+    if (settings.showToc === false) {
+      root.dataset.hideToc = "";
+      document.body.classList.remove("toc-open");
+      document.querySelector("[data-toc-toggle]")?.setAttribute("aria-expanded", "false");
+    } else {
+      delete root.dataset.hideToc;
+    }
+  };
+
+  const syncControls = () => {
+    const settings = readSettings();
+    const themeDefaults = defaults();
+    colorInputs.forEach((input) => {
+      const key = input.dataset.appearanceColor as "accent" | "background" | "text" | "progress";
+      input.value = isHex(settings[key]) ? settings[key] : themeDefaults[key];
+    });
+    if (fontSelect) fontSelect.value = settings.font || "system";
+    if (fontSize) fontSize.value = String(settings.fontSize || 16);
+    if (lineHeight) lineHeight.value = String(settings.lineHeight || 1.75);
+    if (tocFontSize) tocFontSize.value = String(settings.tocFontSize || 11);
+    if (showSidebar) showSidebar.checked = settings.showSidebar !== false;
+    if (showToc) showToc.checked = settings.showToc !== false;
+    if (fontSizeOutput) fontSizeOutput.value = `${fontSize?.value || 16}px`;
+    if (lineHeightOutput) lineHeightOutput.value = Number(lineHeight?.value || 1.75).toFixed(2);
+    if (tocSizeOutput) tocSizeOutput.value = `${tocFontSize?.value || 11}px`;
+    presets.forEach((preset) => preset.setAttribute("aria-pressed", String(preset.dataset.accentPreset?.toLowerCase() === (settings.accent || themeDefaults.accent).toLowerCase())));
+  };
+
+  document.querySelector("[data-appearance-open]")?.addEventListener("click", () => {
+    syncControls();
+    dialog?.showModal();
+  });
+  dialog?.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); });
+  colorInputs.forEach((input) => input.addEventListener("input", () => {
+    const settings = readSettings();
+    settings[input.dataset.appearanceColor as "accent" | "background" | "text" | "progress"] = input.value;
+    writeSettings(settings);
+    applySettings(settings);
+    syncControls();
+  }));
+  presets.forEach((preset) => preset.addEventListener("click", () => {
+    const settings = readSettings();
+    settings.accent = preset.dataset.accentPreset;
+    writeSettings(settings);
+    applySettings(settings);
+    syncControls();
+  }));
+  fontSelect?.addEventListener("change", () => {
+    const settings = readSettings();
+    settings.font = fontSelect.value as AppearanceSettings["font"];
+    writeSettings(settings);
+    applySettings(settings);
+  });
+  fontSize?.addEventListener("input", () => {
+    const settings = readSettings();
+    settings.fontSize = Number(fontSize.value);
+    writeSettings(settings);
+    applySettings(settings);
+    if (fontSizeOutput) fontSizeOutput.value = `${fontSize.value}px`;
+  });
+  lineHeight?.addEventListener("input", () => {
+    const settings = readSettings();
+    settings.lineHeight = Number(lineHeight.value);
+    writeSettings(settings);
+    applySettings(settings);
+    if (lineHeightOutput) lineHeightOutput.value = Number(lineHeight.value).toFixed(2);
+  });
+  tocFontSize?.addEventListener("input", () => {
+    const settings = readSettings();
+    settings.tocFontSize = Number(tocFontSize.value);
+    writeSettings(settings);
+    applySettings(settings);
+    if (tocSizeOutput) tocSizeOutput.value = `${tocFontSize.value}px`;
+  });
+  showSidebar?.addEventListener("change", () => {
+    const settings = readSettings();
+    settings.showSidebar = showSidebar.checked;
+    writeSettings(settings);
+    applySettings(settings);
+  });
+  showToc?.addEventListener("change", () => {
+    const settings = readSettings();
+    settings.showToc = showToc.checked;
+    writeSettings(settings);
+    applySettings(settings);
+  });
+  document.querySelector("[data-appearance-reset]")?.addEventListener("click", () => {
+    try { localStorage.removeItem(storageKey); } catch { /* Browser storage may be unavailable. */ }
+    propertyNames.forEach((property) => root.style.removeProperty(property));
+    delete root.dataset.customAccent;
+    delete root.dataset.customBackground;
+    delete root.dataset.customText;
+    delete root.dataset.hideSidebar;
+    delete root.dataset.hideToc;
+    document.body.classList.remove("menu-open", "toc-open");
+    syncControls();
+  });
+  window.addEventListener("handbook:theme-change", syncControls);
+  document.addEventListener("astro:after-swap", () => applySettings(readSettings()));
+</script>

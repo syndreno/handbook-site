@@ -1,0 +1,18 @@
+---
+import { ArrowRight, Folder } from "@lucide/astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getCategories, getDocuments } from "@/utils/documents";
+import { withBase } from "@/utils/path";
+
+const documents = getDocuments();
+const categories = getCategories(documents);
+---
+
+<BaseLayout title="Categories" description="Explore every handbook category in the Developer Master Handbook library.">
+  <main class="listing-page" id="main-content">
+    <header class="listing-header"><span class="eyebrow">Library map</span><h1>Categories</h1><p>Topics are generated from the repository's folder structure.</p></header>
+    <div class="category-grid large">
+      {categories.map((category) => <a class="category-card" href={withBase(`/categories/${category.slug}/`)}><span class="card-icon"><Folder size={21} /></span><strong>{category.name}</strong><span>{category.documents.length} handbooks · {category.wordCount.toLocaleString()} words</span><ArrowRight size={17} /></a>)}
+    </div>
+  </main>
+</BaseLayout>

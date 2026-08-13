@@ -1,0 +1,73 @@
+---
+import { GitFork, Menu, PanelRight, Search } from "@lucide/astro";
+import { siteConfig } from "@/config/site";
+import { withBase } from "@/utils/path";
+import SearchDialog from "@/components/SearchDialog.astro";
+import ThemeControl from "@/components/ThemeControl.astro";
+import AppearanceControl from "@/components/AppearanceControl.astro";
+
+---
+
+<header class="site-header" transition:persist="site-header">
+  <a class="skip-link" href="#main-content" data-astro-reload>Skip to content</a>
+  <div class="header-inner">
+    <button class="icon-button mobile-menu-button" type="button" data-menu-toggle aria-controls="site-sidebar" aria-expanded="false" title="Open navigation" aria-label="Open navigation"><Menu size={21} /></button>
+    <a class="brand" href={withBase("/")} aria-label={`${siteConfig.title} home`} data-astro-prefetch="viewport">
+      <span class="brand-mark" aria-hidden="true">DM</span>
+      <span><strong>{siteConfig.title}</strong><small>{siteConfig.tagline}</small></span>
+    </a>
+    <nav class="top-nav" aria-label="Primary navigation">
+      <a href={withBase("/handbooks/")} data-astro-prefetch="viewport">Handbooks</a>
+      <a href={withBase("/categories/")} data-astro-prefetch="viewport">Categories</a>
+      <a href={withBase("/community/")} data-astro-prefetch="viewport">Community</a>
+    </nav>
+    <div class="header-actions">
+      <button type="button" class="search-trigger" data-search-open>
+        <Search size={17} aria-hidden="true" /><span>Search</span><kbd>Ctrl K</kbd>
+      </button>
+      <button class="icon-button toc-menu-button" type="button" data-toc-toggle aria-controls="page-toc" aria-expanded="false" title="Open On this page" aria-label="Open On this page"><PanelRight size={19} /></button>
+      {siteConfig.github.repositoryUrl && <a class="icon-button" href={siteConfig.github.repositoryUrl} target="_blank" rel="noopener noreferrer" title="View GitHub repository" aria-label="View GitHub repository"><GitFork size={19} /></a>}
+      <AppearanceControl />
+      <ThemeControl />
+    </div>
+  </div>
+</header>
+<button class="drawer-scrim" type="button" data-drawer-close aria-label="Close navigation panels" tabindex="-1" transition:persist="drawer-scrim"></button>
+<SearchDialog />
+
+<script>
+  const menuToggle = document.querySelector<HTMLElement>("[data-menu-toggle]");
+  const tocToggle = document.querySelector<HTMLElement>("[data-toc-toggle]");
+  const drawerScrim = document.querySelector<HTMLElement>("[data-drawer-close]");
+  const closeMenu = () => {
+    document.body.classList.remove("menu-open");
+    menuToggle?.setAttribute("aria-expanded", "false");
+  };
+  const closeToc = () => {
+    document.body.classList.remove("toc-open");
+    tocToggle?.setAttribute("aria-expanded", "false");
+    tocToggle?.setAttribute("aria-label", "Open On this page");
+    tocToggle?.setAttribute("title", "Open On this page");
+  };
+  menuToggle?.addEventListener("click", () => {
+    closeToc();
+    const isOpen = document.body.classList.toggle("menu-open");
+    menuToggle.setAttribute("aria-expanded", String(isOpen));
+  });
+  tocToggle?.addEventListener("click", () => {
+    closeMenu();
+    const isOpen = document.body.classList.toggle("toc-open");
+    tocToggle.setAttribute("aria-expanded", String(isOpen));
+    tocToggle.setAttribute("aria-label", `${isOpen ? "Close" : "Open"} On this page`);
+    tocToggle.setAttribute("title", `${isOpen ? "Close" : "Open"} On this page`);
+  });
+  drawerScrim?.addEventListener("click", () => { closeMenu(); closeToc(); });
+  document.addEventListener("click", (event) => {
+    if (event.target instanceof Element && event.target.closest("#site-sidebar a")) closeMenu();
+    if (event.target instanceof Element && event.target.closest("#page-toc a")) closeToc();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") { closeMenu(); closeToc(); }
+  });
+  document.addEventListener("astro:before-swap", () => { closeMenu(); closeToc(); });
+</script>

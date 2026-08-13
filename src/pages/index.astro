@@ -1,0 +1,54 @@
+---
+import { ArrowRight, BookOpen, Braces, GitPullRequest, Search, Users } from "@lucide/astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import HandbookCard from "@/components/HandbookCard.astro";
+import { getCategories, getDocuments, getSiteStats } from "@/utils/documents";
+import { siteConfig } from "@/config/site";
+import { withBase } from "@/utils/path";
+
+const documents = getDocuments();
+const categories = getCategories(documents);
+const stats = getSiteStats(documents);
+const featured = [...documents].sort((a, b) => b.wordCount - a.wordCount).slice(0, 6);
+---
+
+<BaseLayout>
+  <main id="main-content">
+    <section class="home-hero">
+      <div class="hero-inner">
+        <span class="hero-kicker"><Braces size={16} />A living developer knowledge library</span>
+        <h1>{siteConfig.title}</h1>
+        <p class="community-slogan">{siteConfig.community.slogan}</p>
+        <p>Knowledge becomes more valuable when it is shared. {siteConfig.community.promise}</p>
+        <button class="hero-search" type="button" data-search-open><Search size={21} /><span>What do you want to learn?</span><kbd>Ctrl K</kbd></button>
+        <div class="hero-actions"><a class="button primary" href={withBase(documents[0]?.route ?? "/handbooks/")}>Start learning<ArrowRight size={17} /></a><a class="button secondary" href={withBase("/handbooks/")}>Browse all handbooks</a></div>
+      </div>
+      <div class="hero-stats" aria-label="Library statistics">
+        <div><strong>{stats.handbooks}</strong><span>Handbooks</span></div>
+        <div><strong>{stats.categories}</strong><span>Categories</span></div>
+        <div><strong>{stats.sections.toLocaleString()}</strong><span>Sections</span></div>
+        <div><strong>{stats.codeExamples.toLocaleString()}</strong><span>Code examples</span></div>
+      </div>
+    </section>
+
+    <section class="page-section category-section">
+      <div class="section-heading"><div><span class="eyebrow">Explore by topic</span><h2>Choose a category</h2></div><a href={withBase("/categories/")}>All categories<ArrowRight size={16} /></a></div>
+      <div class="category-grid">
+        {categories.map((category) => <a class="category-card" href={withBase(`/categories/${category.slug}/`)}><span class="card-icon"><BookOpen size={20} /></span><strong>{category.name}</strong><span>{category.documents.length} handbook{category.documents.length === 1 ? "" : "s"}</span><ArrowRight size={17} aria-hidden="true" /></a>)}
+      </div>
+    </section>
+
+    <section class="page-section featured-section">
+      <div class="section-heading"><div><span class="eyebrow">Deep dives</span><h2>Featured handbooks</h2></div><a href={withBase("/handbooks/")}>Browse library<ArrowRight size={16} /></a></div>
+      <div class="handbook-grid">{featured.map((document) => <HandbookCard document={document} />)}</div>
+    </section>
+
+    <section class="community-band">
+      <div>
+        <span class="card-icon"><Users size={21} /></span>
+        <div><span class="eyebrow">Built by learners, kept alive by contributors</span><h2>Free to learn from. Open to improve.</h2><p>This library is intended to outlive any one maintainer. Share the handbooks, adapt them with attribution, correct what changes, and help make technical knowledge clearer for the next generation.</p></div>
+      </div>
+      <div class="community-actions"><a class="button primary" href={withBase("/community/")}><GitPullRequest size={17} />Contribute</a><a class="button secondary" href={withBase("/sharing-policy/")}>Sharing policy<ArrowRight size={17} /></a></div>
+    </section>
+  </main>
+</BaseLayout>

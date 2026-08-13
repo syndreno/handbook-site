@@ -1,0 +1,42 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { siteConfig } from "@/config/site";
+import { withBase } from "@/utils/path";
+---
+
+<BaseLayout title="Sharing and Use Policy" description="Terms for sharing, adapting, and contributing to the Developer Master Handbook.">
+  <main class="policy-page" id="main-content">
+    <header class="policy-header"><span class="eyebrow">Open knowledge policy</span><h1>Free to use. Free to share. Open to improve.</h1><p>This project separates educational content from website software so each can use a license designed for its purpose.</p></header>
+
+    <section class="policy-section">
+      <h2>Handbook content</h2>
+      <div class="policy-highlight"><strong>{siteConfig.community.contentLicense.name}</strong>Unless a file or included item says otherwise, original educational content under <code>assets/handbook/</code> is licensed under Creative Commons Attribution-ShareAlike 4.0 International.</div>
+      <p>You may copy, redistribute, translate, remix, transform, and build upon the content for any purpose, subject to the license terms.</p>
+      <h3>When sharing or adapting content</h3>
+      <ul>
+        <li>Give appropriate credit to the Developer Master Handbook and identified contributors.</li>
+        <li>Link to the original material and the license where practical.</li>
+        <li>Clearly indicate whether you changed the material.</li>
+        <li>Publish adaptations under the same license or a compatible ShareAlike license.</li>
+        <li>Do not add legal or technical restrictions that remove freedoms granted by the license.</li>
+      </ul>
+      <p><a href={siteConfig.community.contentLicense.url} target="_blank" rel="noopener noreferrer">Read the official CC BY-SA 4.0 deed and legal terms</a>.</p>
+    </section>
+
+    <section class="policy-section">
+      <h2>Website software</h2><p>The Astro application, components, styles, build scripts, and related software are licensed under the MIT License. The MIT License permits use, copying, modification, publication, distribution, sublicensing, and sale while retaining its copyright and permission notice.</p><p><a href={siteConfig.community.codeLicense.url} target="_blank" rel="noopener noreferrer">Read the MIT License</a>.</p>
+    </section>
+
+    <section class="policy-section">
+      <h2>Third-party material</h2><p>Logos, trademarks, quoted material, screenshots, linked resources, and other third-party works remain subject to their respective rights and licenses. The project license applies only where contributors have authority to grant it. Clearly identify exceptions near the affected material.</p>
+    </section>
+
+    <section class="policy-section">
+      <h2>Contributions</h2><p>By submitting a contribution, you confirm that you have the right to provide it and agree that handbook contributions may be distributed under CC BY-SA 4.0 and software contributions under MIT, as applicable. Contributors retain copyright in their original work.</p>
+    </section>
+
+    <section class="policy-section">
+      <h2>No warranty</h2><p>The material is provided for education and general information without warranty. Technology changes, and handbook content may contain errors or become outdated. Verify important technical, legal, medical, financial, security, and production decisions with appropriate current sources and qualified professionals.</p><p><a href={withBase("/community/")}>Learn how to improve the library</a>.</p>
+    </section>
+  </main>
+</BaseLayout>

@@ -1,0 +1,54 @@
+---
+import { Search } from "@lucide/astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import HandbookCard from "@/components/HandbookCard.astro";
+import { getCategories, getDocuments } from "@/utils/documents";
+
+const documents = getDocuments();
+const categories = getCategories(documents);
+---
+
+<BaseLayout title="All Handbooks" description={`Browse all ${documents.length} handbooks in the Developer Master Handbook library.`}>
+  <main class="listing-page" id="main-content">
+    <header class="listing-header"><span class="eyebrow">Complete library</span><h1>All handbooks</h1><p>Browse {documents.length} in-depth guides, generated directly from the Markdown library.</p></header>
+    <div class="library-controls">
+      <label class="filter-search"><Search size={18} /><span class="sr-only">Filter handbooks</span><input type="search" placeholder="Filter by title or topic" data-library-search /></label>
+      <label><span>Category</span><select data-library-category><option value="all">All categories</option>{categories.map((category) => <option value={category.slug}>{category.name}</option>)}</select></label>
+      <label><span>Sort</span><select data-library-sort><option value="az">A-Z</option><option value="za">Z-A</option></select></label>
+    </div>
+    <p class="result-count" data-result-count>{documents.length} handbooks</p>
+    <div class="handbook-grid" data-library-grid>{documents.map((document) => <HandbookCard document={document} />)}</div>
+    <div class="empty-state" data-library-empty hidden><h2>No matching handbooks</h2><p>Try a broader title or choose another category.</p></div>
+  </main>
+</BaseLayout>
+
+<script>
+  const initializeLibrary = () => {
+    const grid = document.querySelector<HTMLElement>("[data-library-grid]");
+    const search = document.querySelector<HTMLInputElement>("[data-library-search]");
+    const category = document.querySelector<HTMLSelectElement>("[data-library-category]");
+    const sort = document.querySelector<HTMLSelectElement>("[data-library-sort]");
+    const count = document.querySelector<HTMLElement>("[data-result-count]");
+    const empty = document.querySelector<HTMLElement>("[data-library-empty]");
+    if (!grid || grid.dataset.enhanced) return;
+    grid.dataset.enhanced = "true";
+    const filter = () => {
+      if (!search || !category || !sort) return;
+      const cards = [...grid.querySelectorAll<HTMLElement>(".handbook-card")];
+      const query = search.value.trim().toLowerCase();
+      cards.sort((a, b) => (sort.value === "za" ? -1 : 1) * (a.dataset.title || "").localeCompare(b.dataset.title || ""));
+      cards.forEach((card) => grid.append(card));
+      let visible = 0;
+      cards.forEach((card) => {
+        const show = (!query || card.textContent?.toLowerCase().includes(query)) && (category.value === "all" || card.dataset.category === category.value);
+        card.hidden = !show;
+        if (show) visible++;
+      });
+      if (count) count.textContent = `${visible} handbook${visible === 1 ? "" : "s"}`;
+      if (empty) empty.hidden = visible !== 0;
+    };
+    [search, category, sort].forEach((control) => control?.addEventListener("input", filter));
+  };
+  initializeLibrary();
+  document.addEventListener("astro:page-load", initializeLibrary);
+</script>

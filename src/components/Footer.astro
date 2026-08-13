@@ -1,0 +1,10 @@
+---
+import { siteConfig } from "@/config/site";
+import { withBase } from "@/utils/path";
+---
+
+<footer class="site-footer" transition:persist="site-footer">
+  <div><strong>{siteConfig.title}</strong><span>Built for continuous learning.</span></div>
+  <nav aria-label="Footer navigation"><a href={withBase("/handbooks/")} data-astro-prefetch="viewport">All handbooks</a><a href={withBase("/categories/")} data-astro-prefetch="viewport">Categories</a><a href={withBase("/community/")} data-astro-prefetch="viewport">Community</a><a href={withBase("/sharing-policy/")} data-astro-prefetch="viewport">Sharing policy</a></nav>
+  <small>Content licensed {siteConfig.community.contentLicense.name}</small>
+</footer>

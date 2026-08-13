@@ -1,0 +1,66 @@
+---
+import { BookOpen, Scale } from "@lucide/astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { siteConfig } from "@/config/site";
+import { withBase } from "@/utils/path";
+---
+
+<BaseLayout title="Community" description="Free lifelong learning for students and education seekers, improved by an open community.">
+  <main class="policy-page" id="main-content">
+    <header class="policy-header"><span class="eyebrow">Community stewardship</span><h1>{siteConfig.community.slogan}</h1><p>{siteConfig.community.promise} This handbook belongs in the hands of curious learners and thoughtful contributors, today and for generations to come.</p></header>
+
+    <section class="policy-section">
+      <h2>Free learning for life</h2>
+      <div class="policy-highlight"><strong>Education should remain within everyone's reach</strong>We are committed to providing a free learning experience for students and anyone seeking foundational education. There are no subscriptions, required accounts, or paid lessons.</div>
+      <p>Learn at your own pace, return whenever you need a refresher, and share useful material with others. Whether you are beginning your studies, changing careers, teaching someone else, or learning out of curiosity, this library is here to support your journey.</p>
+      <p>The handbooks are open educational resources. Our goal is to keep them freely available for lifelong learning while the community continues to maintain and improve them.</p>
+    </section>
+
+    <section class="policy-section">
+      <div class="policy-highlight"><strong>Our community promise</strong>Everyone may learn from and share this educational content. Everyone is invited to improve its accuracy, clarity, accessibility, and usefulness while preserving credit and openness.</div>
+    </section>
+
+    <section class="policy-section">
+      <h2>Help knowledge grow</h2>
+      <p>A useful learning library grows when people share what they know. Help us improve the quality and reach of this service by contributing your knowledge, practical experience, learning resources, or ideas.</p>
+      <p>You do not need to be an expert to help. You can report a confusing explanation, suggest a missing beginner topic, correct an error, improve an example, or share an idea that makes learning easier for someone else.</p>
+      <p>Every thoughtful contribution can become part of a better free learning experience for the next student.</p>
+    </section>
+
+    <section class="policy-section">
+      <h2>Ways to contribute</h2>
+      <ul>
+        <li>Correct outdated, incomplete, or inaccurate technical information.</li>
+        <li>Add examples, diagrams, exercises, references, and beginner-friendly explanations.</li>
+        <li>Improve accessibility, grammar, structure, and translations.</li>
+        <li>Add a new handbook under the appropriate folder in <code>assets/handbook/</code>.</li>
+        <li>Improve the website, search, navigation, performance, or documentation tooling.</li>
+      </ul>
+      <p>Every contribution should help readers understand the subject without turning the library into advertising or copied material. Share only original work or content you have permission to contribute.</p>
+    </section>
+
+    <section class="policy-section">
+      <h2>Contribution principles</h2>
+      <h3>Accuracy before volume</h3><p>Prefer a smaller verified improvement over a large unreviewed addition. Cite primary and authoritative sources when a claim may change over time.</p>
+      <h3>Teach with empathy</h3><p>Write for learners who may be meeting the subject for the first time. Explain unfamiliar terms and provide practical context.</p>
+      <h3>Respect authors and licenses</h3><p>Submit original work or material you have permission to contribute. Attribute compatible sources and clearly mark third-party material.</p>
+      <h3>Leave the library more open</h3><p>Contributions to handbook content are shared under the same open-content license so future learners retain the same freedoms.</p>
+    </section>
+
+    <section class="policy-section">
+      <h2>How stewardship works</h2>
+      <ol>
+        <li>Open an issue for substantial new topics, reorganizations, or policy changes.</li>
+        <li>Make focused changes and explain why they improve the learning experience.</li>
+        <li>Run the documented checks and resolve broken links before submitting.</li>
+        <li>Reviewers assess accuracy, clarity, licensing, safety, and maintainability.</li>
+        <li>Community policies may evolve through documented, reviewable repository changes.</li>
+      </ol>
+    </section>
+
+    <section class="policy-section">
+      <h2>A respectful learning community</h2><p>Be welcoming, constructive, patient, and specific. Harassment, discrimination, plagiarism, personal attacks, and deliberately harmful content are not accepted. See the repository's <code>CODE_OF_CONDUCT.md</code> for the full community standard.</p>
+      <div class="hero-actions"><a class="button primary" href={withBase("/handbooks/")}><BookOpen size={17} />Explore handbooks</a><a class="button secondary" href={withBase("/sharing-policy/")}><Scale size={17} />Read sharing policy</a></div>
+    </section>
+  </main>
+</BaseLayout>

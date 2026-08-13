@@ -1,0 +1,37 @@
+---
+import { Monitor, Moon, Sun } from "@lucide/astro";
+---
+
+<div class="theme-control" aria-label="Color theme">
+  <button type="button" data-theme-choice="light" title="Use light theme" aria-label="Use light theme"><Sun size={17} /></button>
+  <button type="button" data-theme-choice="system" title="Use system theme" aria-label="Use system theme"><Monitor size={17} /></button>
+  <button type="button" data-theme-choice="dark" title="Use dark theme" aria-label="Use dark theme"><Moon size={17} /></button>
+</div>
+
+<script is:inline>
+  (() => {
+    const choices = document.querySelectorAll(".theme-control [data-theme-choice]");
+    const stored = localStorage.getItem("handbook-theme") || "system";
+    const apply = (choice) => {
+      const dark = choice === "dark" || (choice === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+      document.documentElement.dataset.themeChoice = choice;
+      choices.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.themeChoice === choice)));
+      window.dispatchEvent(new CustomEvent("handbook:theme-change", { detail: { theme: dark ? "dark" : "light" } }));
+    };
+    apply(stored);
+    choices.forEach((button) => button.addEventListener("click", () => {
+      const current = localStorage.getItem("handbook-theme") || "system";
+      const order = ["system", "light", "dark"];
+      const choice = matchMedia("(max-width: 620px)").matches
+        ? order[(order.indexOf(current) + 1) % order.length]
+        : button.dataset.themeChoice;
+      localStorage.setItem("handbook-theme", choice);
+      apply(choice);
+    }));
+    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+      if ((localStorage.getItem("handbook-theme") || "system") === "system") apply("system");
+    });
+    document.addEventListener("astro:after-swap", () => apply(localStorage.getItem("handbook-theme") || "system"));
+  })();
+</script>

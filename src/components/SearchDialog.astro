@@ -1,0 +1,107 @@
+---
+import { Search, X } from "@lucide/astro";
+---
+
+<dialog class="search-dialog" id="search-dialog" aria-labelledby="search-title" data-base={import.meta.env.BASE_URL} data-pagefind={String(import.meta.env.PROD)} transition:persist="search-dialog">
+  <div class="search-panel">
+    <header>
+      <Search size={20} aria-hidden="true" />
+      <h2 id="search-title">Search handbooks</h2>
+      <button type="button" class="icon-button" data-search-close aria-label="Close search" title="Close search"><X size={20} /></button>
+    </header>
+    <label class="search-input-wrap">
+      <span class="sr-only">Search all handbooks</span>
+      <Search size={19} aria-hidden="true" />
+      <input id="search-input" type="search" placeholder="Search topics, commands, and concepts" autocomplete="off" />
+      <kbd>Esc</kbd>
+    </label>
+    <p class="search-status" id="search-status" aria-live="polite">Start typing to search the entire library.</p>
+    <div class="search-results" id="search-results"></div>
+  </div>
+</dialog>
+
+<script is:inline>
+  (() => {
+    const dialog = document.getElementById("search-dialog");
+    const input = document.getElementById("search-input");
+    const results = document.getElementById("search-results");
+    const status = document.getElementById("search-status");
+    let fallback;
+    let fallbackRequest;
+    let pagefind;
+
+    const escapeHtml = (value) => String(value).replace(/[&<>"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" })[character]);
+    const open = () => {
+      if (!dialog.open) dialog.showModal();
+      requestAnimationFrame(() => input.focus());
+    };
+    const close = () => dialog.close();
+    document.querySelectorAll("[data-search-open]").forEach((button) => button.addEventListener("click", open));
+    document.querySelectorAll("[data-search-close]").forEach((button) => button.addEventListener("click", close));
+    dialog.addEventListener("click", (event) => { if (event.target === dialog) close(); });
+    document.addEventListener("keydown", (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") { event.preventDefault(); open(); }
+      if (event.key === "Escape" && dialog.open) close();
+    });
+
+    const render = (items, query) => {
+      status.textContent = items.length ? `${items.length} result${items.length === 1 ? "" : "s"} for "${query}"` : `No results found for "${query}". Try fewer or broader words.`;
+      results.innerHTML = items.map((item) => `
+        <a class="search-result" href="${escapeHtml(item.url)}">
+          <span class="search-result-category">${escapeHtml(item.category || "Handbook")}</span>
+          <strong>${escapeHtml(item.title)}</strong>
+          <span>${item.excerpt || escapeHtml(item.description || "")}</span>
+        </a>`).join("");
+    };
+
+    const fallbackSearch = (query) => {
+      const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+      return (fallback || [])
+        .map((item) => ({ ...item, score: terms.reduce((score, term) => score + (item.title.toLowerCase().includes(term) ? 4 : 0) + (item.category.toLowerCase().includes(term) ? 2 : 0) + (item.description.toLowerCase().includes(term) ? 1 : 0) + (item.tags.join(" ").toLowerCase().includes(term) ? 2 : 0), 0) }))
+        .filter((item) => item.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 12);
+    };
+
+    const loadFallback = async () => {
+      if (fallback) return fallback;
+      if (!fallbackRequest) {
+        const base = dialog.dataset.base || "/";
+        fallbackRequest = fetch(`${base}handbooks.json`)
+          .then((response) => {
+            if (!response.ok) throw new Error(`Search index returned ${response.status}`);
+            return response.json();
+          })
+          .then((index) => (fallback = index));
+      }
+      return fallbackRequest;
+    };
+
+    let searchTimer;
+    input.addEventListener("input", () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(async () => {
+        const query = input.value.trim();
+        if (query.length < 2) { results.innerHTML = ""; status.textContent = "Enter at least two characters to search."; return; }
+        try {
+          if (!pagefind) {
+            if (dialog.dataset.pagefind !== "true") throw new Error("Pagefind is available after the production build.");
+            const base = dialog.dataset.base || "/";
+            pagefind = await import(`${base}pagefind/pagefind.js`);
+            await pagefind.options({ highlightParam: "highlight" });
+          }
+          const search = await pagefind.search(query);
+          const data = await Promise.all(search.results.slice(0, 12).map((result) => result.data()));
+          render(data.map((item) => ({
+            ...item,
+            title: item.meta?.title || item.title || "Handbook",
+            category: item.meta?.category || "Handbook"
+          })), query);
+        } catch {
+          try { await loadFallback(); } catch { fallback = []; }
+          render(fallbackSearch(query), query);
+        }
+      }, 120);
+    });
+  })();
+</script>

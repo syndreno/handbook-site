@@ -1,0 +1,25 @@
+---
+import type { GetStaticPaths } from "astro";
+import DocsLayout from "@/layouts/DocsLayout.astro";
+import { getCategories, getDocumentNeighbors, getDocuments, getRelatedDocuments } from "@/utils/documents";
+import { renderMarkdown } from "@/utils/markdown";
+
+export const getStaticPaths = (async () => {
+  const documents = getDocuments();
+  return documents.map((document) => ({
+    params: { slug: document.slug },
+    props: { sourcePath: document.sourcePath }
+  }));
+}) satisfies GetStaticPaths;
+
+const { sourcePath } = Astro.props;
+const documents = getDocuments();
+const document = documents.find((item) => item.sourcePath === sourcePath);
+if (!document) throw new Error(`Handbook not found: ${sourcePath}`);
+const html = await renderMarkdown(document);
+const categories = getCategories(documents);
+const { previous, next } = getDocumentNeighbors(document, documents);
+const related = getRelatedDocuments(document, documents);
+---
+
+<DocsLayout {document} {categories} {html} {previous} {next} {related} />

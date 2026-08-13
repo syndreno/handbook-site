@@ -1,0 +1,29 @@
+---
+import type { CategoryMetadata } from "@/types/documents";
+import { withBase } from "@/utils/path";
+
+interface Props { categories: CategoryMetadata[]; currentRoute?: string }
+const { categories, currentRoute = "" } = Astro.props;
+---
+
+<aside class="docs-sidebar" id="site-sidebar" aria-label="Handbook navigation">
+  <div class="sidebar-heading">
+    <span>Library</span>
+    <a href={withBase("/handbooks/")}>View all</a>
+  </div>
+  <nav>
+    {categories.map((category) => {
+      const activeCategory = currentRoute.includes(`/${category.slug}/`) || category.documents.some((doc) => doc.route === currentRoute);
+      return (
+        <details open={activeCategory}>
+          <summary><span>{category.name}</span><small>{category.documents.length}</small></summary>
+          <ul>
+            {category.documents.map((document) => (
+              <li><a href={withBase(document.route)} aria-current={document.route === currentRoute ? "page" : undefined}>{document.title}</a></li>
+            ))}
+          </ul>
+        </details>
+      );
+    })}
+  </nav>
+</aside>
