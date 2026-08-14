@@ -4,6 +4,12 @@
 > not only *what* commands do, but *why*, *when*, and *how* to use them
 > in realistic projects.
 
+Before starting, you should be comfortable navigating directories and running
+commands in a terminal. Programming experience is helpful for the
+language-specific examples but is not required for the core Docker sections.
+Examples that use placeholder passwords are local learning examples; never
+reuse those credentials in a shared or production environment.
+
 ------------------------------------------------------------------------
 
 ## Table of Contents
@@ -91,7 +97,7 @@
 
 ------------------------------------------------------------------------
 
-# 1. Docker in Simple Words
+## 1. Docker in Simple Words
 
 Docker is a platform for **packaging an application together with the
 environment it needs and running that package consistently**.
@@ -136,7 +142,7 @@ Docker therefore helps reduce the classic:
 
 ------------------------------------------------------------------------
 
-# 2. Why Docker Exists
+## 2. Why Docker Exists
 
 Before containers, teams commonly installed application dependencies
 directly on servers.
@@ -177,7 +183,7 @@ Host
 -   easier rollback
 -   environment parity
 
-### Docker does not magically solve
+#### Docker does not magically solve
 
 Docker does **not** automatically solve:
 
@@ -193,9 +199,9 @@ It is a tool, not an entire production architecture.
 
 ------------------------------------------------------------------------
 
-# 3. Containers vs Virtual Machines
+## 3. Containers vs Virtual Machines
 
-## Virtual machine
+### Virtual machine
 
 A VM normally includes an entire guest operating system.
 
@@ -211,10 +217,14 @@ Hardware
             └── Application
 ```
 
-## Container
+### Container
 
-Containers share the host kernel while maintaining isolated processes,
-filesystems and networking.
+Containers share a compatible kernel while maintaining isolated processes,
+filesystems, and networking. On a native Linux host, Linux containers share
+that host's Linux kernel. Docker Desktop normally runs Linux containers inside
+a managed Linux VM on Windows or macOS, so they share the VM's kernel rather
+than the desktop operating system's kernel. Windows containers use a different
+Windows-compatible model.
 
 ``` text
 Hardware
@@ -225,21 +235,21 @@ Hardware
         └── Container -> App C
 ```
 
-  Topic         VM                              Container
-  ------------- ------------------------------- -------------------------------
-  Guest OS      Usually yes                     No separate full guest kernel
-  Startup       Usually slower                  Usually fast
-  Size          Often GBs                       Often MBs to hundreds of MBs
-  Isolation     Strong machine-level boundary   Process-level isolation
-  Portability   Good                            Excellent for applications
-  Density       Lower                           Higher
+| Topic | VM | Container |
+|---|---|---|
+| Guest OS | Usually yes | No separate full guest kernel |
+| Startup | Usually slower | Usually fast |
+| Size | Often GBs | Often MBs to hundreds of MBs |
+| Isolation | Strong machine-level boundary | Process-level isolation |
+| Portability | Good | Excellent for applications |
+| Density | Lower | Higher |
 
 Containers are not simply "tiny VMs." Their isolation model is
 fundamentally different.
 
 ------------------------------------------------------------------------
 
-# 4. Core Docker Architecture
+## 4. Core Docker Architecture
 
 A simplified architecture is:
 
@@ -276,7 +286,7 @@ Docker roughly performs:
 
 ------------------------------------------------------------------------
 
-# 5. Installation and First Verification
+## 5. Installation and First Verification
 
 After installing Docker Desktop or Docker Engine, verify:
 
@@ -284,17 +294,32 @@ After installing Docker Desktop or Docker Engine, verify:
 docker version
 ```
 
+This asks both the Docker CLI and, when reachable, the Docker Engine for version
+information. Successful output has client and server sections. A client-only
+result or a connection error usually means the CLI exists but the engine is not
+running, the current Docker context points somewhere unavailable, or the user
+lacks access to the engine endpoint.
+
 More environment information:
 
 ``` bash
 docker info
 ```
 
+`docker info` returns engine-wide details such as the active context, storage
+driver, container/image counts, logging configuration, and available runtimes.
+It is useful for diagnosis, but its output can contain host and registry
+configuration that should be redacted before sharing publicly.
+
 Run the standard test container:
 
 ``` bash
 docker run hello-world
 ```
+
+`docker run` creates *and starts* a new container. If the image is absent,
+Docker pulls it first. The expected result is a short success message, after
+which the test container exits normally because its main process has finished.
 
 List running containers:
 
@@ -314,9 +339,9 @@ docker ps -a
 
 ------------------------------------------------------------------------
 
-# 6. Essential Terminology
+## 6. Essential Terminology
 
-## Image
+### Image
 
 A read-only application template.
 
@@ -326,7 +351,7 @@ Example:
 nginx:1.27
 ```
 
-## Container
+### Container
 
 A running or stopped instance created from an image.
 
@@ -339,21 +364,21 @@ Image -> Container
 
 This analogy is not technically perfect, but it is useful for beginners.
 
-## Dockerfile
+### Dockerfile
 
 A text file containing instructions for building an image.
 
-## Registry
+### Registry
 
 A service storing container images.
 
 Examples include public and private registries.
 
-## Repository
+### Repository
 
 A collection of image versions/tags for one image name.
 
-## Tag
+### Tag
 
 A human-readable image version label.
 
@@ -363,21 +388,21 @@ myapp:1.1
 myapp:latest
 ```
 
-## Volume
+### Volume
 
 Docker-managed persistent storage.
 
-## Network
+### Network
 
 A Docker networking construct allowing containers to communicate.
 
-## Compose
+### Compose
 
 A way to describe and run a multi-container application declaratively.
 
 ------------------------------------------------------------------------
 
-# 7. Your First Container
+## 7. Your First Container
 
 Run Nginx:
 
@@ -412,6 +437,18 @@ Name the container:
 docker run -d --name web -p 8080:80 nginx
 ```
 
+The inputs are:
+
+- `-d`: run in the background and print the new container ID.
+- `--name web`: assign a memorable container name instead of a generated one.
+- `-p 8080:80`: publish host port `8080` to container port `80`.
+- `nginx`: create the container from the default tag of this image.
+
+For repeatable projects, select an intentional image version instead of
+depending on a changing default tag. If the command succeeds, `docker ps`
+shows `web`, and an HTTP request to `http://localhost:8080` should return the
+Nginx welcome page.
+
 Stop it:
 
 ``` bash
@@ -438,7 +475,7 @@ docker rm -f web
 
 ------------------------------------------------------------------------
 
-# 8. Docker Images
+## 8. Docker Images
 
 List images:
 
@@ -476,6 +513,26 @@ Build:
 docker build -t myapp:1.0 .
 ```
 
+`docker build` sends the selected build context to the builder and evaluates
+the Dockerfile. `-t myapp:1.0` assigns repository name `myapp` and tag `1.0`;
+the final `.` selects the current directory as the build context. The command
+returns a local image on success. Verify it with `docker image ls myapp` or
+inspect it with `docker image inspect myapp:1.0`.
+
+### What the image commands return
+
+| Command | What it does | Typical output or caution |
+|---|---|---|
+| `docker image ls` | Lists local image references | Repository, tag, image ID, age, and size |
+| `docker pull NAME:TAG` | Downloads the referenced manifest and missing layers | Pulled layer progress and resolved digest |
+| `docker image inspect NAME:TAG` | Returns low-level image metadata | JSON containing config, labels, layers, and digests |
+| `docker history NAME:TAG` | Shows the build-history view | Layer sizes and created-by commands; output is not a secret store |
+| `docker image rm NAME:TAG` | Removes a local reference and eligible data | Can fail when dependent containers still reference the image |
+
+Pulling or removing an image changes local engine state; it does not delete the
+remote registry copy. A tag can move, so record the registry digest when exact
+deployment identity matters.
+
 ### Image immutability
 
 Images should be treated as immutable artifacts.
@@ -499,7 +556,7 @@ This gives reproducibility and rollback.
 
 ------------------------------------------------------------------------
 
-# 9. Docker Containers
+## 9. Docker Containers
 
 A container has a lifecycle.
 
@@ -533,6 +590,11 @@ Kill immediately:
 docker kill web
 ```
 
+Use `docker stop` for normal shutdown: it sends the configured stop signal and
+allows a grace period. `docker kill` sends a signal immediately (by default,
+`SIGKILL`) and does not allow application cleanup, so reserve it for a process
+that will not stop or for deliberate failure testing.
+
 Restart:
 
 ``` bash
@@ -552,6 +614,22 @@ Rename:
 docker rename web frontend
 ```
 
+### Choosing a lifecycle command
+
+| Command | Creates a container? | Starts a process? | When to use |
+|---|---:|---:|---|
+| `docker create` | Yes | No | Prepare configuration now and start later |
+| `docker run` | Yes | Yes | Normal create-and-start path |
+| `docker start` | No | Yes | Restart an existing stopped container with its saved configuration |
+| `docker stop` | No | No | Request graceful termination |
+| `docker kill` | No | No | Force or send a selected signal when deliberate |
+| `docker rm` | No | No | Delete a stopped container's metadata and writable layer |
+
+Removing a container does not remove its image, and a separately managed named
+volume normally survives. Anonymous volumes and `--rm`/volume-removal options
+have different lifecycle behavior, so inspect mounts before deleting stateful
+containers.
+
 ### Important principle
 
 A container normally lives around its **main process**. If PID 1 exits,
@@ -559,7 +637,7 @@ the container stops.
 
 ------------------------------------------------------------------------
 
-# 10. Dockerfile Fundamentals
+## 10. Dockerfile Fundamentals
 
 Example Node.js Dockerfile:
 
@@ -578,6 +656,18 @@ EXPOSE 3000
 
 CMD ["node", "server.js"]
 ```
+
+This image starts from a Node.js runtime, uses `/app` as its working directory,
+copies dependency manifests before source to preserve cache usefulness, and
+uses `npm ci` for a lock-file-based install. `EXPOSE 3000` documents the
+container port; it does not publish it. `CMD` supplies the default foreground
+process. The application must actually listen on port `3000` and bind to an
+interface reachable from the container network (commonly `0.0.0.0`).
+
+The example is suitable for learning. A production Dockerfile should also
+separate build and runtime dependencies where needed, run as a non-root user,
+exclude local files with `.dockerignore`, and select a maintained base-image
+version or digest through a deliberate update process.
 
 Build:
 
@@ -609,9 +699,9 @@ Container
 
 ------------------------------------------------------------------------
 
-# 11. Dockerfile Instructions in Depth
+## 11. Dockerfile Instructions in Depth
 
-## FROM
+### FROM
 
 Defines the base image.
 
@@ -621,7 +711,7 @@ FROM python:3.13-slim
 
 Nearly every normal Dockerfile begins with `FROM`.
 
-## WORKDIR
+### WORKDIR
 
 Changes the working directory for following instructions.
 
@@ -635,7 +725,7 @@ Prefer this over repeated:
 RUN cd /app && ...
 ```
 
-## COPY
+### COPY
 
 Copies files from the build context.
 
@@ -644,13 +734,13 @@ COPY package.json .
 COPY src/ ./src/
 ```
 
-## ADD
+### ADD
 
 Can copy files and has extra behaviors such as archive handling and
 URL-related capabilities. For ordinary local copying, prefer `COPY`
 because its behavior is clearer.
 
-## RUN
+### RUN
 
 Executes a command **while building the image**.
 
@@ -658,7 +748,7 @@ Executes a command **while building the image**.
 RUN npm ci
 ```
 
-## CMD
+### CMD
 
 Provides the default command/arguments when the container starts.
 
@@ -666,7 +756,7 @@ Provides the default command/arguments when the container starts.
 CMD ["node", "server.js"]
 ```
 
-## ENTRYPOINT
+### ENTRYPOINT
 
 Defines the executable that the container behaves as.
 
@@ -674,7 +764,7 @@ Defines the executable that the container behaves as.
 ENTRYPOINT ["java", "-jar", "app.jar"]
 ```
 
-## EXPOSE
+### EXPOSE
 
 Documents the intended container port.
 
@@ -684,7 +774,7 @@ EXPOSE 8080
 
 Important: `EXPOSE` does **not** publish the port to your host.
 
-## ENV
+### ENV
 
 Defines an environment variable:
 
@@ -692,7 +782,7 @@ Defines an environment variable:
 ENV APP_ENV=production
 ```
 
-## ARG
+### ARG
 
 Defines a build-time argument:
 
@@ -706,7 +796,7 @@ Build:
 docker build --build-arg APP_VERSION=2.1 .
 ```
 
-## USER
+### USER
 
 Changes the user used for subsequent build/runtime instructions.
 
@@ -714,7 +804,7 @@ Changes the user used for subsequent build/runtime instructions.
 USER appuser
 ```
 
-## LABEL
+### LABEL
 
 Adds metadata:
 
@@ -722,13 +812,13 @@ Adds metadata:
 LABEL org.opencontainers.image.title="Orders API"
 ```
 
-## VOLUME
+### VOLUME
 
 Declares a mount point. In modern application stacks, storage is often
 configured explicitly at runtime or in Compose rather than relying
 heavily on this instruction.
 
-## HEALTHCHECK
+### HEALTHCHECK
 
 Defines a container health test.
 
@@ -737,17 +827,24 @@ HEALTHCHECK --interval=30s --timeout=3s \
   CMD curl -f http://localhost:8080/health || exit 1
 ```
 
-## SHELL
+The check runs *inside* the container every 30 seconds and must finish within 3
+seconds. Exit code `0` means healthy; a non-zero code contributes to an
+unhealthy result. This exact example works only when the image contains
+`curl` and the application implements `/health`. Do not add a large diagnostic
+toolchain only for a health check; use a small available client or an
+application-native check.
+
+### SHELL
 
 Changes the default shell used by shell-form commands.
 
-## STOPSIGNAL
+### STOPSIGNAL
 
 Specifies the signal used to stop the container.
 
 ------------------------------------------------------------------------
 
-# 12. Build Context and .dockerignore
+## 12. Build Context and .dockerignore
 
 When you run:
 
@@ -793,7 +890,7 @@ Never assume `.gitignore` automatically acts as `.dockerignore`.
 
 ------------------------------------------------------------------------
 
-# 13. Image Layers and Build Cache
+## 13. Image Layers and Build Cache
 
 Many Dockerfile instructions produce layers.
 
@@ -828,7 +925,7 @@ frequently.
 
 ------------------------------------------------------------------------
 
-# 14. Multi-stage Builds
+## 14. Multi-stage Builds
 
 A build environment often contains tools not needed at runtime.
 
@@ -861,7 +958,7 @@ Benefits:
 
 ------------------------------------------------------------------------
 
-# 15. Container Networking
+## 15. Container Networking
 
 List networks:
 
@@ -916,7 +1013,7 @@ your host machine.
 
 ------------------------------------------------------------------------
 
-# 16. Ports and Port Publishing
+## 16. Ports and Port Publishing
 
 Syntax:
 
@@ -964,7 +1061,7 @@ This can reduce unintended network exposure during development.
 
 ------------------------------------------------------------------------
 
-# 17. Persistent Data and Storage
+## 17. Persistent Data and Storage
 
 Container writable layers are not a good place for important persistent
 data.
@@ -1000,13 +1097,20 @@ docker run -d \
   mysql:8
 ```
 
+This is a local demonstration: `-e` supplies an initialization variable and
+`-v` mounts the named volume at MySQL's data directory. The output is a
+container ID. Wait for MySQL's logs or a real readiness check before connecting.
+For production, deliver credentials through an appropriate secret mechanism,
+pin an approved image version, and implement database-aware backups; the named
+volume alone is not a backup.
+
 Remove/recreate the container while retaining the volume.
 
 ------------------------------------------------------------------------
 
-# 18. Volumes vs Bind Mounts vs tmpfs
+## 18. Volumes vs Bind Mounts vs tmpfs
 
-## Named volume
+### Named volume
 
 ``` bash
 -v app-data:/data
@@ -1020,7 +1124,7 @@ Good for:
 -   application persistent data
 -   production-style persistence
 
-## Bind mount
+### Bind mount
 
 ``` bash
 -v "$(pwd)":/app
@@ -1034,20 +1138,20 @@ Good for:
 -   configuration files
 -   local debugging
 
-## tmpfs
+### tmpfs
 
 Stores data in host memory rather than persistent disk storage.
 
 Good for temporary sensitive or high-speed ephemeral data where
 supported and appropriate.
 
-### Comparison
+#### Comparison
 
-  Type           Managed by Docker   Persistent Typical use
-  ------------ ------------------- ------------ ---------------------------
-  Volume                       Yes          Yes DB/application data
-  Bind mount                    No          Yes Development/source/config
-  tmpfs             Runtime memory           No Temporary data
+| Type | Managed by Docker | Persistent | Typical use |
+|---|---:|---:|---|
+| Volume | Yes | Yes | Database/application data |
+| Bind mount | No | Yes | Development/source/config |
+| `tmpfs` | Runtime memory | No | Temporary data |
 
 Modern CLI syntax can use `--mount`, which is more explicit:
 
@@ -1059,7 +1163,7 @@ docker run \
 
 ------------------------------------------------------------------------
 
-# 19. Environment Variables and Configuration
+## 19. Environment Variables and Configuration
 
 Pass a variable:
 
@@ -1099,13 +1203,13 @@ secret storage.
 Do not bake passwords into an image:
 
 ``` dockerfile
-# BAD
+## BAD
 ENV DB_PASSWORD=super-secret
 ```
 
 ------------------------------------------------------------------------
 
-# 20. Docker Compose
+## 20. Docker Compose
 
 A real application often requires multiple services.
 
@@ -1139,11 +1243,22 @@ volumes:
   mysql-data:
 ```
 
+Compose reads this model and creates the containers, a project network, and the
+named volume. The API can resolve the database by service name `db`; it should
+not use `localhost` for that dependency. The passwords are deliberately simple
+local placeholders. Put real credentials outside committed Compose source and
+use the secret facilities appropriate to the deployment environment.
+
 Start:
 
 ``` bash
 docker compose up
 ```
+
+`up` creates or recreates resources as needed, attaches to combined service
+logs, and keeps running until interrupted. `up -d` returns after starting the
+stack. Use `docker compose ps` for status, `docker compose logs` for service
+output, and `docker compose config` to inspect the fully resolved model.
 
 Detached:
 
@@ -1180,7 +1295,7 @@ docker compose config
 
 ------------------------------------------------------------------------
 
-# 21. Compose Networking and Dependencies
+## 21. Compose Networking and Dependencies
 
 Compose normally creates a project network automatically.
 
@@ -1198,7 +1313,7 @@ DB_HOST=localhost
 
 when the DB is a separate Compose service.
 
-## `depends_on` misconception
+### `depends_on` misconception
 
 This:
 
@@ -1220,7 +1335,7 @@ A robust service should tolerate temporary dependency unavailability.
 
 ------------------------------------------------------------------------
 
-# 22. Health Checks
+## 22. Health Checks
 
 A process being "running" does not necessarily mean the application
 works.
@@ -1271,7 +1386,7 @@ Those concepts become especially important in orchestrators.
 
 ------------------------------------------------------------------------
 
-# 23. Logs and Debugging
+## 23. Logs and Debugging
 
 View logs:
 
@@ -1297,6 +1412,12 @@ Add timestamps:
 docker logs -t container-name
 ```
 
+`docker logs` returns the stdout/stderr stream captured by the container's
+logging driver. It does not show arbitrary files written inside the container,
+and availability or retention depends on the configured driver. A successful
+command can still print application error messages; read the content rather
+than treating the CLI exit code as proof that the application is healthy.
+
 ### Best practice
 
 Containerized applications should usually log to:
@@ -1310,7 +1431,7 @@ rather than relying only on log files inside the container.
 
 ------------------------------------------------------------------------
 
-# 24. Executing Commands Inside Containers
+## 24. Executing Commands Inside Containers
 
 Open shell:
 
@@ -1345,7 +1466,7 @@ docker exec -> runs a command in an existing running container
 
 ------------------------------------------------------------------------
 
-# 25. Container Resource Management
+## 25. Container Resource Management
 
 Limit memory:
 
@@ -1375,7 +1496,7 @@ behavior rather than arbitrary tiny limits.
 
 ------------------------------------------------------------------------
 
-# 26. Restart Policies and Reliability
+## 26. Restart Policies and Reliability
 
 Examples:
 
@@ -1399,7 +1520,7 @@ docker events
 
 ------------------------------------------------------------------------
 
-# 27. Docker Registries and Docker Hub
+## 27. Docker Registries and Docker Hub
 
 Typical workflow:
 
@@ -1448,7 +1569,7 @@ registries.
 
 ------------------------------------------------------------------------
 
-# 28. Image Tags and Versioning
+## 28. Image Tags and Versioning
 
 Possible tags:
 
@@ -1484,7 +1605,7 @@ potentially move.
 
 ------------------------------------------------------------------------
 
-# 29. Authentication and Private Registries
+## 29. Authentication and Private Registries
 
 Login:
 
@@ -1509,7 +1630,7 @@ platform rather than hard-coded passwords in repository files.
 
 ------------------------------------------------------------------------
 
-# 30. Docker Security
+## 30. Docker Security
 
 Container security is a large subject. Start with these principles:
 
@@ -1537,7 +1658,7 @@ docker run --privileged ...
 `--privileged` grants broad capabilities and should not be a default
 troubleshooting fix.
 
-### Docker socket warning
+#### Docker socket warning
 
 Mounting:
 
@@ -1550,7 +1671,7 @@ Docker host. Do this only with a clear security model.
 
 ------------------------------------------------------------------------
 
-# 31. Secrets
+## 31. Secrets
 
 Bad:
 
@@ -1585,9 +1706,15 @@ RUN --mount=type=secret,id=npmrc,target=/root/.npmrc \
 Build-time and runtime secrets are different problems; design both
 explicitly.
 
+The `id=npmrc` value is the name the build command must supply; `target` is the
+temporary path visible only to that `RUN` step. A missing required secret makes
+the step fail. Secret mounts reduce accidental layer exposure, but the package
+manager or script can still leak a credential to logs or copied output, so
+review the command as well.
+
 ------------------------------------------------------------------------
 
-# 32. Running as Non-root
+## 32. Running as Non-root
 
 Example:
 
@@ -1616,9 +1743,9 @@ what an attacker may be able to do.
 
 ------------------------------------------------------------------------
 
-# 33. Image Optimization
+## 33. Image Optimization
 
-## Use appropriate base images
+### Use appropriate base images
 
 Instead of blindly choosing the smallest possible image, choose one that
 balances:
@@ -1629,11 +1756,11 @@ balances:
 -   debugging needs
 -   image size
 
-## Remove unnecessary build tools
+### Remove unnecessary build tools
 
 Use multi-stage builds.
 
-## Combine related package-manager operations
+### Combine related package-manager operations
 
 Example pattern:
 
@@ -1643,11 +1770,11 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 ```
 
-## Use `.dockerignore`
+### Use `.dockerignore`
 
 Avoid unnecessary context.
 
-## Install production dependencies only
+### Install production dependencies only
 
 Node example:
 
@@ -1657,7 +1784,7 @@ npm ci --omit=dev
 
 when appropriate for the runtime stage.
 
-## Inspect size
+### Inspect size
 
 ``` bash
 docker image ls
@@ -1666,7 +1793,7 @@ docker history myapp:1.0
 
 ------------------------------------------------------------------------
 
-# 34. BuildKit and Modern Builds
+## 34. BuildKit and Modern Builds
 
 BuildKit is Docker's modern build system and provides features such as:
 
@@ -1704,9 +1831,9 @@ identically everywhere.
 
 ------------------------------------------------------------------------
 
-# 35. Build Arguments vs Environment Variables
+## 35. Build Arguments vs Environment Variables
 
-## ARG
+### ARG
 
 Available during build:
 
@@ -1715,7 +1842,7 @@ ARG VERSION=dev
 RUN echo "$VERSION"
 ```
 
-## ENV
+### ENV
 
 Persists as image/runtime environment unless overridden:
 
@@ -1723,18 +1850,18 @@ Persists as image/runtime environment unless overridden:
 ENV APP_ENV=production
 ```
 
-  Feature            ARG                 ENV
-  ------------------ ------------------- -------------------------
-  Build time         Yes                 Yes
-  Runtime            Not automatically   Yes
-  Good for secrets   No                  Not inherently
-  Typical use        Build parameters    Runtime config/defaults
+| Feature | `ARG` | `ENV` |
+|---|---|---|
+| Build time | Yes | Yes |
+| Runtime | Not automatically | Yes |
+| Good for secrets | No | Not inherently |
+| Typical use | Build parameters | Runtime configuration/defaults |
 
 Never assume `ARG` is a secure secret mechanism.
 
 ------------------------------------------------------------------------
 
-# 36. ENTRYPOINT vs CMD
+## 36. ENTRYPOINT vs CMD
 
 Consider:
 
@@ -1764,7 +1891,7 @@ For many web applications, using only `CMD` is perfectly reasonable.
 
 ------------------------------------------------------------------------
 
-# 37. Shell Form vs Exec Form
+## 37. Shell Form vs Exec Form
 
 Shell form:
 
@@ -1790,7 +1917,7 @@ RUN echo "$HOME"
 
 ------------------------------------------------------------------------
 
-# 38. Signals and Graceful Shutdown
+## 38. Signals and Graceful Shutdown
 
 When:
 
@@ -1806,12 +1933,25 @@ Your application should handle termination signals.
 Node example:
 
 ``` javascript
-process.on("SIGTERM", async () => {
+process.on("SIGTERM", () => {
   console.log("Shutting down");
-  await server.close();
-  process.exit(0);
+  server.close((error) => {
+    if (error) {
+      console.error(error);
+      process.exitCode = 1;
+      return;
+    }
+    process.exitCode = 0;
+  });
 });
 ```
+
+`process.on` registers a handler for Docker's normal termination signal.
+`server.close` stops accepting new connections and invokes the callback after
+existing connections finish or an error occurs. Setting `process.exitCode`
+allows the event loop to drain; calling `process.exit()` immediately can cut
+off pending cleanup. Real services should also set a bounded shutdown timeout
+so a stuck connection cannot delay termination forever.
 
 Why graceful shutdown matters:
 
@@ -1826,7 +1966,7 @@ especially when wrapper shell scripts are used.
 
 ------------------------------------------------------------------------
 
-# 39. Docker with Databases
+## 39. Docker with Databases
 
 MySQL example:
 
@@ -1865,26 +2005,29 @@ Never confuse "volume exists" with "backup exists."
 
 ------------------------------------------------------------------------
 
-# 40. Docker with Node.js
+## 40. Docker with Node.js
 
-Dockerfile:
+The following multi-stage Dockerfile keeps development dependencies out of the
+production stage while still supporting a hot-reload development target:
 
 ``` dockerfile
-FROM node:24-alpine
+FROM node:24-alpine AS base
 
 WORKDIR /app
-
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
 
+FROM base AS development
+RUN npm ci
 COPY . .
+CMD ["npm", "run", "dev"]
+
+FROM base AS production
+RUN npm ci --omit=dev
+COPY --chown=node:node . .
 
 ENV NODE_ENV=production
-
 USER node
-
 EXPOSE 3000
-
 CMD ["node", "server.js"]
 ```
 
@@ -1893,7 +2036,9 @@ Development Compose:
 ``` yaml
 services:
   api:
-    build: .
+    build:
+      context: .
+      target: development
     command: npm run dev
     ports:
       - "3000:3000"
@@ -1908,9 +2053,15 @@ volumes:
 The second volume prevents the host bind mount from casually replacing
 container-installed dependencies.
 
+`target: development` is essential here: without it, Compose builds the final
+`production` stage, which intentionally omits tools commonly required by a
+development watcher. The named `node_modules` volume is separate from the host
+source bind mount. In production, build the default final stage and do not use
+the source bind mount.
+
 ------------------------------------------------------------------------
 
-# 41. Docker with Angular
+## 41. Docker with Angular
 
 Angular is commonly built into static files and served by Nginx.
 
@@ -1930,6 +2081,10 @@ EXPOSE 80
 For a single-page application, Nginx may need a fallback so client-side
 routes resolve to `index.html`.
 
+The exact `dist/my-app/browser` directory depends on the Angular project name
+and selected builder. Run the build once and inspect its configured output path
+instead of copying this placeholder unchanged.
+
 Example concept:
 
 ``` nginx
@@ -1940,7 +2095,7 @@ location / {
 
 ------------------------------------------------------------------------
 
-# 42. Docker with Python
+## 42. Docker with Python
 
 Example Flask/FastAPI-style image:
 
@@ -1973,7 +2128,7 @@ Python-specific considerations:
 
 ------------------------------------------------------------------------
 
-# 43. Docker with Java and Spring Boot
+## 43. Docker with Java and Spring Boot
 
 Multi-stage example:
 
@@ -1983,7 +2138,7 @@ FROM maven:3-eclipse-temurin-21 AS build
 WORKDIR /src
 COPY pom.xml .
 COPY src ./src
-RUN mvn -DskipTests package
+RUN mvn -B package
 
 FROM eclipse-temurin:21-jre
 
@@ -1999,12 +2154,20 @@ Why multi-stage?
 
 Maven is needed to build, but not necessarily to run the final JAR.
 
+`mvn -B package` runs Maven in batch mode and packages the project, including
+the normal test phase. If CI has already tested the exact inputs and you choose
+to skip repeated tests during image assembly, make that optimization explicit
+and ensure the deployed image itself is still validated. `COPY --from=build`
+transfers only the resulting JAR into the runtime stage. The wildcard assumes
+the build produces exactly one matching runtime JAR; configure a deterministic
+artifact filename if the project also emits source, test, or auxiliary JARs.
+
 For mature Spring Boot builds, investigate layered JARs/buildpacks as
 additional optimization approaches.
 
 ------------------------------------------------------------------------
 
-# 44. Docker with PHP
+## 44. Docker with PHP
 
 Simple Apache/PHP example:
 
@@ -2039,7 +2202,7 @@ turning one container into a replacement for an entire VM.
 
 ------------------------------------------------------------------------
 
-# 45. Full-stack Application Scenario
+## 45. Full-stack Application Scenario
 
 Architecture:
 
@@ -2098,9 +2261,9 @@ Compose network without publishing every port.
 
 ------------------------------------------------------------------------
 
-# 46. Development vs Production Docker
+## 46. Development vs Production Docker
 
-## Development
+### Development
 
 Priorities:
 
@@ -2117,7 +2280,7 @@ volumes:
   - ./src:/app/src
 ```
 
-## Production
+### Production
 
 Priorities:
 
@@ -2136,7 +2299,7 @@ production deployment architecture.
 
 ------------------------------------------------------------------------
 
-# 47. Docker in CI/CD
+## 47. Docker in CI/CD
 
 Typical pipeline:
 
@@ -2186,7 +2349,7 @@ artifact.
 
 ------------------------------------------------------------------------
 
-# 48. Testing with Docker
+## 48. Testing with Docker
 
 Docker can create disposable dependencies for tests.
 
@@ -2196,8 +2359,14 @@ Example:
 docker run -d \
   --name integration-db \
   -e POSTGRES_PASSWORD=test \
-  postgres
+  postgres:17
 ```
+
+The command returns before PostgreSQL is necessarily ready. Wait on a health
+check or use `pg_isready` with a bounded retry loop before starting integration
+tests. Give parallel test runs unique container names and volumes so they do not
+collide. The password and database are disposable test inputs, not production
+credentials.
 
 Run integration tests, then:
 
@@ -2211,7 +2380,7 @@ This reduces dependency on manually maintained shared test databases.
 
 ------------------------------------------------------------------------
 
-# 49. Docker Networking Troubleshooting
+## 49. Docker Networking Troubleshooting
 
 Scenario:
 
@@ -2254,7 +2423,7 @@ dedicated tooling may be safer.
 
 ------------------------------------------------------------------------
 
-# 50. Storage Troubleshooting
+## 50. Storage Troubleshooting
 
 List volumes:
 
@@ -2281,7 +2450,7 @@ Always identify where the application **actually writes** its data.
 
 ------------------------------------------------------------------------
 
-# 51. Cleanup and Disk Management
+## 51. Cleanup and Disk Management
 
 Docker resources can consume significant disk space.
 
@@ -2332,11 +2501,18 @@ docker system prune -a
 Prune commands can delete resources you intended to keep. Be especially
 careful with volumes and build caches.
 
+Prune selects resources from the *current Docker context*, not necessarily the
+machine you think you are using. First run `docker context show`, `docker
+system df`, and the relevant `docker ... ls` command. A volume can contain the
+only copy of important data, and an old image may be the artifact required for
+rollback. Do not automate broad pruning until retention and recovery rules are
+defined.
+
 ------------------------------------------------------------------------
 
-# 52. Docker Events, Stats, Inspect and Metadata
+## 52. Docker Events, Stats, Inspect and Metadata
 
-## Inspect
+### Inspect
 
 ``` bash
 docker inspect my-container
@@ -2352,7 +2528,7 @@ Useful for:
 -   health
 -   restart policy
 
-## Stats
+### Stats
 
 ``` bash
 docker stats
@@ -2360,7 +2536,7 @@ docker stats
 
 Shows live resource use.
 
-## Events
+### Events
 
 ``` bash
 docker events
@@ -2368,13 +2544,13 @@ docker events
 
 Shows Docker lifecycle events.
 
-## Processes
+### Processes
 
 ``` bash
 docker top my-container
 ```
 
-## Port mappings
+### Port mappings
 
 ``` bash
 docker port my-container
@@ -2385,11 +2561,11 @@ working" without guessing.
 
 ------------------------------------------------------------------------
 
-# 53. Namespaces and cgroups
+## 53. Namespaces and cgroups
 
 Docker relies heavily on Linux kernel primitives.
 
-## Namespaces
+### Namespaces
 
 Namespaces isolate views of system resources.
 
@@ -2411,7 +2587,7 @@ Container B sees its process environment
 
 even though both use the same host kernel.
 
-## cgroups
+### cgroups
 
 Control groups help account for and limit resources such as:
 
@@ -2432,7 +2608,7 @@ memorized Docker commands.
 
 ------------------------------------------------------------------------
 
-# 54. Container Lifecycle Internals
+## 54. Container Lifecycle Internals
 
 Conceptual `docker run` lifecycle:
 
@@ -2455,7 +2631,7 @@ server.
 
 ------------------------------------------------------------------------
 
-# 55. Docker Engine Components
+## 55. Docker Engine Components
 
 Modern container stacks contain several layers. At a high level, Docker
 Engine coordinates image, container, network and storage operations,
@@ -2487,7 +2663,7 @@ requiring Docker Engine as its node runtime.
 
 ------------------------------------------------------------------------
 
-# 56. Docker and Kubernetes
+## 56. Docker and Kubernetes
 
 Docker and Kubernetes solve different layers of the problem.
 
@@ -2514,32 +2690,23 @@ persistent storage integration
 
 Concept mapping:
 
-  -----------------------------------------------------------------------
-  Docker concept                      Kubernetes-related concept
-  ----------------------------------- -----------------------------------
-  Image                               Container image
-
-  Container                           Container inside a Pod
-
-  Compose service                     Roughly related to workload/service
-                                      definitions, but not 1:1
-
-  Restart policy                      Pod/workload lifecycle behavior
-
-  Docker network                      Kubernetes networking model differs
-
-  Volume                              Kubernetes volume/PersistentVolume
-                                      concepts
-  -----------------------------------------------------------------------
+| Docker concept | Kubernetes-related concept |
+|---|---|
+| Image | Container image |
+| Container | Container inside a Pod |
+| Compose service | Roughly related to workload/service definitions, but not one-to-one |
+| Restart policy | Pod/workload lifecycle behavior |
+| Docker network | Kubernetes uses a different networking model |
+| Volume | Kubernetes volume and PersistentVolume concepts |
 
 Learn Docker first because container fundamentals make Kubernetes much
 easier to understand.
 
 ------------------------------------------------------------------------
 
-# 57. Anti-patterns and Common Mistakes
+## 57. Anti-patterns and Common Mistakes
 
-## Mistake 1: using `localhost` for another container
+### Mistake 1: using `localhost` for another container
 
 Wrong:
 
@@ -2553,68 +2720,68 @@ Correct on a shared Compose network:
 DB_HOST=db
 ```
 
-## Mistake 2: storing database data only in the writable layer
+### Mistake 2: storing database data only in the writable layer
 
 Use persistent storage.
 
-## Mistake 3: putting secrets in Dockerfile
+### Mistake 3: putting secrets in Dockerfile
 
 Never bake real credentials into images.
 
-## Mistake 4: running everything as root
+### Mistake 4: running everything as root
 
 Use a dedicated non-root user when practical.
 
-## Mistake 5: huge build context
+### Mistake 5: huge build context
 
 Use `.dockerignore`.
 
-## Mistake 6: copying all source before dependency manifests
+### Mistake 6: copying all source before dependency manifests
 
 This can destroy build-cache efficiency.
 
-## Mistake 7: using `latest` everywhere
+### Mistake 7: using `latest` everywhere
 
 Version production artifacts deliberately.
 
-## Mistake 8: manually editing production containers
+### Mistake 8: manually editing production containers
 
 Rebuild and redeploy an image.
 
-## Mistake 9: one giant container for an entire infrastructure stack
+### Mistake 9: one giant container for an entire infrastructure stack
 
 Prefer separable services where practical.
 
-## Mistake 10: treating volumes as backups
+### Mistake 10: treating volumes as backups
 
 A volume is storage. A backup is a recoverable independent copy with a
 tested restore process.
 
-## Mistake 11: exposing every service port
+### Mistake 11: exposing every service port
 
 Only publish ports that host/external clients actually need.
 
-## Mistake 12: ignoring graceful shutdown
+### Mistake 12: ignoring graceful shutdown
 
 Applications should handle termination properly.
 
-## Mistake 13: adding `--privileged` until something works
+### Mistake 13: adding `--privileged` until something works
 
 Understand the permission problem instead.
 
-## Mistake 14: assuming a running container means healthy application
+### Mistake 14: assuming a running container means healthy application
 
 Use health checks and monitoring.
 
-## Mistake 15: debugging by changing the live container
+### Mistake 15: debugging by changing the live container
 
 Any manual fix disappears on recreation and breaks reproducibility.
 
 ------------------------------------------------------------------------
 
-# 58. Real-world Scenarios
+## 58. Real-world Scenarios
 
-## Scenario A: "Works on my machine"
+### Scenario A: "Works on my machine"
 
 Developer:
 
@@ -2638,7 +2805,7 @@ Now runtime requirements travel with the image.
 
 ------------------------------------------------------------------------
 
-## Scenario B: Two applications need different PHP versions
+### Scenario B: Two applications need different PHP versions
 
 ``` text
 Legacy app -> PHP 7.x
@@ -2650,7 +2817,7 @@ versions.
 
 ------------------------------------------------------------------------
 
-## Scenario C: New developer onboarding
+### Scenario C: New developer onboarding
 
 Without Docker:
 
@@ -2676,7 +2843,7 @@ environment drift.
 
 ------------------------------------------------------------------------
 
-## Scenario D: Rollback after broken release
+### Scenario D: Rollback after broken release
 
 Current:
 
@@ -2701,7 +2868,7 @@ rollback.
 
 ------------------------------------------------------------------------
 
-## Scenario E: Database must survive container replacement
+### Scenario E: Database must survive container replacement
 
 Use:
 
@@ -2714,7 +2881,7 @@ The container becomes replaceable; the data lifecycle is separate.
 
 ------------------------------------------------------------------------
 
-## Scenario F: API must not be publicly reachable
+### Scenario F: API must not be publicly reachable
 
 Do not publish the API port unnecessarily.
 
@@ -2734,7 +2901,7 @@ documentation is unnecessary for connectivity.
 
 ------------------------------------------------------------------------
 
-## Scenario G: Production image is 1.5 GB
+### Scenario G: Production image is 1.5 GB
 
 Investigate:
 
@@ -2751,7 +2918,7 @@ Then optimize deliberately rather than chasing size alone.
 
 ------------------------------------------------------------------------
 
-## Scenario H: Container exits immediately
+### Scenario H: Container exits immediately
 
 Run:
 
@@ -2772,7 +2939,7 @@ Common reasons:
 
 ------------------------------------------------------------------------
 
-## Scenario I: Database starts after API and API crashes
+### Scenario I: Database starts after API and API crashes
 
 Do not rely solely on startup ordering.
 
@@ -2786,7 +2953,7 @@ Distributed systems must expect temporary unavailability.
 
 ------------------------------------------------------------------------
 
-## Scenario J: Need local source hot reload
+### Scenario J: Need local source hot reload
 
 Use a bind mount:
 
@@ -2801,7 +2968,7 @@ Do not copy this pattern blindly into production.
 
 ------------------------------------------------------------------------
 
-## Scenario K: Need temporary command against app image
+### Scenario K: Need temporary command against app image
 
 Instead of modifying a running production container, run a one-off
 container where appropriate:
@@ -2815,7 +2982,7 @@ startup tasks depends on your deployment design.
 
 ------------------------------------------------------------------------
 
-## Scenario L: Host port already in use
+### Scenario L: Host port already in use
 
 Error concept:
 
@@ -2833,110 +3000,115 @@ or stop/change the conflicting service.
 
 ------------------------------------------------------------------------
 
-# 59. Docker Interview Questions
+## 59. Docker Interview Questions
 
-## Beginner
+### Beginner
 
-### What is Docker?
+#### What is Docker?
 
 A platform for building, distributing and running applications in
 isolated containers using standardized container images.
 
-### Image vs container?
+#### Image vs container?
 
 An image is a read-only template/artifact. A container is an instance
 created from an image with runtime state and a writable layer.
 
-### What is a Dockerfile?
+#### What is a Dockerfile?
 
 A declarative sequence of instructions used to build a container image.
 
-### What does `docker run` do?
+#### What does `docker run` do?
 
 It creates a container from an image and starts its configured process,
 with runtime options such as networking, mounts and environment.
 
-### What is a volume?
+#### What is a volume?
 
 Persistent storage managed independently from a container's writable
 lifecycle.
 
-### `docker ps` vs `docker ps -a`?
+#### `docker ps` vs `docker ps -a`?
 
 `docker ps` shows running containers; `-a` includes stopped containers.
 
 ------------------------------------------------------------------------
 
-## Intermediate
+### Intermediate
 
-### `COPY` vs `ADD`?
+#### `COPY` vs `ADD`?
 
 `COPY` performs straightforward copying from build context/stages. `ADD`
 has additional behaviors. Prefer `COPY` for ordinary copying.
 
-### `CMD` vs `ENTRYPOINT`?
+#### `CMD` vs `ENTRYPOINT`?
 
 `ENTRYPOINT` defines the primary executable; `CMD` supplies a default
 command or arguments and is easier to override.
 
-### Why use multi-stage builds?
+#### Why use multi-stage builds?
 
 To separate build tooling from the runtime image, usually reducing size
 and attack surface.
 
-### Why does `localhost` not reach another container?
+#### Why does `localhost` not reach another container?
 
 Network namespaces isolate containers. `localhost` points to the current
 container.
 
-### What does `EXPOSE` do?
+#### What does `EXPOSE` do?
 
 Documents intended ports; it does not itself publish a port on the host.
 
-### Why use `.dockerignore`?
+#### Why use `.dockerignore`?
 
 To reduce build context, improve speed/cache behavior and avoid
 accidentally including irrelevant or sensitive files.
 
 ------------------------------------------------------------------------
 
-## Advanced
+### Advanced
 
-### What makes containers isolated?
+#### What makes containers isolated?
 
 Primarily operating-system primitives such as namespaces, cgroups,
 filesystem/mount mechanisms, capabilities and security controls.
 
-### Why is PID 1 special?
+#### Why is PID 1 special?
 
 The main process has special signal/process-reaping behavior on Linux,
 so poor PID 1 handling can cause shutdown and zombie-process problems.
 
-### Why are image layers relevant?
+#### Why are image layers relevant?
 
 They affect caching, distribution, storage and the persistence of data
 accidentally added in earlier build layers.
 
-### Why shouldn't secrets be passed casually through build args?
+#### Why shouldn't secrets be passed casually through build args?
 
 Build metadata/history/cache can expose information. Use purpose-built
 secret mechanisms.
 
-### Tag vs digest?
+#### Tag vs digest?
 
 A tag is a mutable human-readable reference; a digest content-addresses
 a specific image manifest/content identity.
 
-### Does Kubernetes require Docker?
+#### Does Kubernetes require Docker?
 
 No. Kubernetes works with CRI-compatible runtimes and OCI container
 images; Docker Engine is not required as the Kubernetes node runtime.
 
 ------------------------------------------------------------------------
 
-# 60. Command Cheat Sheet
+## 60. Command Cheat Sheet
 
-## Information
+Placeholders such as `IMAGE`, `NAME`, and `CONTAINER` must be replaced with
+real values. Most create, remove, prune, or push commands mutate state; confirm
+the current Docker context before running them. Commands that list or inspect
+resources are read-only and are the safest starting point during diagnosis.
+
+### Information
 
 ``` bash
 docker version
@@ -2944,7 +3116,7 @@ docker info
 docker system df
 ```
 
-## Images
+### Images
 
 ``` bash
 docker image ls
@@ -2955,7 +3127,7 @@ docker history IMAGE
 docker image rm IMAGE
 ```
 
-## Containers
+### Containers
 
 ``` bash
 docker run IMAGE
@@ -2977,14 +3149,14 @@ docker top NAME
 docker stats
 ```
 
-## Ports
+### Ports
 
 ``` bash
 docker run -p 8080:80 IMAGE
 docker port CONTAINER
 ```
 
-## Volumes
+### Volumes
 
 ``` bash
 docker volume ls
@@ -2994,7 +3166,7 @@ docker volume rm NAME
 docker volume prune
 ```
 
-## Networks
+### Networks
 
 ``` bash
 docker network ls
@@ -3005,7 +3177,7 @@ docker network disconnect NETWORK CONTAINER
 docker network rm NAME
 ```
 
-## Registry
+### Registry
 
 ``` bash
 docker login
@@ -3015,7 +3187,7 @@ docker push IMAGE
 docker pull IMAGE
 ```
 
-## Compose
+### Compose
 
 ``` bash
 docker compose up
@@ -3032,7 +3204,7 @@ docker compose run --rm SERVICE COMMAND
 docker compose config
 ```
 
-## Cleanup
+### Cleanup
 
 ``` bash
 docker container prune
@@ -3045,11 +3217,11 @@ docker system prune -a
 
 ------------------------------------------------------------------------
 
-# 61. Learning Projects
+## 61. Learning Projects
 
 Use projects to move from command memorization to actual understanding.
 
-## Project 1 - Static website
+### Project 1 - Static website
 
 Learn:
 
@@ -3063,7 +3235,7 @@ Goal:
 HTML -> Nginx container -> browser
 ```
 
-## Project 2 - Containerize Node API
+### Project 2 - Containerize Node API
 
 Learn:
 
@@ -3073,7 +3245,7 @@ Learn:
 -   logs
 -   environment variables
 
-## Project 3 - API + MySQL
+### Project 3 - API + MySQL
 
 Learn:
 
@@ -3082,7 +3254,7 @@ Learn:
 -   volumes
 -   startup dependencies
 
-## Project 4 - Angular + API + MySQL
+### Project 4 - Angular + API + MySQL
 
 Learn:
 
@@ -3091,7 +3263,7 @@ Learn:
 -   internal networks
 -   environment strategy
 
-## Project 5 - Add Redis
+### Project 5 - Add Redis
 
 Learn:
 
@@ -3099,7 +3271,7 @@ Learn:
 -   cache configuration
 -   service discovery
 
-## Project 6 - CI image pipeline
+### Project 6 - CI image pipeline
 
 Learn:
 
@@ -3109,7 +3281,7 @@ Learn:
 -   registry push
 -   immutable deployment artifact
 
-## Project 7 - Harden production image
+### Project 7 - Harden production image
 
 Implement:
 
@@ -3121,7 +3293,7 @@ Implement:
 -   resource limits
 -   graceful shutdown
 
-## Project 8 - Failure laboratory
+### Project 8 - Failure laboratory
 
 Intentionally create and diagnose:
 
@@ -3139,9 +3311,9 @@ deeply.
 
 ------------------------------------------------------------------------
 
-# 62. Mastery Roadmap
+## 62. Mastery Roadmap
 
-## Level 1 - Fundamentals
+### Level 1 - Fundamentals
 
 Master:
 
@@ -3158,7 +3330,7 @@ Master:
 **Checkpoint:** containerize a basic API without copying a tutorial line
 by line.
 
-## Level 2 - Application Development
+### Level 2 - Application Development
 
 Master:
 
@@ -3172,7 +3344,7 @@ Master:
 
 **Checkpoint:** run frontend + API + DB locally.
 
-## Level 3 - Production Images
+### Level 3 - Production Images
 
 Master:
 
@@ -3187,7 +3359,7 @@ Master:
 
 **Checkpoint:** explain why your image is structured the way it is.
 
-## Level 4 - Delivery
+### Level 4 - Delivery
 
 Master:
 
@@ -3200,7 +3372,7 @@ Master:
 
 **Checkpoint:** push a tested image through a pipeline.
 
-## Level 5 - Internals
+### Level 5 - Internals
 
 Master:
 
@@ -3214,7 +3386,7 @@ Master:
 
 **Checkpoint:** explain what actually happens when a container starts.
 
-## Level 6 - Orchestration
+### Level 6 - Orchestration
 
 Then learn:
 
@@ -3232,7 +3404,7 @@ Then learn:
 
 ------------------------------------------------------------------------
 
-# 63. Glossary
+## 63. Glossary
 
 **Base image** - Starting image referenced by `FROM`.
 
@@ -3290,7 +3462,7 @@ its read-only image.
 
 ------------------------------------------------------------------------
 
-# Final Mental Model
+## Final Mental Model
 
 If you remember only one diagram, remember this:
 
@@ -3305,7 +3477,7 @@ If you remember only one diagram, remember this:
                          v
                   +--------------+
                   |    IMAGE     |
-                  | immutable-ish|
+                  | fixed content |
                   | artifact     |
                   +--------------+
                          |
@@ -3352,7 +3524,7 @@ And for a real application:
 
 ------------------------------------------------------------------------
 
-# Docker Master Checklist
+## Docker Master Checklist
 
 Use this as a final self-assessment.
 
@@ -3396,7 +3568,7 @@ Use this as a final self-assessment.
 
 ------------------------------------------------------------------------
 
-## What to Learn After This Handbook
+### What to Learn After This Handbook
 
 A strong next sequence is:
 
@@ -3430,11 +3602,11 @@ Infrastructure as Code
 
 ---
 
-# Part II — Advanced Docker Mastery Expansion
+## Part II — Advanced Docker Mastery Expansion
 
 > This second part expands the handbook into deeper professional topics: modern BuildKit workflows, advanced Compose, production networking/storage, security hardening, Docker Engine administration, multi-platform delivery, supply-chain metadata, Swarm, internals, failure analysis, and architecture scenarios.
 
-## Part II Contents
+### Part II Contents
 
 64. Advanced image design principles
 65. Distroless, slim and Alpine trade-offs
@@ -3526,7 +3698,7 @@ Infrastructure as Code
 
 ---
 
-# 64. Advanced Image Design Principles
+## 64. Advanced Image Design Principles
 
 A Docker image should be treated as a **versioned software artifact**, not as a miniature server that you keep modifying.
 
@@ -3557,7 +3729,7 @@ Startup metadata
 Deployable image
 ```
 
-## Scenario: manual server installation
+### Scenario: manual server installation
 
 Old approach:
 
@@ -3583,13 +3755,13 @@ This makes the deployment unit explicit.
 
 ---
 
-# 65. Distroless, Slim and Alpine Trade-offs
+## 65. Distroless, Slim and Alpine Trade-offs
 
 Developers often ask: **Which base image is best?**
 
 There is no universal answer.
 
-## Full distribution image
+### Full distribution image
 
 Example idea:
 
@@ -3609,7 +3781,7 @@ Disadvantages:
 - more packages to maintain
 - potentially larger attack surface
 
-## Slim images
+### Slim images
 
 Example:
 
@@ -3619,7 +3791,7 @@ FROM python:3.13-slim
 
 Often a good balance between compatibility and reduced size.
 
-## Alpine
+### Alpine
 
 Example:
 
@@ -3638,7 +3810,7 @@ Potential issues:
 - some native binaries/packages behave differently
 - troubleshooting utilities may be absent
 
-## Distroless-style images
+### Distroless-style images
 
 Contain only minimal runtime/application components and omit normal shells/package managers.
 
@@ -3651,7 +3823,7 @@ Trade-off:
 
 - debugging inside the container becomes harder
 
-## Practical rule
+### Practical rule
 
 Do not optimize only for megabytes.
 
@@ -3670,7 +3842,7 @@ A 20 MB image that constantly breaks native dependencies is not automatically be
 
 ---
 
-# 66. Reproducible Image Builds
+## 66. Reproducible Image Builds
 
 A build is reproducible when repeated builds from the same intended source/dependency inputs produce predictably equivalent artifacts.
 
@@ -3702,7 +3874,7 @@ For the strongest image identity at deployment, you can use a digest reference:
 registry.example.com/orders@sha256:...
 ```
 
-## Important nuance
+### Important nuance
 
 Pinning everything forever is not security.
 
@@ -3718,7 +3890,7 @@ Reproducibility and patching must work together.
 
 ---
 
-# 67. BuildKit Cache Mounts
+## 67. BuildKit Cache Mounts
 
 Normal Docker layers can cache build steps, but package managers also maintain their own caches.
 
@@ -3727,7 +3899,7 @@ BuildKit cache mounts let those caches persist between builds without embedding 
 Python:
 
 ```dockerfile
-# syntax=docker/dockerfile:1
+## syntax=docker/dockerfile:1
 
 FROM python:3.13-slim
 WORKDIR /app
@@ -3752,7 +3924,7 @@ RUN --mount=type=cache,target=/var/cache/apt \
     apt-get update && apt-get install -y curl
 ```
 
-## Why this is useful
+### Why this is useful
 
 Without cache mount:
 
@@ -3771,7 +3943,7 @@ while still creating a clean resulting image layer
 
 ---
 
-# 68. BuildKit Secret Mounts
+## 68. BuildKit Secret Mounts
 
 Never put build credentials in Dockerfile instructions such as:
 
@@ -3787,7 +3959,7 @@ Use BuildKit secret mounts.
 Example:
 
 ```dockerfile
-# syntax=docker/dockerfile:1
+## syntax=docker/dockerfile:1
 
 RUN --mount=type=secret,id=npmrc,target=/root/.npmrc \
     npm ci
@@ -3797,9 +3969,13 @@ Build:
 
 ```bash
 docker buildx build \
-  --secret id=npmrc,src=$HOME/.npmrc \
+  --secret id=npmrc,src=./private-npmrc \
   .
 ```
+
+`--secret` maps the local file to secret ID `npmrc`; it does not copy the file
+into an ordinary image layer. Keep `private-npmrc` outside version control and
+use a CI secret-file mechanism in automation.
 
 Another pattern:
 
@@ -3813,7 +3989,7 @@ The secret is made available to that build step without intentionally becoming p
 
 ---
 
-# 69. BuildKit SSH Mounts
+## 69. BuildKit SSH Mounts
 
 Sometimes a build must clone a private Git repository using SSH.
 
@@ -3822,7 +3998,7 @@ Do not copy your private key into the image.
 Conceptual Dockerfile:
 
 ```dockerfile
-# syntax=docker/dockerfile:1
+## syntax=docker/dockerfile:1
 
 RUN --mount=type=ssh \
     git clone git@github.com:company/private-library.git
@@ -3844,7 +4020,7 @@ Still verify host keys and apply normal SSH security practices.
 
 ---
 
-# 70. External Build Cache in CI
+## 70. External Build Cache in CI
 
 CI runners are often ephemeral.
 
@@ -3871,13 +4047,13 @@ docker buildx build \
 
 This can significantly reduce CI build time.
 
-## Security note
+### Security note
 
 Cache content must be treated as build infrastructure data. Do not put secrets into normal build layers expecting cache to protect them.
 
 ---
 
-# 71. Buildx Builders and Drivers
+## 71. Buildx Builders and Drivers
 
 List builders:
 
@@ -3906,7 +4082,7 @@ A dedicated BuildKit container builder is useful when you need features beyond t
 
 ---
 
-# 72. Multi-platform Builds in Depth
+## 72. Multi-platform Builds in Depth
 
 A development laptop might be:
 
@@ -3930,9 +4106,9 @@ docker buildx build \
   .
 ```
 
-## Three common strategies
+### Three common strategies
 
-### 1. Emulation
+#### 1. Emulation
 
 Example: QEMU-based emulation.
 
@@ -3944,7 +4120,7 @@ Disadvantages:
 
 - slower, especially compilation-heavy builds
 
-### 2. Multiple native builders
+#### 2. Multiple native builders
 
 Use different builder nodes for each architecture.
 
@@ -3956,13 +4132,13 @@ Disadvantages:
 
 - more infrastructure
 
-### 3. Cross-compilation
+#### 3. Cross-compilation
 
 Compile target binaries from another architecture.
 
 Good for languages/toolchains that support it well.
 
-## Scenario
+### Scenario
 
 Go application:
 
@@ -3975,7 +4151,7 @@ publish one multi-platform reference
 
 ---
 
-# 73. Image Manifests and Indexes
+## 73. Image Manifests and Indexes
 
 A normal image reference can point to a platform-specific manifest.
 
@@ -4006,9 +4182,9 @@ This is why the same tag can work on different CPU architectures.
 
 ---
 
-# 74. SBOM and Provenance Attestations
+## 74. SBOM and Provenance Attestations
 
-## SBOM
+### SBOM
 
 Software Bill of Materials answers:
 
@@ -4026,7 +4202,7 @@ docker buildx build \
   .
 ```
 
-## Provenance
+### Provenance
 
 Provenance answers questions such as:
 
@@ -4045,7 +4221,7 @@ docker buildx build \
   .
 ```
 
-## Critical warning
+### Critical warning
 
 Rich provenance may expose build argument values.
 
@@ -4055,7 +4231,7 @@ Use secret mounts for credentials.
 
 ---
 
-# 75. Build Checks and Dockerfile Linting
+## 75. Build Checks and Dockerfile Linting
 
 Modern Docker build tooling can perform checks against build configuration and Dockerfile patterns.
 
@@ -4083,7 +4259,7 @@ In CI, fail early before an expensive build/deploy when possible.
 
 ---
 
-# 76. Docker Buildx Bake
+## 76. Docker Buildx Bake
 
 Bake lets you define multiple related build targets.
 
@@ -4117,7 +4293,7 @@ Useful when a repository produces multiple images with shared settings.
 
 ---
 
-# 77. Named and Remote Build Contexts
+## 77. Named and Remote Build Contexts
 
 Build context does not have to be only `.`.
 
@@ -4143,9 +4319,9 @@ Use remote contexts carefully because reproducibility depends on exactly what re
 
 ---
 
-# 78. Advanced Dockerfile Patterns
+## 78. Advanced Dockerfile Patterns
 
-## Copy dependency manifests first
+### Copy dependency manifests first
 
 ```dockerfile
 COPY package*.json ./
@@ -4153,14 +4329,14 @@ RUN npm ci
 COPY . .
 ```
 
-## Create a dedicated runtime user
+### Create a dedicated runtime user
 
 ```dockerfile
 RUN useradd --uid 10001 --create-home app
 USER app
 ```
 
-## Use multi-stage testing
+### Use multi-stage testing
 
 ```dockerfile
 FROM base AS test
@@ -4170,7 +4346,7 @@ FROM base AS production
 CMD ["node", "server.js"]
 ```
 
-## Name stages
+### Name stages
 
 Good:
 
@@ -4188,14 +4364,14 @@ Names are easier to maintain than numeric stage indexes.
 
 ---
 
-# 79. Heredocs and Modern Dockerfile Syntax
+## 79. Heredocs and Modern Dockerfile Syntax
 
 Modern Dockerfile syntax supports heredoc-style content in supported builder versions.
 
 Example concept:
 
 ```dockerfile
-# syntax=docker/dockerfile:1
+## syntax=docker/dockerfile:1
 
 RUN <<'EOF_SCRIPT'
 set -eu
@@ -4211,7 +4387,7 @@ Use shell safety options appropriate for the shell you are using.
 
 ---
 
-# 80. Compose Profiles
+## 80. Compose Profiles
 
 Profiles make services optional.
 
@@ -4251,14 +4427,14 @@ Useful for:
 
 ---
 
-# 81. Compose Multiple Files and Overrides
+## 81. Compose Multiple Files and Overrides
 
 A common pattern is a base Compose file plus environment-specific changes.
 
 Base:
 
 ```yaml
-# compose.yaml
+## compose.yaml
 services:
   api:
     image: example/api:1.0
@@ -4267,7 +4443,7 @@ services:
 Development:
 
 ```yaml
-# compose.dev.yaml
+## compose.dev.yaml
 services:
   api:
     build: ./api
@@ -4278,7 +4454,7 @@ services:
 Production:
 
 ```yaml
-# compose.prod.yaml
+## compose.prod.yaml
 services:
   api:
     restart: unless-stopped
@@ -4307,7 +4483,7 @@ This catches many surprises caused by merge behavior.
 
 ---
 
-# 82. Compose Variable Interpolation
+## 82. Compose Variable Interpolation
 
 Compose supports variable interpolation.
 
@@ -4327,7 +4503,7 @@ Run:
 APP_VERSION=2.4.1 API_PORT=8080 docker compose up
 ```
 
-## Important distinction
+### Important distinction
 
 Compose interpolation and container environment variables are related but not identical concepts.
 
@@ -4358,9 +4534,9 @@ when unsure what Compose resolved.
 
 ---
 
-# 83. Compose Secrets and Configs
+## 83. Compose Secrets and Configs
 
-## Secret
+### Secret
 
 ```yaml
 services:
@@ -4376,7 +4552,11 @@ secrets:
 
 The application can read the mounted secret file at the configured runtime location.
 
-## Config
+With the default target, that location is `/run/secrets/db_password`. In local
+Compose, the source file is mounted for the container; calling it a secret does
+not encrypt the file on the host. Protect the source file and do not commit it.
+
+### Config
 
 ```yaml
 services:
@@ -4397,7 +4577,7 @@ Do not commit real secret files simply because Compose knows how to mount them.
 
 ---
 
-# 84. Compose Watch / Develop Workflow
+## 84. Compose Watch / Develop Workflow
 
 Development often uses bind mounts:
 
@@ -4436,7 +4616,7 @@ Choose between bind mounts and watch/sync based on your framework and platform.
 
 ---
 
-# 85. Compose Startup Ordering and Readiness
+## 85. Compose Startup Ordering and Readiness
 
 A dependency can be **started** but not **ready**.
 
@@ -4486,7 +4666,7 @@ Still implement application retry/backoff because a dependency can become unavai
 
 ---
 
-# 86. Init-style Startup Work
+## 86. Init-style Startup Work
 
 Sometimes a service needs one-time preparation before the main service starts.
 
@@ -4505,7 +4685,7 @@ For static configuration and secrets, prefer native config/secret mount mechanis
 
 ---
 
-# 87. Advanced Compose Networking
+## 87. Advanced Compose Networking
 
 You can separate communication domains.
 
@@ -4553,7 +4733,7 @@ Network separation reduces accidental connectivity and clarifies architecture.
 
 ---
 
-# 88. Network Aliases and Multiple Networks
+## 88. Network Aliases and Multiple Networks
 
 A service can have aliases on a particular network.
 
@@ -4580,7 +4760,7 @@ Avoid using aliases to hide confusing service design. Use them when they make in
 
 ---
 
-# 89. Bridge Networking Internals
+## 89. Bridge Networking Internals
 
 A user-defined bridge network provides an isolated Layer-2/Layer-3 style virtual network on one Docker host.
 
@@ -4600,15 +4780,15 @@ Docker configures host networking rules to enable communication and port publish
 
 Containers on the same user-defined bridge can use Docker-provided DNS name resolution.
 
-## Default bridge vs user-defined bridge
+### Default bridge vs user-defined bridge
 
 For application stacks, user-defined networks are generally clearer because they provide explicit grouping and name-based discovery behavior.
 
 ---
 
-# 90. Host, None, Overlay, Macvlan and IPvlan
+## 90. Host, None, Overlay, Macvlan and IPvlan
 
-## Host network
+### Host network
 
 ```bash
 docker run --network host myapp
@@ -4618,7 +4798,7 @@ Container uses host networking namespace behavior rather than normal isolated br
 
 Use only when required because it reduces network isolation.
 
-## None
+### None
 
 ```bash
 docker run --network none myjob
@@ -4628,7 +4808,7 @@ No normal external network connectivity.
 
 Useful for strongly isolated processing jobs.
 
-## Overlay
+### Overlay
 
 Used for multi-host networking, especially in Docker Swarm.
 
@@ -4640,7 +4820,7 @@ Node A container
 Node B container
 ```
 
-## Macvlan
+### Macvlan
 
 Can place containers more directly onto a physical network with their own MAC-address-oriented presence.
 
@@ -4649,7 +4829,7 @@ Special use cases:
 - legacy software expects LAN-visible hosts
 - network appliance integration
 
-## IPvlan
+### IPvlan
 
 Alternative advanced integration with physical networks.
 
@@ -4657,7 +4837,7 @@ Do not use macvlan/ipvlan as default application networking. They solve speciali
 
 ---
 
-# 91. Host Access from Containers
+## 91. Host Access from Containers
 
 Sometimes a container needs to reach a service running on the Docker host.
 
@@ -4679,7 +4859,7 @@ If the dependency can be containerized cleanly, service-to-service networking is
 
 ---
 
-# 92. IPv6 Concepts
+## 92. IPv6 Concepts
 
 Docker networking can be configured for IPv6 depending on daemon/network setup and platform support.
 
@@ -4696,7 +4876,7 @@ Do not assume IPv4-only application code will behave correctly in a dual-stack e
 
 ---
 
-# 93. Advanced Port Publishing
+## 93. Advanced Port Publishing
 
 Basic:
 
@@ -4719,7 +4899,7 @@ docker run \
   nginx
 ```
 
-## Security principle
+### Security principle
 
 Published port = potential host exposure.
 
@@ -4738,9 +4918,9 @@ Internal Docker networking does not require host publishing.
 
 ---
 
-# 94. Network Security Patterns
+## 94. Network Security Patterns
 
-## Pattern: edge + app + data
+### Pattern: edge + app + data
 
 ```text
 External client
@@ -4758,28 +4938,28 @@ reverse proxy
  DB / cache
 ```
 
-## Pattern: bind admin services to localhost
+### Pattern: bind admin services to localhost
 
 ```yaml
 ports:
   - "127.0.0.1:8081:8080"
 ```
 
-## Pattern: no public port for workers
+### Pattern: no public port for workers
 
 Workers usually need only outbound/internal connectivity.
 
-## Pattern: least connectivity
+### Pattern: least connectivity
 
 If service A never needs service B, do not put them on a shared network just for convenience.
 
 ---
 
-# 95. Storage Architecture in Depth
+## 95. Storage Architecture in Depth
 
 Three important data classes:
 
-## 1. Immutable application content
+### 1. Immutable application content
 
 Lives in image:
 
@@ -4789,7 +4969,7 @@ Lives in image:
 /runtime libraries
 ```
 
-## 2. Ephemeral runtime data
+### 2. Ephemeral runtime data
 
 Can live in writable layer or tmpfs:
 
@@ -4799,7 +4979,7 @@ transient cache
 process artifacts
 ```
 
-## 3. Persistent business data
+### 3. Persistent business data
 
 Needs durable storage:
 
@@ -4823,7 +5003,7 @@ Who owns permissions?
 
 ---
 
-# 96. Volume Lifecycle and Backup
+## 96. Volume Lifecycle and Backup
 
 Create:
 
@@ -4847,7 +5027,7 @@ docker rm app
 
 normally does not automatically remove a separately managed named volume.
 
-## Generic volume backup pattern
+### Generic volume backup pattern
 
 For filesystem-style data, a helper container can mount a volume and create an archive.
 
@@ -4865,7 +5045,7 @@ For databases, prefer database-aware backups when consistency matters.
 
 ---
 
-# 97. Bind Mounts in Depth
+## 97. Bind Mounts in Depth
 
 Explicit syntax:
 
@@ -4892,7 +5072,7 @@ Potential problems:
 - container can modify host files
 - bind mount hides existing image content at target path
 
-## Scenario: hidden files
+### Scenario: hidden files
 
 Image contains:
 
@@ -4912,7 +5092,7 @@ This explains many "dependencies disappeared" development bugs.
 
 ---
 
-# 98. SELinux and Bind Mounts
+## 98. SELinux and Bind Mounts
 
 On SELinux-enabled hosts, filesystem labels can restrict a container even when Unix permissions appear correct.
 
@@ -4931,7 +5111,7 @@ Security controls should be adjusted intentionally, not bypassed because an appl
 
 ---
 
-# 99. Storage Drivers and Writable Layers
+## 99. Storage Drivers and Writable Layers
 
 Docker storage drivers manage image layers and the writable container layer.
 
@@ -4950,7 +5130,7 @@ Use volumes for persistent data and keep the container layer disposable.
 
 ---
 
-# 100. Database Container Production Concerns
+## 100. Database Container Production Concerns
 
 Containerizing PostgreSQL/MySQL does not simplify away database engineering.
 
@@ -4969,7 +5149,7 @@ You still need:
 - credential management
 - restore testing
 
-## Production question
+### Production question
 
 Instead of asking:
 
@@ -4987,7 +5167,7 @@ The container is only one part of the answer.
 
 ---
 
-# 101. Resource Governance and cgroups
+## 101. Resource Governance and cgroups
 
 Containers share a host, so you need resource boundaries.
 
@@ -5017,7 +5197,7 @@ docker stats
 
 Resource limits are enforced using host kernel mechanisms such as cgroups on Linux.
 
-## Production strategy
+### Production strategy
 
 1. measure normal usage
 2. load test
@@ -5028,7 +5208,7 @@ Resource limits are enforced using host kernel mechanisms such as cgroups on Lin
 
 ---
 
-# 102. OOM Behavior and Memory Design
+## 102. OOM Behavior and Memory Design
 
 If a container exceeds enforced memory constraints, the kernel/runtime may terminate processes due to out-of-memory conditions.
 
@@ -5051,7 +5231,7 @@ Monitor:
 docker stats
 ```
 
-## Common causes
+### Common causes
 
 - memory leak
 - cache grows forever
@@ -5064,7 +5244,7 @@ A restart policy does not fix memory design.
 
 ---
 
-# 103. CPU Limits and Throttling
+## 103. CPU Limits and Throttling
 
 Example:
 
@@ -5086,7 +5266,7 @@ Diagnose application CPU use before simply granting unlimited CPU.
 
 ---
 
-# 104. PID Limits and Fork Bombs
+## 104. PID Limits and Fork Bombs
 
 A container can create many processes if not constrained.
 
@@ -5104,7 +5284,7 @@ This is especially useful for shared hosts and as defense-in-depth.
 
 ---
 
-# 105. Logging Architecture
+## 105. Logging Architecture
 
 Good container application behavior:
 
@@ -5143,7 +5323,7 @@ This improves search and correlation.
 
 ---
 
-# 106. Logging Drivers
+## 106. Logging Drivers
 
 Docker supports multiple logging drivers depending on environment.
 
@@ -5173,7 +5353,7 @@ Never log passwords, tokens or secrets simply because logs are centralized.
 
 ---
 
-# 107. Docker Daemon Configuration
+## 107. Docker Daemon Configuration
 
 On Linux, Docker Engine daemon configuration is commonly managed through a JSON configuration file plus service-manager configuration.
 
@@ -5201,7 +5381,7 @@ Systemd logs:
 journalctl -u docker
 ```
 
-## Important production rule
+### Important production rule
 
 Daemon configuration affects every container on the host.
 
@@ -5219,7 +5399,7 @@ Do not paste arbitrary `daemon.json` examples into a production host without und
 
 ---
 
-# 108. Docker Contexts and Remote Engines
+## 108. Docker Contexts and Remote Engines
 
 Contexts let a Docker CLI switch between endpoints.
 
@@ -5241,7 +5421,7 @@ Switch:
 docker context use production
 ```
 
-## Scenario
+### Scenario
 
 ```text
 default     -> laptop
@@ -5257,7 +5437,7 @@ docker context show
 
 ---
 
-# 109. Docker API Security
+## 109. Docker API Security
 
 Docker Engine exposes an API used by the CLI.
 
@@ -5284,7 +5464,7 @@ Treat Docker daemon access as high privilege.
 
 ---
 
-# 110. Rootless Docker
+## 110. Rootless Docker
 
 Rootless mode runs both the Docker daemon and containers without root privileges, subject to prerequisites.
 
@@ -5300,14 +5480,14 @@ inside a Dockerfile with rootless Docker.
 
 They protect different layers.
 
-## Non-root container
+### Non-root container
 
 ```text
 dockerd may be root
 container process is non-root
 ```
 
-## Rootless Docker
+### Rootless Docker
 
 ```text
 dockerd runs as ordinary user
@@ -5318,7 +5498,7 @@ Rootless mode can have networking, port, cgroup and filesystem considerations de
 
 ---
 
-# 111. User Namespace Remapping
+## 111. User Namespace Remapping
 
 User namespaces can map container user IDs to different host user IDs.
 
@@ -5344,7 +5524,7 @@ When enabling user namespace remapping, test:
 
 ---
 
-# 112. Linux Capabilities
+## 112. Linux Capabilities
 
 Traditional Unix root privilege is divided into capabilities such as network/admin-related abilities.
 
@@ -5365,7 +5545,7 @@ docker run \
   myapp
 ```
 
-## Security design
+### Security design
 
 Bad:
 
@@ -5385,7 +5565,7 @@ application fails
 
 ---
 
-# 113. Seccomp
+## 113. Seccomp
 
 Seccomp restricts Linux system calls available to processes.
 
@@ -5401,15 +5581,15 @@ Do not disable seccomp broadly just because one unusual application makes a bloc
 
 ---
 
-# 114. AppArmor and SELinux
+## 114. AppArmor and SELinux
 
 Both are mandatory-access-control technologies used to further restrict processes.
 
-## AppArmor
+### AppArmor
 
 Common on Ubuntu-family environments.
 
-## SELinux
+### SELinux
 
 Common on Red Hat-family environments.
 
@@ -5438,7 +5618,7 @@ network controls
 
 ---
 
-# 115. Read-only Root Filesystems
+## 115. Read-only Root Filesystems
 
 Run:
 
@@ -5475,7 +5655,7 @@ Design writable paths explicitly.
 
 ---
 
-# 116. no-new-privileges
+## 116. no-new-privileges
 
 Linux supports a no-new-privileges security control that prevents processes from gaining additional privileges through mechanisms such as setuid transitions.
 
@@ -5493,7 +5673,7 @@ Test your workload because specialized software may rely on privilege transition
 
 ---
 
-# 117. Privileged Containers
+## 117. Privileged Containers
 
 Command:
 
@@ -5505,7 +5685,7 @@ This grants very broad device/capability access and significantly weakens normal
 
 Legitimate low-level infrastructure tools may sometimes require elevated privileges, but application containers normally should not.
 
-## Red flag
+### Red flag
 
 If a tutorial says:
 
@@ -5517,7 +5697,7 @@ without explaining why, stop and investigate.
 
 ---
 
-# 118. Docker Socket Security
+## 118. Docker Socket Security
 
 Common socket:
 
@@ -5547,7 +5727,7 @@ Alternatives can include:
 
 ---
 
-# 119. Runtime Secret Management
+## 119. Runtime Secret Management
 
 A secure secret lifecycle includes more than "where do I store the password?"
 
@@ -5582,7 +5762,7 @@ log secret
 
 ---
 
-# 120. Supply-chain Security
+## 120. Supply-chain Security
 
 A production image passes through a chain:
 
@@ -5616,7 +5796,7 @@ Container security starts before `docker run`.
 
 ---
 
-# 121. Image Scanning and Patching Strategy
+## 121. Image Scanning and Patching Strategy
 
 Scanning finds known vulnerability information associated with packages/components.
 
@@ -5653,7 +5833,7 @@ Never use "zero scanner findings" as the only definition of secure.
 
 ---
 
-# 122. Registry Security and Immutability
+## 122. Registry Security and Immutability
 
 Production registry controls should consider:
 
@@ -5668,7 +5848,7 @@ Production registry controls should consider:
 - TLS
 - artifact signing/verification
 
-## Tag immutability
+### Tag immutability
 
 Bad operational pattern:
 
@@ -5690,7 +5870,7 @@ Deploy exact versions and record them.
 
 ---
 
-# 123. PID 1 and Init Processes
+## 123. PID 1 and Init Processes
 
 In many containers, your application is PID 1.
 
@@ -5729,7 +5909,7 @@ services:
 
 ---
 
-# 124. Signals and Graceful Shutdown
+## 124. Signals and Graceful Shutdown
 
 Normal stop flow concept:
 
@@ -5770,7 +5950,7 @@ Test shutdown as deliberately as startup.
 
 ---
 
-# 125. Process Reaping and Zombie Processes
+## 125. Process Reaping and Zombie Processes
 
 A child process that exits must have its status collected by its parent.
 
@@ -5790,7 +5970,7 @@ Possible solutions:
 
 ---
 
-# 126. OCI, containerd and runc
+## 126. OCI, containerd and runc
 
 The container ecosystem is layered.
 
@@ -5808,15 +5988,15 @@ OCI runtime such as runc
 Linux kernel
 ```
 
-## OCI
+### OCI
 
 Open Container Initiative defines standards for container images and runtimes.
 
-## containerd
+### containerd
 
 Manages lower-level container/image lifecycle functions.
 
-## runc
+### runc
 
 Low-level runtime that creates a container according to OCI runtime configuration.
 
@@ -5824,13 +6004,13 @@ This separation is why "Docker image" concepts extend beyond Docker Engine itsel
 
 ---
 
-# 127. Namespaces in Depth
+## 127. Namespaces in Depth
 
 Linux namespaces isolate views of resources.
 
 Important namespace concepts include:
 
-## PID namespace
+### PID namespace
 
 Process IDs.
 
@@ -5843,7 +6023,7 @@ PID 20 worker
 
 without seeing all host processes.
 
-## Network namespace
+### Network namespace
 
 Own interfaces, routes, ports and loopback view.
 
@@ -5853,19 +6033,19 @@ This is why:
 localhost inside container != host localhost
 ```
 
-## Mount namespace
+### Mount namespace
 
 Own filesystem mount view.
 
-## UTS namespace
+### UTS namespace
 
 Hostname/domain-name isolation.
 
-## IPC namespace
+### IPC namespace
 
 Inter-process communication isolation.
 
-## User namespace
+### User namespace
 
 Maps user/group identities.
 
@@ -5877,7 +6057,7 @@ namespace = what can this process see?
 
 ---
 
-# 128. cgroups in Depth
+## 128. cgroups in Depth
 
 cgroups group processes and apply accounting/limits.
 
@@ -5909,7 +6089,7 @@ into underlying resource-control configuration.
 
 ---
 
-# 129. Container Filesystem Internals
+## 129. Container Filesystem Internals
 
 Conceptual container filesystem:
 
@@ -5933,7 +6113,7 @@ When the mount is removed, original image content is visible again in a newly cr
 
 ---
 
-# 130. Container Startup Lifecycle
+## 130. Container Startup Lifecycle
 
 When you run:
 
@@ -5961,7 +6141,7 @@ Understanding this sequence makes debugging much less mysterious.
 
 ---
 
-# 131. Docker Events and Observability
+## 131. Docker Events and Observability
 
 Watch engine events:
 
@@ -5999,7 +6179,7 @@ Docker's built-in commands are excellent first-line diagnostics, not a complete 
 
 ---
 
-# 132. Docker System Disk Management
+## 132. Docker System Disk Management
 
 Check usage:
 
@@ -6032,7 +6212,7 @@ Aggressive:
 docker system prune -a
 ```
 
-## Production warning
+### Production warning
 
 Never automate broad pruning blindly.
 
@@ -6046,7 +6226,7 @@ Is this build cache intentionally retained?
 
 ---
 
-# 133. Docker Swarm Fundamentals
+## 133. Docker Swarm Fundamentals
 
 Swarm mode is built into Docker Engine for multi-node orchestration.
 
@@ -6074,7 +6254,7 @@ Workers execute tasks.
 
 ---
 
-# 134. Swarm Services, Tasks and Stacks
+## 134. Swarm Services, Tasks and Stacks
 
 Create replicated service:
 
@@ -6116,7 +6296,7 @@ A service describes desired state; tasks are concrete running units assigned to 
 
 ---
 
-# 135. Swarm Networking, Secrets and Configs
+## 135. Swarm Networking, Secrets and Configs
 
 Swarm supports:
 
@@ -6132,7 +6312,7 @@ Use Swarm when its operational model fits your organization. Do not choose or re
 
 ---
 
-# 136. Docker vs Kubernetes
+## 136. Docker vs Kubernetes
 
 Docker and Kubernetes are complementary but different.
 
@@ -6160,9 +6340,9 @@ Kubernetes does not require Docker Engine on nodes. OCI images built with Docker
 
 ---
 
-# 137. Production Architecture Patterns
+## 137. Production Architecture Patterns
 
-## Pattern A: Reverse proxy + application + database
+### Pattern A: Reverse proxy + application + database
 
 ```text
 Internet
@@ -6176,7 +6356,7 @@ Database
 
 Only the edge service requires direct public exposure.
 
-## Pattern B: API + worker + queue
+### Pattern B: API + worker + queue
 
 ```text
 Client -> API -> Queue -> Worker -> DB
@@ -6184,7 +6364,7 @@ Client -> API -> Queue -> Worker -> DB
 
 Worker does not need a public port.
 
-## Pattern C: frontend + backend networks
+### Pattern C: frontend + backend networks
 
 ```text
 Internet
@@ -6200,7 +6380,7 @@ data network
 DB
 ```
 
-## Pattern D: immutable application + mounted config
+### Pattern D: immutable application + mounted config
 
 ```text
 same image
@@ -6211,7 +6391,7 @@ same image
 
 Do not build a different source artifact just because configuration differs.
 
-## Pattern E: stateless app replicas
+### Pattern E: stateless app replicas
 
 Application container keeps session/state in shared external systems where appropriate:
 
@@ -6225,11 +6405,11 @@ Stateless design makes replacement/scaling easier.
 
 ---
 
-# 138. Background Workers and Scheduled Jobs
+## 138. Background Workers and Scheduled Jobs
 
 Not every container is a web server.
 
-## Worker
+### Worker
 
 ```text
 queue -> worker container -> database
@@ -6243,7 +6423,7 @@ The worker should:
 - avoid duplicate processing where business logic requires idempotency
 - emit logs and metrics
 
-## One-off job
+### One-off job
 
 ```bash
 docker run --rm report-job:1.0
@@ -6256,7 +6436,7 @@ Useful for:
 - import/export
 - migration
 
-## Scheduled job
+### Scheduled job
 
 Use an external scheduler, orchestrator job/cron feature, or host scheduler to start a disposable job container.
 
@@ -6264,13 +6444,13 @@ Avoid running a full cron daemon inside every application container unless that 
 
 ---
 
-# 139. Database Migrations
+## 139. Database Migrations
 
 Containerized deployments frequently fail because migration strategy was ignored.
 
 Possible approaches:
 
-## Run migration before application rollout
+### Run migration before application rollout
 
 ```text
 CI deploy stage
@@ -6280,17 +6460,17 @@ run migration job
 start new app
 ```
 
-## Dedicated one-off Compose job
+### Dedicated one-off Compose job
 
 ```bash
 docker compose run --rm api npm run migrate
 ```
 
-## Application startup migration
+### Application startup migration
 
 Simple but risky with multiple replicas.
 
-## Questions before migration
+### Questions before migration
 
 - Is it backward compatible?
 - Can old and new app versions coexist temporarily?
@@ -6299,7 +6479,7 @@ Simple but risky with multiple replicas.
 - Can it be retried?
 - How do we roll back?
 
-## Expand-contract pattern
+### Expand-contract pattern
 
 Safer schema changes often use stages:
 
@@ -6315,11 +6495,11 @@ This is much safer for rolling deployments than destructive one-step migrations.
 
 ---
 
-# 140. Blue-Green and Rolling Deployment Concepts
+## 140. Blue-Green and Rolling Deployment Concepts
 
 Docker itself can run replacement containers; deployment platforms determine how traffic moves between versions.
 
-## Blue-green
+### Blue-green
 
 ```text
 Blue = current production
@@ -6345,7 +6525,7 @@ Costs:
 - duplicate capacity
 - DB compatibility still required
 
-## Rolling update
+### Rolling update
 
 Replace instances gradually:
 
@@ -6361,7 +6541,7 @@ Requires old/new versions to coexist safely during the rollout.
 
 ---
 
-# 141. Rollback Design
+## 141. Rollback Design
 
 A Docker image rollback is straightforward:
 
@@ -6394,7 +6574,7 @@ Always test rollback before the emergency.
 
 ---
 
-# 142. Docker in CI/CD in Depth
+## 142. Docker in CI/CD in Depth
 
 A mature pipeline may look like:
 
@@ -6424,7 +6604,7 @@ verification
 production promotion
 ```
 
-## Tagging strategy
+### Tagging strategy
 
 Useful tags:
 
@@ -6435,7 +6615,7 @@ app:git-a1b2c3d
 
 Record digest after push.
 
-## Build once
+### Build once
 
 Prefer:
 
@@ -6452,17 +6632,17 @@ then rebuild production image separately
 
 The second approach can introduce artifact drift.
 
-## CI cache
+### CI cache
 
 Use BuildKit external cache rather than depending on local runner persistence.
 
-## Credentials
+### Credentials
 
 CI push credential should have the narrowest useful registry permission.
 
 ---
 
-# 143. Testing with Disposable Containers
+## 143. Testing with Disposable Containers
 
 Disposable dependencies reduce shared-environment coupling.
 
@@ -6492,7 +6672,7 @@ docker compose -f compose.test.yaml down -v
 
 This gives each test run a clean database when desired.
 
-## Test the real image
+### Test the real image
 
 Strong pattern:
 
@@ -6506,7 +6686,7 @@ That validates packaging as well as source code.
 
 ---
 
-# 144. Disaster Recovery
+## 144. Disaster Recovery
 
 Docker makes application replacement easy, but disaster recovery requires broader planning.
 
@@ -6525,7 +6705,7 @@ DNS/load-balancer configuration
 
 A strong recovery design avoids depending on undocumented state inside one server.
 
-## Recovery exercise
+### Recovery exercise
 
 1. provision empty host
 2. install/configure runtime
@@ -6540,7 +6720,7 @@ If this procedure exists only in one engineer's memory, it is not a reliable DR 
 
 ---
 
-# 145. Debugging Decision Tree
+## 145. Debugging Decision Tree
 
 Use this every time a containerized application fails.
 
@@ -6578,7 +6758,7 @@ Can client reach published port?
 Application-level bug or downstream issue
 ```
 
-## First commands
+### First commands
 
 ```bash
 docker ps -a
@@ -6593,9 +6773,9 @@ Do not start by deleting everything.
 
 ---
 
-# 146. Real-world Failure Scenarios
+## 146. Real-world Failure Scenarios
 
-## Failure 1: Container continuously restarts
+### Failure 1: Container continuously restarts
 
 Check:
 
@@ -6615,7 +6795,7 @@ Possible causes:
 
 ---
 
-## Failure 2: App works from inside container, not from host
+### Failure 2: App works from inside container, not from host
 
 Inside:
 
@@ -6644,7 +6824,7 @@ Bind to `0.0.0.0` if external container-interface access is intended.
 
 ---
 
-## Failure 3: App cannot resolve DB
+### Failure 3: App cannot resolve DB
 
 Check service names and network membership.
 
@@ -6666,7 +6846,7 @@ for the Compose service network.
 
 ---
 
-## Failure 4: File exists in image but disappears at runtime
+### Failure 4: File exists in image but disappears at runtime
 
 A bind mount/volume was mounted over its directory.
 
@@ -6678,7 +6858,7 @@ docker inspect app
 
 ---
 
-## Failure 5: Works as root, fails as non-root
+### Failure 5: Works as root, fails as non-root
 
 Good! You discovered a permission dependency.
 
@@ -6693,7 +6873,7 @@ Fix ownership or redesign writable paths.
 
 ---
 
-## Failure 6: CI build always redownloads dependencies
+### Failure 6: CI build always redownloads dependencies
 
 Likely:
 
@@ -6705,9 +6885,9 @@ Use dependency-manifest ordering and BuildKit cache export/import.
 
 ---
 
-# 147. Security Failure Scenarios
+## 147. Security Failure Scenarios
 
-## Scenario: `.env` accidentally copied into image
+### Scenario: `.env` accidentally copied into image
 
 Dockerfile:
 
@@ -6730,7 +6910,7 @@ Fix:
 
 ---
 
-## Scenario: Docker socket mounted into web app
+### Scenario: Docker socket mounted into web app
 
 Web app compromise can become daemon compromise.
 
@@ -6738,7 +6918,7 @@ Fix architecture rather than adding an authorization check inside the same compr
 
 ---
 
-## Scenario: Container requires `--privileged`
+### Scenario: Container requires `--privileged`
 
 Investigate exact operation.
 
@@ -6752,7 +6932,7 @@ If ordinary web API "requires privileged", treat it as a major red flag.
 
 ---
 
-## Scenario: Secret printed during CI build
+### Scenario: Secret printed during CI build
 
 Immediately:
 
@@ -6763,9 +6943,9 @@ Immediately:
 
 ---
 
-# 148. Performance Failure Scenarios
+## 148. Performance Failure Scenarios
 
-## Slow build
+### Slow build
 
 Check:
 
@@ -6778,7 +6958,7 @@ architecture emulation?
 network package downloads?
 ```
 
-## Slow local development on desktop
+### Slow local development on desktop
 
 Check:
 
@@ -6788,7 +6968,7 @@ Check:
 - project location across virtualization filesystem boundary
 - Compose watch/sync alternatives
 
-## Runtime latency
+### Runtime latency
 
 Do not blame Docker first.
 
@@ -6810,133 +6990,133 @@ is a starting point, not a full profiler.
 
 ---
 
-# 149. Advanced Interview Questions
+## 149. Advanced Interview Questions
 
 ### 1. Why does deleting a secret in a later Dockerfile layer not necessarily remove it from the image?
 
 Because earlier image layers remain part of the image content; a later layer can hide/remove the file from the final merged view without erasing the previous layer blob.
 
-### 2. Why are digests stronger deployment identifiers than tags?
+#### 2. Why are digests stronger deployment identifiers than tags?
 
 Tags can move to different content; a digest identifies exact content/manifest data.
 
-### 3. Why is `localhost` different in a container?
+#### 3. Why is `localhost` different in a container?
 
 The container has its own network namespace. Its loopback interface belongs to that namespace.
 
-### 4. Why can `depends_on` still be insufficient?
+#### 4. Why can `depends_on` still be insufficient?
 
 Startup order is not the same as application readiness or continued availability.
 
-### 5. Why do production apps need retry logic even with health checks?
+#### 5. Why do production apps need retry logic even with health checks?
 
 Dependencies can fail after startup; distributed systems must handle transient failures during normal operation.
 
-### 6. What is the difference between a named volume and a bind mount?
+#### 6. What is the difference between a named volume and a bind mount?
 
 Named volumes are managed by Docker and referenced by logical name; bind mounts map explicit host filesystem paths.
 
-### 7. How do BuildKit secret mounts improve security?
+#### 7. How do BuildKit secret mounts improve security?
 
 They make credentials temporarily available to specific build steps without intentionally baking them into image layers or normal build arguments.
 
-### 8. What is an external build cache?
+#### 8. What is an external build cache?
 
 Reusable BuildKit cache stored outside a local ephemeral builder, often in a registry or CI cache backend.
 
-### 9. Why might an Alpine image fail when a Debian-based image works?
+#### 9. Why might an Alpine image fail when a Debian-based image works?
 
 Differences can include musl vs glibc, package availability, native binary assumptions and debugging tooling.
 
-### 10. What is PID 1's importance?
+#### 10. What is PID 1's importance?
 
 It receives signals as the container main process and has special child-reaping/signal semantics on Linux.
 
-### 11. What problem does `--init` solve?
+#### 11. What problem does `--init` solve?
 
 It adds a small init process that can forward signals and reap orphaned child processes.
 
-### 12. What does a read-only root filesystem accomplish?
+#### 12. What does a read-only root filesystem accomplish?
 
 It prevents normal runtime writes to the image root filesystem, reducing mutable surface and revealing hidden write assumptions.
 
-### 13. Why is Docker group membership highly privileged?
+#### 13. Why is Docker group membership highly privileged?
 
 The user can control the Docker daemon, which can create containers with host mounts/privileges and therefore often gain host-level power.
 
-### 14. Rootless Docker vs non-root container user?
+#### 14. Rootless Docker vs non-root container user?
 
 Non-root user limits the process inside a container; rootless Docker reduces privilege of the daemon/runtime itself.
 
-### 15. What do Linux capabilities solve?
+#### 15. What do Linux capabilities solve?
 
 They split monolithic root privileges into smaller units that can be granted/dropped selectively.
 
-### 16. What is seccomp?
+#### 16. What is seccomp?
 
 A Linux mechanism for filtering/restricting system calls.
 
-### 17. What is the relationship between Docker and OCI?
+#### 17. What is the relationship between Docker and OCI?
 
 Docker builds/runs artifacts compatible with OCI standards; OCI defines common image/runtime specifications used across the container ecosystem.
 
-### 18. What roles do containerd and runc play?
+#### 18. What roles do containerd and runc play?
 
 containerd manages lower-level container lifecycle/image functions; runc is a low-level OCI runtime commonly responsible for creating/running containers.
 
-### 19. Why can Kubernetes run Docker-built images without Docker Engine?
+#### 19. Why can Kubernetes run Docker-built images without Docker Engine?
 
 Because the images follow interoperable container image standards and Kubernetes uses CRI-compatible runtimes rather than requiring Docker Engine.
 
-### 20. What is an image index?
+#### 20. What is an image index?
 
 Metadata that can reference multiple platform-specific image manifests under one image reference.
 
-### 21. What is SBOM?
+#### 21. What is SBOM?
 
 An inventory of software components included in an artifact.
 
-### 22. What is provenance?
+#### 22. What is provenance?
 
 Metadata describing how and from what inputs/source an artifact was produced.
 
-### 23. Why can `mode=max` provenance be dangerous with build args?
+#### 23. Why can `mode=max` provenance be dangerous with build args?
 
 Rich provenance can record build argument values, so credentials must not be passed as normal build args.
 
-### 24. Why use multi-stage builds?
+#### 24. Why use multi-stage builds?
 
 To separate build-time tools/source from the runtime artifact and selectively copy only needed outputs.
 
-### 25. Why can a volume mount make an image directory look empty/different?
+#### 25. Why can a volume mount make an image directory look empty/different?
 
 The mount overlays that path in the container's filesystem view and hides underlying image content at the mount point.
 
-### 26. Why are resource limits important?
+#### 26. Why are resource limits important?
 
 Containers share host resources; limits prevent one workload from exhausting shared memory/CPU/PID capacity.
 
-### 27. What does OOMKilled indicate?
+#### 27. What does OOMKilled indicate?
 
 The container process was terminated due to memory pressure/limit conditions associated with the kernel/runtime.
 
-### 28. Why is a restart policy not self-healing architecture by itself?
+#### 28. Why is a restart policy not self-healing architecture by itself?
 
 It restarts a failed process but does not correct broken dependencies, corrupt data, configuration errors, memory leaks or systemic failures.
 
-### 29. Why should production logs go to stdout/stderr?
+#### 29. Why should production logs go to stdout/stderr?
 
 It lets the runtime/logging pipeline collect logs consistently rather than hiding them in ephemeral container filesystems.
 
-### 30. What is the safest rollback strategy for DB-backed services?
+#### 30. What is the safest rollback strategy for DB-backed services?
 
 There is no single universal one; use backward-compatible schema evolution, versioned images, tested restore/rollback procedures and avoid irreversible changes during mixed-version rollouts.
 
 ---
 
-# 150. Final Professional Docker Checklist
+## 150. Final Professional Docker Checklist
 
-## Architecture
+### Architecture
 
 - [ ] Every service has a clear responsibility.
 - [ ] Only required services publish host ports.
@@ -6945,7 +7125,7 @@ There is no single universal one; use backward-compatible schema evolution, vers
 - [ ] Persistent state is explicitly identified.
 - [ ] Stateless services are replaceable.
 
-## Images
+### Images
 
 - [ ] Dockerfiles are understandable and reviewed.
 - [ ] `.dockerignore` excludes unnecessary/sensitive files.
@@ -6955,7 +7135,7 @@ There is no single universal one; use backward-compatible schema evolution, vers
 - [ ] Images are versioned and traceable.
 - [ ] Production deployments can record image digests.
 
-## Build
+### Build
 
 - [ ] BuildKit features are used where useful.
 - [ ] Build secrets never use normal ARG/ENV as a substitute for secret mounts.
@@ -6964,7 +7144,7 @@ There is no single universal one; use backward-compatible schema evolution, vers
 - [ ] SBOM/provenance requirements are defined.
 - [ ] Build checks/linting are part of quality controls.
 
-## Runtime
+### Runtime
 
 - [ ] Main process stays in foreground.
 - [ ] PID 1 behavior is understood.
@@ -6974,7 +7154,7 @@ There is no single universal one; use backward-compatible schema evolution, vers
 - [ ] Restart policy matches workload behavior.
 - [ ] Temporary writable paths are intentional.
 
-## Storage
+### Storage
 
 - [ ] Databases use persistent storage.
 - [ ] Volume != backup is understood.
@@ -6983,7 +7163,7 @@ There is no single universal one; use backward-compatible schema evolution, vers
 - [ ] Permissions work with non-root users.
 - [ ] SELinux/AppArmor implications are considered on relevant hosts.
 
-## Security
+### Security
 
 - [ ] Application runs non-root where possible.
 - [ ] Rootless Engine feasibility has been evaluated where relevant.
@@ -6997,7 +7177,7 @@ There is no single universal one; use backward-compatible schema evolution, vers
 - [ ] Registry permissions are least-privilege.
 - [ ] CI credentials are scoped and rotated.
 
-## Compose
+### Compose
 
 - [ ] `docker compose config` is used to validate final configuration.
 - [ ] `depends_on` is not mistaken for long-term reliability.
@@ -7006,7 +7186,7 @@ There is no single universal one; use backward-compatible schema evolution, vers
 - [ ] Environment-specific override strategy is understandable.
 - [ ] Secrets/configs are not hardcoded into the image.
 
-## CI/CD
+### CI/CD
 
 - [ ] The pipeline tests the image that will be deployed.
 - [ ] The same artifact is promoted rather than rebuilt per environment where possible.
@@ -7015,7 +7195,7 @@ There is no single universal one; use backward-compatible schema evolution, vers
 - [ ] Database migration compatibility is reviewed before rollout.
 - [ ] Build cache does not contain secrets.
 
-## Operations
+### Operations
 
 - [ ] Logs are centralized or intentionally managed.
 - [ ] Log rotation prevents host disk exhaustion.
@@ -7025,7 +7205,7 @@ There is no single universal one; use backward-compatible schema evolution, vers
 - [ ] Production contexts/endpoints are clearly distinguished.
 - [ ] Host patching and Docker Engine updates are planned.
 
-## Troubleshooting
+### Troubleshooting
 
 - [ ] I check `docker ps -a` first.
 - [ ] I read `docker logs` before changing configuration.
@@ -7035,7 +7215,7 @@ There is no single universal one; use backward-compatible schema evolution, vers
 - [ ] I use `docker stats` for first-pass resource analysis.
 - [ ] I know how to distinguish application, Docker, host, network and dependency failures.
 
-## Internals
+### Internals
 
 - [ ] I understand namespaces.
 - [ ] I understand cgroups.
@@ -7046,7 +7226,7 @@ There is no single universal one; use backward-compatible schema evolution, vers
 
 ---
 
-# Extended Scenario: From Laptop to Production
+## Extended Scenario: From Laptop to Production
 
 Assume an application contains:
 
@@ -7058,7 +7238,7 @@ PostgreSQL
 background worker
 ```
 
-## Development
+### Development
 
 ```text
 Developer
@@ -7072,7 +7252,7 @@ docker compose up
    +-- worker
 ```
 
-## CI
+### CI
 
 ```text
 Git commit
@@ -7090,7 +7270,7 @@ scan + SBOM + provenance
 push commit-tagged images
 ```
 
-## Staging
+### Staging
 
 ```text
 pull exact CI images
@@ -7104,7 +7284,7 @@ health checks
 smoke test
 ```
 
-## Production
+### Production
 
 ```text
 promote same digests
@@ -7116,19 +7296,19 @@ monitor errors/latency/resources
 rollback if policy threshold crossed
 ```
 
-## Persistence
+### Persistence
 
 ```text
 PostgreSQL -> durable storage -> independent backups
 ```
 
-## Secrets
+### Secrets
 
 ```text
 secret manager -> runtime service identity -> app
 ```
 
-## Networking
+### Networking
 
 ```text
 Internet
@@ -7142,7 +7322,7 @@ private data network
 PostgreSQL + Redis
 ```
 
-## Security
+### Security
 
 ```text
 non-root
@@ -7158,7 +7338,7 @@ If you can build, explain, secure, debug and recover this architecture, you have
 
 ---
 
-# Extended Official Reference Notes
+## Extended Official Reference Notes
 
 This handbook was expanded using current Docker documentation as the technical reference point. Docker features and CLI flags evolve, so check the official documentation for exact behavior before implementing production changes.
 
@@ -7183,13 +7363,11 @@ Docker Engine release notes
 
 Official documentation:
 
-```text
-https://docs.docker.com/
-```
+[Docker documentation](https://docs.docker.com/)
 
 ---
 
-# Final Learning Rule
+## Final Learning Rule
 
 A beginner asks:
 

@@ -69,6 +69,18 @@
 54. [Recommended Learning Roadmap](#54-recommended-learning-roadmap)
 55. [Final Mastery Checklist](#55-final-mastery-checklist)
 
+## Appendices
+
+- [Appendix A — Shape Reasoning Drills](#appendix-a--shape-reasoning-drills)
+- [Appendix B — Axis Reasoning Drills](#appendix-b--axis-reasoning-drills)
+- [Appendix C — Dtype Selection Guide](#appendix-c--dtype-selection-guide)
+- [Appendix D — NumPy vs Pandas vs SciPy vs Python](#appendix-d--numpy-vs-pandas-vs-scipy-vs-python)
+- [Appendix E — Debugging Template](#appendix-e--debugging-template)
+- [Appendix F — Clean NumPy Coding Guidelines](#appendix-f--clean-numpy-coding-guidelines)
+- [Appendix G — Suggested 30-Day Study Schedule](#appendix-g--suggested-30-day-study-schedule)
+- [Appendix H — Five Questions Before Writing NumPy Code](#appendix-h--the-five-questions-to-ask-before-writing-numpy-code)
+- [Appendix I — Official References](#appendix-i--official-references)
+
 ---
 
 # 1. What Is NumPy?
@@ -118,7 +130,7 @@ Output:
 [ 90. 135. 180. 225.]
 ```
 
-Instead of manually looping through each price, NumPy applies the operation to the entire array.
+`np.array()` converts the Python list into an `ndarray`. `prices` has shape `(4,)` and an integer dtype inferred from the input. Multiplication by the floating scalar `0.90` runs element by element and produces a new floating-point array, leaving `prices` unchanged. Instead of manually looping through each price in Python, NumPy performs the array operation in compiled numerical code.
 
 ---
 
@@ -228,7 +240,7 @@ source .venv/bin/activate
 Install:
 
 ```bash
-pip install numpy
+python -m pip install numpy
 ```
 
 ## Quick environment test
@@ -243,6 +255,15 @@ print(a.mean())
 ```
 
 If this runs, your basic NumPy environment is ready.
+
+Expected output is the array followed by its floating-point mean:
+
+```text
+[1 2 3]
+2.0
+```
+
+NumPy 2.5 supports Python 3.12–3.14. If installation reports that no compatible distribution exists, check `python --version` and the Python-version requirements of the NumPy release you selected.
 
 ---
 
@@ -326,7 +347,7 @@ A useful mental picture is:
 
 ## Dimensions
 
-```python
+```text
 scalar -> 0D
 vector -> 1D
 matrix -> 2D
@@ -338,6 +359,8 @@ NumPy itself uses the general term **array**, even when the data has many dimens
 ---
 
 # 5. Creating Arrays
+
+Array-creation functions differ mainly in where values come from and how shape, dtype, and initialization are chosen. Most accept a `dtype=` argument; functions that allocate by shape usually accept an integer for 1D or a tuple such as `(rows, columns)` for multiple dimensions.
 
 ## 5.1 From Python lists
 
@@ -374,6 +397,8 @@ a = np.zeros((3, 4))
 
 Use case: initialize an accumulator, image buffer, simulation state, or results matrix.
 
+`np.zeros(shape, dtype=float)` returns a new zero-filled array. Floating-point is the default dtype, so `np.zeros(5)` displays decimal values. Pass `dtype=np.int64` when the result must store integer counts.
+
 ## 5.4 ones
 
 ```python
@@ -402,6 +427,8 @@ Do **not** assume it contains zeros.
 
 Use it only when you will immediately overwrite all elements.
 
+The values are whatever bit patterns happened to be in the allocated memory and are not predictable. Reading any element before assigning it is a correctness bug, not merely a display issue.
+
 ## 5.7 arange
 
 ```python
@@ -419,6 +446,8 @@ Syntax:
 ```python
 np.arange(start, stop, step)
 ```
+
+`start` is inclusive, `stop` is exclusive, and `step` must not be zero. With one argument, that argument is `stop` and `start` defaults to zero. The output length is determined by the interval and step.
 
 For floating-point ranges, `linspace()` is often easier to reason about.
 
@@ -438,6 +467,8 @@ Result conceptually:
 
 > Give me exactly `num` evenly spaced samples.
 
+The endpoint is included by default. Use `endpoint=False` when dividing a half-open interval, such as angular samples that should not repeat both 0 and 2π. With `retstep=True`, NumPy returns `(samples, spacing)` rather than only the samples.
+
 Useful for plotting, simulations, interpolation, numerical analysis, and signal generation.
 
 ## 5.9 logspace
@@ -447,6 +478,8 @@ a = np.logspace(0, 3, 4)
 ```
 
 Produces values logarithmically spaced between powers.
+
+With the default `base=10`, the example returns `[1., 10., 100., 1000.]` because the inputs `0` and `3` are exponents, not final values.
 
 Useful for:
 
@@ -500,11 +533,15 @@ f = np.full_like(source, 9)
 
 These preserve shape and usually dtype.
 
+That dtype preservation can surprise you. `np.full_like(source, 2.5)` truncates to integers when `source` has an integer dtype. Pass `dtype=float` when fractional values must be preserved.
+
 ## 5.13 From iterables
 
 ```python
 a = np.fromiter(range(5), dtype=np.int64)
 ```
+
+`fromiter(iterable, dtype, count=-1)` consumes a one-dimensional iterable and requires an explicit dtype. Supplying a correct `count` can let NumPy allocate once; an incorrect count can stop early or raise when the iterable is too short.
 
 ## 5.14 From buffers
 
@@ -514,6 +551,8 @@ Advanced applications can construct arrays using a raw memory buffer:
 data = b"\x01\x02\x03\x04"
 a = np.frombuffer(data, dtype=np.uint8)
 ```
+
+`frombuffer()` interprets existing bytes without copying when possible. The byte length must be compatible with the requested dtype, byte order matters for multi-byte values, and an array backed by immutable `bytes` is read-only. Copy the result if it must outlive or be independent of a mutable external buffer.
 
 Useful in:
 
@@ -616,6 +655,21 @@ a.flags
 
 Useful for diagnosing memory layout and contiguity.
 
+Summary:
+
+| Attribute | Type/meaning for the example |
+| --- | --- |
+| `shape` | `(2, 3)` — size of each axis |
+| `ndim` | `2` — number of axes |
+| `size` | `6` — total element count |
+| `dtype` | Platform-inferred integer dtype |
+| `itemsize` | Bytes used by one element |
+| `nbytes` | `size * itemsize` for the data buffer only |
+| `T` | Transposed array/view with shape `(3, 2)` |
+| `flags` | Layout, ownership, alignment, and writeability metadata |
+
+`nbytes` excludes Python object overhead and, for `dtype=object`, excludes the memory owned by referenced Python objects.
+
 ---
 
 # 7. Data Types — dtype
@@ -715,7 +769,13 @@ a += 1
 print(a)
 ```
 
-An 8-bit signed integer cannot represent arbitrary large values.
+Output:
+
+```text
+[-128]
+```
+
+An 8-bit signed integer represents only `-128` through `127`. Fixed-width integer arithmetic can wrap around instead of automatically becoming a larger Python integer. NumPy may not raise an exception for this operation, so choose and validate dtype range deliberately.
 
 ### Rule
 
@@ -739,6 +799,8 @@ An object array stores Python object references and usually loses much of NumPy'
 ---
 
 # 8. Indexing and Slicing
+
+Each axis is zero-based: valid indices for an axis of length `n` run from `0` through `n - 1`, and negative indices count from the end. A scalar index removes that axis; a slice keeps it. For example, `matrix[1, :]` has shape `(3,)`, while `matrix[1:2, :]` keeps a two-dimensional shape `(1, 3)`.
 
 ## 8.1 1D indexing
 
@@ -966,6 +1028,8 @@ Basic slicing commonly creates **views**.
 
 Advanced indexing generally creates **copies**.
 
+Integer index arrays are broadcast together. `matrix[rows, cols]` pairs corresponding row and column indices and returns two scalar selections, while `matrix[np.ix_(rows, cols)]` constructs the Cartesian product and returns a 2D submatrix. Use the form that matches the intended output shape.
+
 That distinction matters for both correctness and memory usage.
 
 ---
@@ -987,6 +1051,8 @@ Result:
 ```
 
 The total number of elements must remain compatible.
+
+`reshape()` returns an array with the requested shape. It returns a view when the existing memory layout permits and a copy otherwise, so do not depend on mutation sharing unless you verify it. It never changes the number of elements.
 
 ## Automatic dimension with -1
 
@@ -1083,6 +1149,8 @@ This is extremely important for broadcasting.
 np.expand_dims(a, axis=0)
 ```
 
+`axis` is the position where the new length-1 dimension is inserted. For `a.shape == (3,)`, `axis=0` returns shape `(1, 3)` and `axis=1` returns `(3, 1)`.
+
 ## squeeze
 
 Remove dimensions of size 1:
@@ -1111,6 +1179,8 @@ np.squeeze(a, axis=0)
 
 # 13. Joining and Splitting Arrays
 
+Joining functions require compatible shapes and return new arrays. `axis` tells NumPy which existing dimension to extend; `stack()` is different because it creates a new dimension.
+
 ## concatenate
 
 ```python
@@ -1120,6 +1190,8 @@ b = np.array([3, 4])
 np.concatenate([a, b])
 ```
 
+`np.concatenate((arrays...), axis=0)` joins along an existing axis. All other axes must match. For two `(2, 3)` arrays, concatenating with `axis=0` gives `(4, 3)`; with `axis=1` it gives `(2, 6)`.
+
 ## stack
 
 Adds a new axis:
@@ -1127,6 +1199,8 @@ Adds a new axis:
 ```python
 np.stack([a, b])
 ```
+
+Both inputs must have the same shape. Two `(2,)` arrays stacked with the default `axis=0` produce `(2, 2)`; `axis=1` also produces `(2, 2)` but places the new axis in a different position and therefore arranges values differently.
 
 Compare:
 
@@ -1271,6 +1345,8 @@ print(b % a)
 
 These operations are normally **element-wise**.
 
+The two arrays must have the same shape or broadcast-compatible shapes. For the example, the outputs are `[11, 22, 33]`, `[-9, -18, -27]`, `[10, 40, 90]`, floating quotients, `[1, 4, 9]`, integer floor quotients, and remainders. Division by zero and invalid floating operations normally produce `inf`/`nan` plus a runtime warning rather than a Python `ZeroDivisionError`; use `np.errstate()` when a deliberate numerical policy is required.
+
 ## Scalar operation
 
 ```python
@@ -1300,6 +1376,15 @@ a = np.array([1, 2, 3])
 ```
 
 If fractional output is needed, create a floating array.
+
+```python
+a = np.array([1, 2, 3], dtype=float)
+a *= 1.5
+
+# array([1.5, 3. , 4.5])
+```
+
+The integer form `a *= 1.5` raises a casting error because an in-place operation cannot safely put fractional results back into the existing integer buffer. The out-of-place expression `a * 1.5` can instead allocate a new floating array.
 
 ---
 
@@ -1338,6 +1423,15 @@ is conceptually related to:
 ```python
 np.add(a, b)
 ```
+
+Many ufuncs accept useful keyword arguments:
+
+```python
+out = np.zeros_like(a, dtype=float)
+np.divide(a, b, out=out, where=b != 0)
+```
+
+`out=` stores results in an existing compatible array, reducing temporary allocation. `where=` controls which positions are calculated; positions where the mask is false retain their existing `out` value. Without an initialized `out`, skipped positions may be uninitialized.
 
 ## ufunc reduce
 
@@ -1384,6 +1478,8 @@ print(a)
 ```
 
 Useful when repeated indices must accumulate correctly.
+
+Ordinary advanced-index assignment such as `a[indices] += 1` may buffer repeated selections and update an index only once. `np.add.at()` performs unbuffered accumulation, so index `1` receives two increments in this example and the output is `[1, 2, 0, 1, 0]`. This correctness guarantee can be slower than simpler operations when indices are unique.
 
 ---
 
@@ -1518,6 +1614,13 @@ X_scaled = (X - mean) / std
 
 `mean` and `std` have shape `(3,)`, so they broadcast across rows.
 
+If a column is constant, its standard deviation is zero and division produces invalid values. A deliberate preprocessing policy can preserve that column as zeros:
+
+```python
+safe_std = np.where(std == 0, 1.0, std)
+X_scaled = (X - mean) / safe_std
+```
+
 ## Key warning
 
 Broadcasting is efficient when it avoids unnecessary data copies, but a mathematically large result can still require huge memory.
@@ -1599,6 +1702,17 @@ instead of:
 
 This is very useful for subsequent broadcasting.
 
+An axis is removed by default. A tuple reduces several axes at once:
+
+```python
+batch = np.zeros((32, 224, 224, 3))
+channel_mean = batch.mean(axis=(0, 1, 2))
+
+# shape: (3,)
+```
+
+Most reductions also accept `dtype=`, which can control accumulator precision, and `where=`, which can select participating elements. Integer sums can overflow their accumulator dtype; floating means of an empty selection produce `nan` with a warning.
+
 ## Common aggregations
 
 ```python
@@ -1655,6 +1769,8 @@ For multidimensional arrays:
 matrix.argmax(axis=1)
 ```
 
+Without `axis`, `argmin()` and `argmax()` return the index in the flattened array. Use `np.unravel_index(matrix.argmax(), matrix.shape)` to convert that flat index into coordinates. With an axis, the result contains an index along that axis for each remaining position. Ties return the first occurrence in traversal order.
+
 ## Example: best monthly sales representative
 
 ```python
@@ -1680,6 +1796,8 @@ Equivalent conceptually to:
 ```text
 max - min
 ```
+
+`ptp()` preserves the input dtype. On narrow signed integers, `max - min` can overflow and appear negative; cast to a wider dtype first when the full range matters.
 
 ---
 
@@ -1739,6 +1857,8 @@ Use:
 np.array_equal(a, b)
 ```
 
+`array_equal()` requires the same shape as well as equal elements. By default, NaNs are not equal; use `np.array_equal(a, b, equal_nan=True)` when matching NaN positions should count as equal.
+
 For floating-point values:
 
 ```python
@@ -1746,6 +1866,8 @@ np.allclose(a, b)
 ```
 
 because exact binary floating-point equality is often inappropriate.
+
+`allclose()` tests values using relative and absolute tolerances. Defaults are convenient but not universally appropriate, especially for values near zero or domain-specific error budgets. Tests should normally pass explicit `rtol=` and `atol=` chosen for the calculation.
 
 ---
 
@@ -1782,6 +1904,8 @@ choices = ["A", "B", "C"]
 
 grades = np.select(conditions, choices, default="F")
 ```
+
+Conditions are checked in order and the first true condition wins. That is why the most restrictive threshold (`>= 90`) appears first; reversing the list would label every score of 90 or more as `C` because it also satisfies `>= 60`.
 
 ## clip
 
@@ -1832,13 +1956,19 @@ print(a[idx])
 
 ## descending sort
 
-A universally readable technique:
+A version-compatible technique is:
 
 ```python
 descending = np.sort(a)[::-1]
 ```
 
-Modern NumPy versions also add newer sorting capabilities; verify compatibility when writing code intended for older NumPy releases.
+NumPy 2.5 adds an explicit option:
+
+```python
+descending = np.sort(a, descending=True)
+```
+
+Use the slicing form when the code must run on NumPy 2.4 or earlier. `np.sort()` sorts along the last axis by default and returns a copy; use `axis=None` to flatten first, and `stable=True` when equal items must preserve their original relative order.
 
 ## searchsorted
 
@@ -1849,6 +1979,8 @@ a = np.array([10, 20, 30, 40])
 
 pos = np.searchsorted(a, 25)
 ```
+
+The result is index `2`, the insertion position that keeps the array sorted. The input must already be sorted according to the same ordering. `side="left"` returns the first suitable location for equal values and `side="right"` returns the position after existing equals.
 
 ## partition
 
@@ -1951,6 +2083,8 @@ Use:
 np.isnan(x)
 ```
 
+NaN is a floating-point missing/invalid marker. Ordinary integer and Boolean dtypes cannot represent it; adding `np.nan` to integer data normally requires conversion to a floating dtype or a separate mask.
+
 ## Detect infinity
 
 ```python
@@ -1973,6 +2107,8 @@ np.nanmin(a)
 np.nanmax(a)
 np.nanstd(a)
 ```
+
+These functions ignore NaN values, not infinity. An all-NaN slice still produces `nan` and usually a runtime warning. Silently ignoring missing values is a modeling decision, so also consider recording how many values participated.
 
 ## Example
 
@@ -2010,6 +2146,8 @@ Choose replacement based on the domain.
 ```python
 np.round([1.2345, 9.8765], 2)
 ```
+
+`np.round()`/`np.rint()` use tie-to-even behavior for exact halfway cases and operate on binary floating-point values, so some decimal-looking results can be surprising. They are not a substitute for decimal arithmetic or a legally defined financial rounding rule.
 
 ## floor
 
@@ -2061,6 +2199,8 @@ np.allclose(array1, array2)
 
 Use these instead of exact equality when comparing floating-point results.
 
+For `isclose(a, b)`, the approximate rule is `abs(a - b) <= atol + rtol * abs(b)`, so the comparison is not perfectly symmetric in `a` and `b`. Choose the reference operand and tolerances intentionally in sensitive tests.
+
 ---
 
 # 26. Random Number Generation
@@ -2076,6 +2216,8 @@ For reproducible examples:
 ```python
 rng = np.random.default_rng(42)
 ```
+
+The seed creates a repeatable pseudorandom stream for simulations and tests. It does not make numbers cryptographically secure. Use Python's `secrets` module or an appropriate security API for tokens, passwords, and adversarial settings. For long-lived golden tests, pin the NumPy version and, when necessary, the bit generator rather than assuming every future default will emit the same sequence.
 
 ## Random floats
 
@@ -2214,6 +2356,14 @@ np.var(a)
 np.std(a)
 ```
 
+The default `ddof=0` divides by `N`, which describes a population-style variance. A common sample estimate uses `ddof=1` and divides by `N - 1`:
+
+```python
+sample_std = np.std(a, ddof=1)
+```
+
+Whether `ddof=0` or `1` is correct depends on the statistical question, not on a universal preference.
+
 ## Percentile
 
 ```python
@@ -2235,6 +2385,8 @@ y = np.array([2, 4, 5, 8])
 corr = np.corrcoef(x, y)
 ```
 
+For two 1D inputs, the result is a `2 × 2` correlation matrix; `corr[0, 1]` is their Pearson correlation. Correlation is undefined for a constant vector and does not imply causation.
+
 ## Covariance
 
 ```python
@@ -2248,6 +2400,8 @@ values = np.array([1, 2, 2, 3, 3, 3])
 
 counts, edges = np.histogram(values, bins=3)
 ```
+
+`counts` contains observations per bin and `edges` has length `len(counts) + 1`. All bins except the last are half-open; the final bin includes its right edge. Bin selection can materially change the visual/statistical story.
 
 ## Weighted average
 
@@ -2340,6 +2494,8 @@ A.T
 np.linalg.det(A)
 ```
 
+The determinant is a floating result and is not a reliable standalone test for singularity because rounding and scaling affect it. Use rank, condition information, or a failed solve according to the actual problem.
+
 ## Inverse
 
 ```python
@@ -2370,6 +2526,8 @@ x = np.linalg.inv(A) @ b
 
 `solve` is the clearer numerical operation and avoids explicitly constructing the inverse.
 
+`A` must be square and full-rank, and the leading dimension of `b` must match. It returns the solution array and raises `np.linalg.LinAlgError` when the matrix is singular. For an overdetermined, underdetermined, or rank-deficient system, use `np.linalg.lstsq()` or a domain-appropriate SciPy solver.
+
 ## Eigenvalues and eigenvectors
 
 ```python
@@ -2397,6 +2555,8 @@ x, residuals, rank, singular_values = np.linalg.lstsq(A, b, rcond=None)
 ```
 
 Useful when there is no exact solution or when fitting a linear model.
+
+The returned `residuals` array can be empty—for example, when the system is not overdetermined or the effective rank is deficient—so do not assume `residuals[0]` always exists.
 
 ## SVD
 
@@ -2536,6 +2696,8 @@ np.tensordot(a, b, axes=1)
 ```
 
 Contracts selected axes.
+
+`axes=1` sums the last axis of `a` with the first axis of `b`; their lengths must match. A pair such as `axes=([2, 0], [0, 1])` explicitly chooses several axes. The remaining, uncontracted axes determine the output shape.
 
 ## einsum
 
@@ -2705,11 +2867,22 @@ signal = np.array([0, 1, 0, -1])
 spectrum = np.fft.fft(signal)
 ```
 
+The result is complex: each bin stores frequency magnitude and phase information. For a signal sampled at interval `d` seconds, pair the transform with matching frequency bins:
+
+```python
+sample_interval = 0.01  # 100 Hz sampling rate
+freq = np.fft.fftfreq(signal.size, d=sample_interval)
+```
+
+Without `d`, `fftfreq()` reports cycles per sample rather than hertz.
+
 ## Inverse FFT
 
 ```python
 reconstructed = np.fft.ifft(spectrum)
 ```
+
+For real input, the reconstructed result may contain tiny imaginary roundoff values. Use `np.real_if_close(reconstructed)` or compare with `np.allclose()` rather than truncating blindly.
 
 ## Frequencies
 
@@ -2791,6 +2964,8 @@ ns
 
 Business calendars, time zones, holidays, and complex timestamp handling are often easier in pandas or specialized date/time libraries.
 
+NumPy `datetime64` does not carry a time-zone object. Year (`Y`) and month (`M`) units are calendar-dependent rather than fixed durations, so converting them directly to days is not the same as converting hours to seconds. Use explicit units and an appropriate calendar-aware library when those distinctions matter.
+
 ---
 
 # 35. Strings and Character Data
@@ -2813,6 +2988,8 @@ np.strings.lower(names)
 ```
 
 depending on the exact dtype/API being used.
+
+In NumPy 2.x, `np.strings` provides ufunc-style operations for fixed-width Unicode/bytes arrays and the newer variable-width `StringDType`. Fixed-width dtypes such as `<U5` can silently truncate longer values assigned later, so inspect `names.dtype` before treating a string array like a Python list of unrestricted strings.
 
 ## When to use
 
@@ -2910,6 +3087,8 @@ Load:
 a = np.load("data.npy")
 ```
 
+`.npy` preserves shape and dtype and is usually the best simple format for one NumPy array. `np.load()` defaults to `allow_pickle=False`; keep that safer default for untrusted files because loading pickled object arrays can execute arbitrary code when pickling is enabled.
+
 ## Save multiple arrays
 
 ```python
@@ -2923,11 +3102,12 @@ np.savez(
 Load:
 
 ```python
-data = np.load("dataset.npz")
-
-X = data["features"]
-y = data["labels"]
+with np.load("dataset.npz") as data:
+    X = data["features"]
+    y = data["labels"]
 ```
+
+An `.npz` load returns a dictionary-like `NpzFile` backed by an open archive. The context manager closes its file descriptor after the arrays are read. `savez_compressed()` saves disk space at the cost of compression/decompression CPU time.
 
 ## Compressed archive
 
@@ -2970,6 +3150,8 @@ m = np.memmap(
     shape=(10000, 1000)
 )
 ```
+
+`mode="r"` makes a read-only mapping. Shape, dtype, byte order, and file offset are external metadata for a raw binary file; supplying the wrong values can reinterpret bytes incorrectly without a friendly schema error. For a self-describing NumPy-format file, `np.load("large.npy", mmap_mode="r")` is often safer.
 
 Use cases:
 
@@ -3364,12 +3546,23 @@ import numpy as np
 import numpy.typing as npt
 
 def normalize(
-    x: npt.NDArray[np.float64]
+    x: npt.ArrayLike
 ) -> npt.NDArray[np.float64]:
-    return (x - x.mean()) / x.std()
+    x = np.asarray(x, dtype=np.float64)
+
+    if x.size == 0:
+        raise ValueError("x must not be empty")
+    if not np.isfinite(x).all():
+        raise ValueError("x must contain only finite values")
+
+    std = x.std()
+    if std == 0:
+        raise ValueError("x must not be constant")
+
+    return (x - x.mean()) / std
 ```
 
-Runtime validation may still be required.
+`ArrayLike` accepts common inputs such as lists and arrays; `NDArray[np.float64]` communicates the return dtype to a static type checker. These hints do not validate runtime inputs or express a fixed shape. `np.asarray()` converts the input and avoids a copy when an existing array already satisfies the requested dtype/layout. The explicit checks define behavior for empty, non-finite, and constant input before calculating the result.
 
 ## Assert shape
 
@@ -3377,6 +3570,8 @@ Runtime validation may still be required.
 assert X.ndim == 2
 assert X.shape[1] == 10
 ```
+
+Assertions are useful for internal invariants and tests, but Python can remove them when run with optimization (`python -O`). Use explicit `if ...: raise ValueError(...)` checks at public/API boundaries where validation must always run.
 
 ## Assert finite values
 
@@ -3413,6 +3608,8 @@ Testing numerical code should explicitly consider:
 # 46. NumPy 2.x Awareness and Migration Tips
 
 NumPy 2.x introduced significant API and compatibility changes compared with older tutorials.
+
+This handbook targets NumPy 2.5, released in June 2026. NumPy 2.5 supports Python 3.12–3.14, removes `numpy.distutils`, expires many earlier deprecations, and adds features such as `descending=` for sort APIs. Use release notes for the exact version deployed by your project.
 
 When maintaining old code:
 
@@ -3603,6 +3800,8 @@ if np.all(a > 5):
 ```
 
 depending on meaning.
+
+For an empty array, `np.any(empty)` is `False` and `np.all(empty)` is `True` (vacuous truth). Decide whether empty input is valid before using either result as a business decision.
 
 ## Import errors after upgrade
 
@@ -3914,6 +4113,8 @@ one_hot = np.eye(num_classes)[labels]
 print(one_hot)
 ```
 
+Advanced indexing selects one identity-matrix row per label, producing shape `(len(labels), num_classes)`. Validate that labels are integers in `0 <= label < num_classes`; negative indices select from the end and out-of-range positive indices raise `IndexError`.
+
 Concepts:
 
 ```text
@@ -3938,6 +4139,17 @@ normalized = X / norms
 ```
 
 `keepdims=True` preserves shape `(n, 1)` so broadcasting is natural.
+
+If zero rows are allowed, avoid division by zero:
+
+```python
+normalized = np.divide(
+    X,
+    norms,
+    out=np.zeros_like(X),
+    where=norms != 0,
+)
+```
 
 ---
 
@@ -3999,6 +4211,8 @@ category_ids = np.array([0, 2, 1, 2, 2, 0])
 
 counts = np.bincount(category_ids)
 ```
+
+`bincount()` requires a one-dimensional array of non-negative integers. Its output length is one more than the largest ID unless `minlength=` requests a longer result, so sparse huge IDs can allocate a huge array. Use `np.unique(..., return_counts=True)` or a table/grouping library when IDs are sparse or not integers.
 
 Weighted aggregation:
 
@@ -5499,6 +5713,25 @@ Before solving a problem, answer:
 ```
 
 If you can answer these five questions, implementation becomes dramatically easier.
+
+---
+
+# Appendix I — Official References
+
+Use the handbook to learn concepts and the official manual to confirm exact signatures, supported versions, deprecations, and edge-case behavior:
+
+- NumPy home and current release: https://numpy.org/
+- Stable user guide: https://numpy.org/doc/stable/user/
+- API reference: https://numpy.org/doc/stable/reference/
+- NumPy 2.5 release notes: https://numpy.org/doc/stable/release/2.5.0-notes.html
+- Broadcasting guide: https://numpy.org/doc/stable/user/basics.broadcasting.html
+- Copies and views: https://numpy.org/doc/stable/user/basics.copies.html
+- Dtypes: https://numpy.org/doc/stable/user/basics.types.html
+- Random sampling: https://numpy.org/doc/stable/reference/random/
+- Linear algebra: https://numpy.org/doc/stable/reference/routines.linalg.html
+- I/O routines: https://numpy.org/doc/stable/reference/routines.io.html
+- Typing: https://numpy.org/doc/stable/reference/typing.html
+- NumPy security guidance: https://numpy.org/doc/stable/reference/security.html
 
 ---
 

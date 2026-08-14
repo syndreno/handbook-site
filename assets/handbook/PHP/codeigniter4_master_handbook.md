@@ -2,7 +2,7 @@
 
 > **A beginner-to-advanced, single-file learning reference for CodeIgniter 4**
 >
-> Technical baseline: **CodeIgniter 4.7.x** / **PHP 8.2+**.
+> Technical baseline: **CodeIgniter 4.7.4** / **PHP 8.2+** (verified August 2026). Use the newest compatible patch release rather than remaining on an older 4.7.x patch; 4.7.4 includes security fixes for HTTPS proxy-header trust, Query Builder `deleteBatch()`, and uploaded-file filename handling.
 >
 > This handbook is designed so that a new learner can start from the beginning, while an experienced developer can use it as a practical reference during real projects.
 
@@ -88,6 +88,12 @@
 76. [Final Cheat Sheet](#76-final-cheat-sheet)
 77. [Official References](#77-official-references)
 
+Additional navigation:
+
+- [Extended Master Reference — Sections 78–182](#extended-master-reference--framework-features-you-should-also-know)
+- [Appendices A–H — Feature Design and Study Guides](#appendix-a--mental-model-for-every-feature)
+- [Appendices I–K — Topic Map and Decision Guides](#appendix-i--master-topic-map)
+
 ---
 
 # 1. How to Use This Handbook
@@ -109,15 +115,15 @@ The correct way to learn it is:
 
 Use this handbook in three ways.
 
-### Beginner
+## Beginner
 
 Read chapters in order and type the examples yourself.
 
-### Working Developer
+## Working Developer
 
 Jump directly to topics such as Models, Filters, Validation, REST APIs, Migrations, Sessions, or Deployment.
 
-### Interview Preparation
+## Interview Preparation
 
 Study the conceptual explanations, common mistakes, architecture sections, and interview questions.
 
@@ -184,7 +190,15 @@ CodeIgniter provides the tools. You provide the application rules.
 
 # 3. Prerequisites
 
-Before learning CodeIgniter 4, you should understand basic PHP.
+CodeIgniter 4.7 requires PHP 8.2 or newer. Before installing, verify the command-line PHP used by Composer/Spark and the PHP runtime used by the web server; they can be different installations.
+
+```bash
+php --version
+php -m
+composer --version
+```
+
+The first command prints the CLI PHP version. `php -m` lists enabled extensions. Composer prints its own version and will report incompatible package/platform requirements during dependency resolution. The current CI4 requirements include `intl` and `mbstring`, while a database driver extension such as `mysqli`, `pdo_mysql`, `pgsql`, or `sqlite3` depends on the database you choose. Check the [official server requirements](https://codeigniter.com/user_guide/intro/requirements.html) for the exact release.
 
 ## PHP concepts you should know
 
@@ -246,6 +260,8 @@ Composer is normally the preferred installation method.
 composer create-project codeigniter4/appstarter myapp
 ```
 
+`create-project` downloads the AppStarter skeleton into a new `myapp/` directory, resolves framework dependencies, and creates `composer.lock`. It requires the target directory to be absent or empty. Run it as your normal development user, not as the web-server user or root.
+
 Move into the project:
 
 ```bash
@@ -293,6 +309,14 @@ composer update
 `composer update` can resolve newer dependency versions and update `composer.lock`.
 
 In production, `composer install` is generally the safer deployment operation.
+
+Confirm the installed framework version with:
+
+```bash
+composer show codeigniter4/framework
+```
+
+For the baseline used by this handbook, the displayed version should be 4.7.4 or a later security-compatible release. Read the official upgrade guide before changing minor versions because framework and AppStarter files may both require attention.
 
 ---
 
@@ -1002,7 +1026,9 @@ Bad:
 ```php
 <?php
 $db = db_connect();
-$orders = $db->query('SELECT ...');
+$orders = $db
+    ->query('SELECT id, total FROM orders ORDER BY created_at DESC')
+    ->getResultArray();
 ?>
 ```
 
@@ -1065,6 +1091,17 @@ A reusable UI component may be appropriate for things such as:
 - sidebar widget.
 
 The key idea is to move reusable presentation logic out of large views.
+
+A class-based cell can be rendered from a view with `view_cell()`:
+
+```php
+<?= view_cell(
+    \App\Cells\CartSummaryCell::class,
+    ['userId' => $userId]
+) ?>
+```
+
+The first argument identifies the cell class and the second supplies public input values. The helper returns rendered HTML. A cell should receive only the data it needs and escape untrusted output in its view; do not use cells to hide unrelated database/business workflows.
 
 ---
 
@@ -1305,6 +1342,37 @@ class InvoiceService
     }
 }
 ```
+
+To make `service('invoiceService')` work, register the factory in `app/Config/Services.php`:
+
+```php
+<?php
+
+namespace Config;
+
+use App\Models\InvoiceModel;
+use App\Services\InvoiceService;
+use CodeIgniter\Config\BaseService;
+
+class Services extends BaseService
+{
+    public static function invoiceService(
+        bool $getShared = true
+    ): InvoiceService {
+        if ($getShared) {
+            return static::getSharedInstance(
+                'invoiceService'
+            );
+        }
+
+        return new InvoiceService(new InvoiceModel());
+    }
+}
+```
+
+`service('invoiceService')` calls this method and normally returns a shared instance. Passing `false` as the second argument—`service('invoiceService', false)`—requests a new instance. `getSharedInstance()` calls the same factory with sharing disabled and stores the resulting object. Custom service names and factory method names must match.
+
+Services are convenient at framework boundaries such as controllers and commands. Domain classes are easier to test when their dependencies are passed explicitly through constructors rather than looked up through `service()` inside every method.
 
 ## Why services matter
 
@@ -2033,7 +2101,9 @@ value="<?= old('name') ?>"
 
 # 29. Sessions and Flashdata
 
-Sessions store state between requests.
+Sessions store state between requests. The browser receives a session identifier cookie; the configured handler stores the associated session data. In `app/Config/Session.php`, choose and configure a file, database, Redis or Memcached handler appropriate to the deployment.
+
+For the file handler, the save path must be writable and outside the public web root. Multiple web servers need shared/sticky session design instead of unrelated local files. In production, also review cookie name, lifetime, `Secure`, `HttpOnly`, SameSite behavior, session ID regeneration and cleanup.
 
 Example:
 
@@ -2060,6 +2130,8 @@ Destroy:
 ```php
 session()->destroy();
 ```
+
+`set($key, $value)` stores data. `session('user_id')` reads a key and returns its value or `null` when absent. `remove($key)` deletes selected data. `destroy()` invalidates the session and is normally used during logout. Regenerate the session ID after authentication or a privilege change to reduce session-fixation risk.
 
 ## Flashdata
 
@@ -2113,12 +2185,28 @@ Never put secrets directly in an ordinary cookie.
 Example concept:
 
 ```php
-$response->setCookie(
+$this->response->setCookie(
     'theme',
     'dark',
-    3600
+    3600,
+    '',
+    '/',
+    '',
+    true,
+    true,
+    'Lax'
 );
 ```
+
+The first three arguments are name, value and lifetime in seconds. The later arguments set domain, path, prefix, `Secure`, `HttpOnly` and SameSite. `setCookie()` returns the response object for chaining. This example assumes production HTTPS; a Secure cookie is not sent over plain local HTTP. Return the response carrying the cookie, and when redirecting set the cookie on the `RedirectResponse` so it is not lost. Use named/configured options if that is clearer for your version, and do not copy positional security settings without understanding them.
+
+Read a request cookie:
+
+```php
+$theme = $this->request->getCookie('theme');
+```
+
+It returns the client-supplied string or `null`; validate it against an allowlist such as `['light', 'dark']`. Delete a cookie by returning an expired cookie through `deleteCookie()` with the same path/domain scope used when it was created.
 
 ## Session vs Cookie
 
@@ -2449,10 +2537,15 @@ $rules = [
             'uploaded[invoice]',
             'max_size[invoice,10240]',
             'ext_in[invoice,pdf,jpg,jpeg,png]',
+            'mime_in[invoice,application/pdf,image/jpeg,image/png]',
         ],
     ],
 ];
 ```
+
+`uploaded` requires a successfully uploaded file. `max_size` uses kilobytes, so `10240` is about 10 MiB. `ext_in` limits extensions and `mime_in` checks the detected media type. No single signal proves a document is safe; keep an explicit random destination name, store sensitive files outside `public/`, and add malware/content scanning where the risk requires it.
+
+> **Version warning:** CI4 4.7.4 fixed a path-traversal vulnerability when `UploadedFile::move()` was called without an explicit filename. Even on a patched version, passing `getRandomName()` as shown above makes the storage decision explicit.
 
 ## Scenario: invoice OCR
 
@@ -2529,8 +2622,12 @@ $email->setTo('user@example.com');
 $email->setSubject('Invoice Approved');
 $email->setMessage('Your invoice has been approved.');
 
-$email->send();
+if (! $email->send()) {
+    log_message('error', 'Invoice email failed.');
+}
 ```
+
+`setTo()`, `setSubject()` and `setMessage()` configure the message and return the Email object. `send()` attempts delivery and returns a Boolean; it does not guarantee that the recipient ultimately reads or accepts the message. Configure SMTP timeouts/TLS, avoid logging credentials or message secrets, and use retryable jobs for important delivery.
 
 Configure SMTP through environment/configuration.
 
@@ -2900,6 +2997,8 @@ class SendInvoiceReminders extends BaseCommand
 }
 ```
 
+`service('invoiceReminderService')` requires a matching static factory in `app/Config/Services.php`, or the command should construct/inject the service explicitly. `sendOverdueReminders()` is an application method expected to return the number sent; `CLI::write()` prints that count to the terminal.
+
 Then schedule at OS/container level.
 
 Linux cron example:
@@ -2977,7 +3076,19 @@ public function create()
 {
     $data = $this->request->getJSON(true);
 
-    if (! $this->validateData($data, [
+    if (! is_array($data)) {
+        return $this->fail(
+            'Request body must be a JSON object.',
+            400
+        );
+    }
+
+    $payload = [
+        'name' => $data['name'] ?? null,
+        'price' => $data['price'] ?? null,
+    ];
+
+    if (! $this->validateData($payload, [
         'name' => 'required|max_length[150]',
         'price' => 'required|decimal',
     ])) {
@@ -2986,7 +3097,7 @@ public function create()
         );
     }
 
-    $id = $this->model->insert($data, true);
+    $id = $this->model->insert($payload, true);
 
     return $this->respondCreated([
         'id' => $id,
@@ -2994,6 +3105,8 @@ public function create()
     ]);
 }
 ```
+
+`getJSON(true)` requests associative arrays, while the `is_array()` check rejects an empty/non-object body. Malformed JSON should be mapped to a `400 Bad Request` by your API exception/error policy. Building `$payload` explicitly prevents extra JSON keys from reaching the model even when `$allowedFields` later changes. `validateData()` returns a Boolean and populates `$this->validator`; `insert($payload, true)` returns the new ID or `false`.
 
 ## REST principle
 
@@ -3198,6 +3311,14 @@ public function testDiscountCalculation(): void
 }
 ```
 
+The test class should extend `CodeIgniter\Test\CIUnitTestCase` (or another appropriate PHPUnit/CI4 base class), and the test filename/class belongs under `tests/`. Run the suite from the project root:
+
+```bash
+composer test
+```
+
+The command exits non-zero when tests fail, making it suitable for CI pipelines. Check `composer.json` if the project defines a different script.
+
 ## Feature test
 
 Tests application behavior closer to HTTP.
@@ -3205,10 +3326,22 @@ Tests application behavior closer to HTTP.
 Concept:
 
 ```php
-$result = $this->get('/products');
+use CodeIgniter\Test\FeatureTestTrait;
 
-$result->assertStatus(200);
+class ProductRoutesTest extends \CodeIgniter\Test\CIUnitTestCase
+{
+    use FeatureTestTrait;
+
+    public function testProductListLoads(): void
+    {
+        $result = $this->get('/products');
+
+        $result->assertStatus(200);
+    }
+}
 ```
+
+`FeatureTestTrait::get()` simulates a GET request through the application and returns a test response. `assertStatus(200)` fails the test unless the response status is exactly 200. Add authentication/session data and database setup when the route requires them.
 
 ## What to test
 
@@ -3249,6 +3382,38 @@ And posting event is scheduled
 ```
 
 Avoid tests that depend on random production-like data already present in a developer's local database.
+
+CI4's `DatabaseTestTrait` provides database assertions and controlled test setup:
+
+```php
+use CodeIgniter\Test\CIUnitTestCase;
+use CodeIgniter\Test\DatabaseTestTrait;
+
+class InvoiceModelTest extends CIUnitTestCase
+{
+    use DatabaseTestTrait;
+
+    protected $refresh = true;
+    protected $namespace = 'App';
+
+    public function testInsertCreatesPendingInvoice(): void
+    {
+        $model = new \App\Models\InvoiceModel();
+
+        $id = $model->insert([
+            'invoice_no' => 'INV-1001',
+            'status' => 'pending',
+        ], true);
+
+        $this->seeInDatabase('invoices', [
+            'id' => $id,
+            'status' => 'pending',
+        ]);
+    }
+}
+```
+
+`$refresh = true` refreshes the database state using migrations around tests according to the trait's configuration. `$namespace` tells it where to discover application migrations. `seeInDatabase()` fails unless a matching row exists. Always point the `testing` environment at an isolated test database—never production.
 
 ---
 
@@ -3493,21 +3658,24 @@ Do not overuse DTOs in tiny scripts.
 
 # 56. Real-World CRUD Project
 
-We will build a simple Product module.
+This module implements create, read, update and delete behavior. It assumes the application has enabled the CSRF filter for browser POST forms and configured a `permission:product.manage` filter alias through its authentication/authorization layer. Public read routes and protected write routes are shown separately.
 
 ## Database table
 
-```text
-products
---------
-id
-name
-sku
-price
-status
-created_at
-updated_at
+```sql
+CREATE TABLE products (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    sku VARCHAR(50) NOT NULL,
+    price DECIMAL(12,2) NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    created_at DATETIME NULL,
+    updated_at DATETIME NULL,
+    UNIQUE KEY uq_products_sku (sku)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
+
+Create the equivalent schema through a migration in a real CI4 project. `DECIMAL` avoids binary floating-point storage for money, and the unique key is the final concurrency-safe guarantee that two rows cannot share a SKU.
 
 ## Model
 
@@ -3538,13 +3706,25 @@ class ProductModel extends Model
 
 ```php
 $routes->get('products', 'Products::index');
-$routes->get('products/new', 'Products::new');
-$routes->post('products', 'Products::create');
+$routes->get('products/new', 'Products::new', [
+    'filter' => 'permission:product.manage',
+]);
 $routes->get('products/(:num)', 'Products::show/$1');
-$routes->get('products/(:num)/edit', 'Products::edit/$1');
-$routes->post('products/(:num)', 'Products::update/$1');
-$routes->post('products/(:num)/delete', 'Products::delete/$1');
+$routes->get('products/(:num)/edit', 'Products::edit/$1', [
+    'filter' => 'permission:product.manage',
+]);
+$routes->post('products', 'Products::create', [
+    'filter' => 'permission:product.manage',
+]);
+$routes->post('products/(:num)', 'Products::update/$1', [
+    'filter' => 'permission:product.manage',
+]);
+$routes->post('products/(:num)/delete', 'Products::delete/$1', [
+    'filter' => 'permission:product.manage',
+]);
 ```
+
+Place `products/new` before `products/(:num)` so the literal path is unambiguous. The filter protects both write endpoints and their forms. The exact filter alias/arguments depend on the authentication package or custom filter configured by the application.
 
 ## Controller
 
@@ -3595,6 +3775,24 @@ class Products extends BaseController
         ]);
     }
 
+    public function new()
+    {
+        return view('products/new');
+    }
+
+    public function edit(int $id)
+    {
+        $product = $this->products->find($id);
+
+        if (! $product) {
+            throw PageNotFoundException::forPageNotFound();
+        }
+
+        return view('products/edit', [
+            'product' => $product,
+        ]);
+    }
+
     public function create()
     {
         $rules = [
@@ -3611,15 +3809,26 @@ class Products extends BaseController
                 ->with('errors', $this->validator->getErrors());
         }
 
-        $this->products->insert([
+        $id = $this->products->insert([
             'name' => $this->request->getPost('name'),
             'sku' => $this->request->getPost('sku'),
             'price' => $this->request->getPost('price'),
             'status' => $this->request->getPost('status'),
-        ]);
+        ], true);
+
+        if ($id === false) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with(
+                    'errors',
+                    $this->products->errors()
+                        ?: ['save' => 'Could not create product.']
+                );
+        }
 
         return redirect()
-            ->to('/products')
+            ->to('/products/' . $id)
             ->with('success', 'Product created.');
     }
 
@@ -3642,11 +3851,22 @@ class Products extends BaseController
                 ->with('errors', $this->validator->getErrors());
         }
 
-        $this->products->update($id, [
+        $saved = $this->products->update($id, [
             'name' => $this->request->getPost('name'),
             'price' => $this->request->getPost('price'),
             'status' => $this->request->getPost('status'),
         ]);
+
+        if (! $saved) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with(
+                    'errors',
+                    $this->products->errors()
+                        ?: ['save' => 'Could not update product.']
+                );
+        }
 
         return redirect()
             ->to('/products/' . $id)
@@ -3655,7 +3875,15 @@ class Products extends BaseController
 
     public function delete(int $id)
     {
-        $this->products->delete($id);
+        if (! $this->products->find($id)) {
+            throw PageNotFoundException::forPageNotFound();
+        }
+
+        if (! $this->products->delete($id)) {
+            return redirect()
+                ->back()
+                ->with('error', 'Could not delete product.');
+        }
 
         return redirect()
             ->to('/products')
@@ -3663,6 +3891,57 @@ class Products extends BaseController
     }
 }
 ```
+
+`new()` and `edit()` render forms; the original routes would return errors without these two methods. `insert($data, true)` returns the new primary key or `false`. `update()` and `delete()` return Boolean results; this example checks validation/model failures and record existence before reporting success. The authorization filter remains the real permission boundary—hiding links is not security.
+
+## Minimal create view
+
+`app/Views/products/new.php`:
+
+```php
+<h1>Create Product</h1>
+
+<?php foreach (session('errors') ?? [] as $error): ?>
+    <p><?= esc($error) ?></p>
+<?php endforeach; ?>
+
+<form method="post" action="<?= site_url('products') ?>">
+    <?= csrf_field() ?>
+
+    <label for="name">Name</label>
+    <input id="name" name="name" value="<?= old('name') ?>">
+
+    <label for="sku">SKU</label>
+    <input id="sku" name="sku" value="<?= old('sku') ?>">
+
+    <label for="price">Price</label>
+    <input id="price" name="price" inputmode="decimal" value="<?= old('price') ?>">
+
+    <label for="status">Status</label>
+    <select id="status" name="status">
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+    </select>
+
+    <button type="submit">Save</button>
+</form>
+```
+
+`csrf_field()` outputs the hidden CSRF token. `old()` reads flashdata created by `withInput()` and escapes output by default for safe use in these quoted HTML attributes. The controller still validates every field because browser controls can be bypassed.
+
+## Expected behavior
+
+| Request | Method | Result |
+| --- | --- | --- |
+| `/products` | GET | Paginated/searchable list |
+| `/products/new` | GET | Create form |
+| `/products` | POST | Validate, insert, redirect to detail |
+| `/products/10` | GET | Product detail or 404 |
+| `/products/10/edit` | GET | Edit form or 404 |
+| `/products/10` | POST | Validate, update, redirect |
+| `/products/10/delete` | POST | Delete, then redirect to list |
+
+Create `index.php`, `show.php`, and `edit.php` views following the same rules: escape model output, include CSRF on POST forms, repopulate validation failures, and render delete as a POST form. Whether delete is hard or soft is a business/audit decision; configure the Model accordingly rather than assuming permanent deletion is always acceptable.
 
 ## What this project teaches
 
@@ -3926,7 +4205,13 @@ Bad:
 ```php
 $all = $attendanceModel->findAll();
 
-$filtered = array_filter($all, ...);
+$filtered = array_filter(
+    $all,
+    static fn (array $row): bool =>
+        (int) $row['employee_id'] === $employeeId
+        && $row['attendance_date'] >= $fromDate
+        && $row['attendance_date'] <= $toDate
+);
 ```
 
 Better:
@@ -4417,7 +4702,7 @@ CodeIgniter 4 should be treated as a modern rewrite rather than a drop-in upgrad
 Conceptual differences include:
 
 | Area | CodeIgniter 3 | CodeIgniter 4 |
-|---|---|---|
+| --- | --- | --- |
 | PHP style | Older architecture | Modern PHP architecture |
 | Namespaces | Limited/legacy style | Core design concept |
 | Composer | Optional/less central | First-class workflow |
@@ -4652,7 +4937,7 @@ Instead of deep nesting:
 if ($invoice) {
     if ($invoice['status'] === 'pending') {
         if ($allowed) {
-            // ...
+            $invoiceService->approve($invoice['id']);
         }
     }
 }
@@ -4793,6 +5078,8 @@ or command-specific help where available.
 
 # 72. Common Code Recipes
 
+Each recipe assumes the surrounding controller/model dependency exists. Request methods return untrusted client values, Model methods may return `null`/`false`, and response/redirect helpers return response objects that the controller should return.
+
 ## Get POST field
 
 ```php
@@ -4905,6 +5192,22 @@ log_message('info', 'Processing invoice {id}', [
 ```php
 <?= csrf_field() ?>
 ```
+
+## Recipe inputs and outputs
+
+| Call | Main input | Return/output |
+| --- | --- | --- |
+| `$this->request->getPost('name')` | POST field name | Submitted value or `null` |
+| `$this->request->getJSON(true)` | `true` requests arrays | Decoded data; malformed/empty bodies need error handling |
+| `$this->response->setJSON($data)` | Serializable data | Response object with JSON body/content type |
+| `redirect()->to($url)` | Target URL | Redirect response object |
+| `db_connect($group = null)` | Optional DB group | Database connection |
+| `$model->find($id)` | Primary key | Row/entity or `null` |
+| `$model->paginate(25)` | Page size | Current page rows; pager stored on Model |
+| `session('user_id')` | Session key | Value or `null` |
+| `log_message($level, $message, $context)` | Level, template, safe context | No business value to depend on |
+| `esc($value, $context = 'html')` | Value and output context | Escaped value |
+| `csrf_field()` | None | Hidden HTML input containing current token |
 
 ---
 
@@ -5351,11 +5654,20 @@ $db = db_connect();
 ## Transaction
 
 ```php
+$db = db_connect();
+
 $db->transStart();
 
-// Writes...
+$db->table('orders')->insert($orderData);
+$db->table('inventory')
+    ->where('product_id', $productId)
+    ->decrement('quantity', $quantity);
 
 $db->transComplete();
+
+if ($db->transStatus() === false) {
+    throw new RuntimeException('Transaction failed.');
+}
 ```
 
 ## Session
@@ -5426,19 +5738,20 @@ php spark routes
 
 Use the official documentation as the final authority when framework behavior differs by version.
 
-- CodeIgniter User Guide: https://codeigniter.com/user_guide/
-- CodeIgniter Installation: https://codeigniter.com/user_guide/installation/index.html
-- Routing: https://codeigniter.com/user_guide/incoming/routing.html
-- Controllers: https://codeigniter.com/user_guide/incoming/controllers.html
-- Database: https://codeigniter.com/user_guide/database/index.html
-- Models: https://codeigniter.com/user_guide/models/model.html
-- Validation: https://codeigniter.com/user_guide/libraries/validation.html
-- Filters: https://codeigniter.com/user_guide/incoming/filters.html
-- CLI / Spark: https://codeigniter.com/user_guide/cli/cli_commands.html
-- CLI Generators: https://codeigniter.com/user_guide/cli/cli_generators.html
-- Testing: https://codeigniter.com/user_guide/testing/index.html
-- Deployment: https://codeigniter.com/user_guide/installation/deployment.html
-- GitHub: https://github.com/codeigniter4/CodeIgniter4
+- [CodeIgniter 4.7.4 User Guide](https://codeigniter.com/user_guide/)
+- [Server Requirements](https://codeigniter.com/user_guide/intro/requirements.html)
+- [Installation](https://codeigniter.com/user_guide/installation/index.html)
+- [Routing](https://codeigniter.com/user_guide/incoming/routing.html)
+- [Controllers](https://codeigniter.com/user_guide/incoming/controllers.html)
+- [Database](https://codeigniter.com/user_guide/database/index.html)
+- [Models](https://codeigniter.com/user_guide/models/model.html)
+- [Validation](https://codeigniter.com/user_guide/libraries/validation.html)
+- [Filters](https://codeigniter.com/user_guide/incoming/filters.html)
+- [CLI / Spark](https://codeigniter.com/user_guide/cli/cli_commands.html)
+- [CLI Generators](https://codeigniter.com/user_guide/cli/cli_generators.html)
+- [Testing](https://codeigniter.com/user_guide/testing/index.html)
+- [Deployment](https://codeigniter.com/user_guide/installation/deployment.html)
+- [Official releases](https://github.com/codeigniter4/CodeIgniter4/releases)
 
 ---
 
@@ -5681,9 +5994,9 @@ Use Query Builder for custom database queries:
 
 ```php
 $db->table('invoices')
-   ->select(...)
-   ->join(...)
-   ->where(...)
+   ->select('invoices.id, invoices.invoice_no, vendors.name AS vendor')
+   ->join('vendors', 'vendors.id = invoices.vendor_id')
+   ->where('invoices.status', 'pending')
    ->get();
 ```
 
@@ -5709,39 +6022,39 @@ POST /invoice/123/approve
 
 Review:
 
-### Authentication
+## Authentication
 
 Can anonymous users reach it?
 
-### Authorization
+## Authorization
 
 Is the current user actually the assigned approver?
 
-### Object-level authorization
+## Object-level authorization
 
 Even if the user can approve invoices, can they approve *this* invoice?
 
-### CSRF
+## CSRF
 
 If using cookie/session authentication from a browser, is the action protected appropriately?
 
-### Input
+## Input
 
 Is invoice ID constrained to numeric route input?
 
-### State
+## State
 
 Is the invoice actually pending?
 
-### Replay
+## Replay
 
 What happens if the user clicks Approve twice?
 
-### Concurrency
+## Concurrency
 
 What if two approvers submit simultaneously?
 
-### Audit
+## Audit
 
 Do we store:
 
@@ -5755,7 +6068,7 @@ reason
 request correlation ID
 ```
 
-### Error response
+## Error response
 
 Does the system avoid exposing sensitive internals?
 
@@ -5972,12 +6285,25 @@ How will it behave in production?
 
 That is the mindset that turns framework knowledge into professional engineering skill.
 
-
 ---
 
 # Extended Master Reference — Framework Features You Should Also Know
 
 The previous chapters contain the learning path most developers use every day. This extended reference covers additional CodeIgniter 4 framework areas that are easy to miss but important for a genuinely complete mental model.
+
+Because the reference contains more than 100 short topics, use this range map instead of a 100-line duplicate table of contents:
+
+| Sections | Focus |
+| --- | --- |
+| 78–86 | URI, routing, request formats, localization, time and HTTP integrations |
+| 87–98 | Files, images, encryption, browser security and advanced Models |
+| 99–109 | Database tooling, factories/modules/packages and validation design |
+| 110–120 | Sessions, authentication, authorization, tenancy, jobs and webhooks |
+| 121–136 | Observability, configuration, dependency design, encoding and data delivery |
+| 137–149 | Database integrity, money, state, errors, migrations and performance debugging |
+| 150–159 | Testing, code quality, dependency hygiene and upgrades |
+| 160–179 | Architecture decisions, integrations, imports, caching, rate limits and logging |
+| 180–182 | Production readiness, senior-level knowledge and mastery exercises |
 
 ---
 
@@ -6211,12 +6537,19 @@ you can use language keys.
 Example language file concept:
 
 ```php
+// app/Language/en/Messages.php
 return [
     'invoiceApproved' => 'Invoice approved successfully.',
 ];
 ```
 
-Then retrieve translated text using CodeIgniter language functions.
+Then retrieve translated text:
+
+```php
+$message = lang('Messages.invoiceApproved');
+```
+
+`lang($key, $args = [], $locale = null)` reads `filename.key`, applies optional replacement values, and returns the localized string. Here it loads `Messages.php` for the active locale and returns `Invoice approved successfully.`. Add another file such as `app/Language/hi/Messages.php` with the same key for another locale.
 
 ## Why language keys help
 
@@ -6265,6 +6598,21 @@ Display in user's/business timezone
 ```
 
 CodeIgniter provides date/time tools including a localized immutable time class.
+
+```php
+use CodeIgniter\I18n\Time;
+
+$utc = Time::parse(
+    '2026-08-12 10:30:00',
+    'UTC'
+);
+
+$mumbai = $utc->setTimezone('Asia/Kolkata');
+
+echo $mumbai->toDateTimeString();
+```
+
+`Time::parse($value, $timezone)` returns a Time object representing the supplied instant. Because Time is immutable, `setTimezone()` returns a new object. The expected output is `2026-08-12 16:00:00`. Use an IANA timezone such as `Asia/Kolkata`, not a fixed label like `IST`, when daylight/region rules matter.
 
 ## Scenario
 
@@ -6348,6 +6696,23 @@ $response = $client->get(
     ]
 );
 ```
+
+`get($url, $options)` returns a PSR-7 response or throws when transport/error options require it. Inspect the response deliberately:
+
+```php
+$status = $response->getStatusCode();
+$body = (string) $response->getBody();
+
+if ($status !== 200) {
+    throw new RuntimeException(
+        'Product API returned HTTP ' . $status
+    );
+}
+
+$data = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
+```
+
+`getStatusCode()` returns an integer; `getBody()` returns a stream that can be cast to a string. `json_decode(..., JSON_THROW_ON_ERROR)` returns decoded data or throws `JsonException`. Catch and map connection, HTTP and JSON failures at the integration boundary without leaking credentials or full sensitive payloads.
 
 ## Production rules for HTTP integrations
 
@@ -6538,6 +6903,20 @@ Store thumbnail path
 
 For sensitive documents, decide whether image transformation belongs in the web request or a background process.
 
+Example thumbnail generation:
+
+```php
+$source = WRITEPATH . 'uploads/photo.jpg';
+$target = WRITEPATH . 'thumbnails/photo.jpg';
+
+service('image')
+    ->withFile($source)
+    ->fit(300, 300, 'center')
+    ->save($target, 85);
+```
+
+`withFile()` selects the source. `fit(width, height, position)` resizes/crops it to the requested box. `save(path, quality)` writes the result; `85` is the output quality setting for formats that support it. The GD or ImageMagick dependency must be configured/available, and processing can throw on unreadable/unsupported files—handle failure and never overwrite an original unintentionally.
+
 ---
 
 # 90. Encryption
@@ -6571,6 +6950,26 @@ plaintext
 Use only when the application genuinely needs to recover the original value.
 
 CodeIgniter includes an encryption service for symmetric encryption.
+
+```php
+$encrypter = service('encrypter');
+
+$ciphertext = $encrypter->encrypt(
+    'sensitive value'
+);
+
+$stored = base64_encode($ciphertext);
+
+$decoded = base64_decode($stored, true);
+
+if ($decoded === false) {
+    throw new RuntimeException('Invalid ciphertext encoding.');
+}
+
+$plaintext = $encrypter->decrypt($decoded);
+```
+
+`encrypt()` accepts plaintext bytes and returns binary ciphertext. Base64 makes those bytes safe for a text column, but it is encoding—not extra encryption. `decrypt()` returns the original bytes or fails when the key/ciphertext is invalid. Validate strict `base64_decode()` before decrypting, store the key in protected deployment configuration, and plan key rotation before encrypting long-lived data.
 
 ## Key management matters
 
@@ -6688,6 +7087,16 @@ DELETE
 
 Frameworks can support method spoofing so a POST form can indicate an intended HTTP method.
 
+```php
+<form method="post" action="<?= site_url('products/10') ?>">
+    <?= csrf_field() ?>
+    <input type="hidden" name="_method" value="DELETE">
+    <button type="submit">Delete</button>
+</form>
+```
+
+The browser sends POST, but CI4 interprets the `_method` field as the effective `DELETE` method and can match a `$routes->delete(...)` route. Use only supported values such as `PUT`, `PATCH` or `DELETE`, keep CSRF/authorization enabled, and never trust the method alone as permission.
+
 Use it only where configured and expected.
 
 Security filters should evaluate the effective HTTP method correctly.
@@ -6749,6 +7158,22 @@ This is useful when business/audit requirements require recoverability.
 
 But soft delete does not automatically solve legal data-retention requirements.
 
+Configure the Model and table together:
+
+```php
+class UserModel extends \CodeIgniter\Model
+{
+    protected $table = 'users';
+    protected $primaryKey = 'id';
+    protected $useSoftDeletes = true;
+    protected $deletedField = 'deleted_at';
+    protected $useTimestamps = true;
+    protected $allowedFields = ['name', 'email'];
+}
+```
+
+The table needs a nullable `deleted_at` column. With this configuration, `$model->delete($id)` sets the timestamp instead of removing the row; ordinary finds exclude deleted rows. `$model->withDeleted()->findAll()` includes both active and deleted rows, while `$model->onlyDeleted()->findAll()` returns only deleted rows. These calls return row/entity arrays according to the Model return type.
+
 ---
 
 # 97. Soft Deletes
@@ -6805,6 +7230,29 @@ Every invoice update calls ERP and sends three emails.
 
 That business behavior should be explicit.
 
+Example small normalization callback:
+
+```php
+class UserModel extends \CodeIgniter\Model
+{
+    protected $beforeInsert = ['normalizeEmail'];
+    protected $beforeUpdate = ['normalizeEmail'];
+
+    protected function normalizeEmail(array $event): array
+    {
+        if (isset($event['data']['email'])) {
+            $event['data']['email'] = strtolower(
+                trim($event['data']['email'])
+            );
+        }
+
+        return $event;
+    }
+}
+```
+
+The callback receives an event array containing operation data, modifies the email when present, and must return the array so the Model can continue. Callback property order matters. Keep transformations deterministic and test them through insert/update behavior.
+
 ---
 
 # 99. Database Forge
@@ -6845,6 +7293,16 @@ Do not use metadata inspection on every normal request if the schema is known ah
 
 That creates unnecessary work and can hide migration problems.
 
+```php
+$db = db_connect();
+
+$tables = $db->listTables();
+$fields = $db->getFieldData('invoices');
+$hasStatus = $db->fieldExists('status', 'invoices');
+```
+
+`listTables()` returns table names, `getFieldData()` returns field metadata objects, and `fieldExists(field, table)` returns a Boolean. Driver capabilities/details vary, so use these APIs mainly for migrations, diagnostics and developer tooling—not as a substitute for a known schema.
+
 ---
 
 # 101. Database Utilities and Maintenance
@@ -6884,6 +7342,21 @@ Potential uses:
 Avoid adding heavy work around every query.
 
 If every query triggers an external log API call, your database performance problem can become an application-wide performance problem.
+
+Development-only timing/logging can subscribe to the `DBQuery` event:
+
+```php
+use CodeIgniter\Database\Query;
+use CodeIgniter\Events\Events;
+
+Events::on('DBQuery', static function (Query $query): void {
+    log_message('debug', 'SQL duration: {duration}', [
+        'duration' => $query->getDuration(),
+    ]);
+});
+```
+
+The listener receives the completed Query object. `getDuration()` returns execution time. Register listeners during application bootstrap/configuration, keep callbacks lightweight, and do not log unrestricted SQL/parameters in production because they may contain sensitive data.
 
 ---
 
@@ -7152,6 +7625,19 @@ small permission/session metadata
 
 Fresh authorization data may sometimes need to be loaded from database/cache.
 
+On successful login:
+
+```php
+$session = session();
+$session->regenerate(true);
+$session->set([
+    'user_id' => $user->id,
+    'authenticated' => true,
+]);
+```
+
+`regenerate(true)` creates a new session ID and destroys the old session data before the application stores the authenticated identity. On logout, call `session()->destroy()` and return a redirect. Also review the `Session` and `Cookie` config values for expiry, handler storage, Secure, HttpOnly and SameSite behavior.
+
 ---
 
 # 111. Remember-Me Design
@@ -7191,6 +7677,8 @@ Important principle:
 > Do not copy authentication examples from an old blog without checking the current Shield documentation.
 
 Security libraries evolve.
+
+Use the [official Shield documentation](https://shield.codeigniter.com/) for installation, migrations, authenticators, groups, permissions and filters. Pin a compatible Composer version, read its upgrade notes, and test login, logout, recovery, remember-me, token and authorization flows after upgrades.
 
 ---
 
@@ -8271,6 +8759,8 @@ Use such tooling to investigate:
 
 Do not expose development diagnostics in production.
 
+The AppStarter normally enables the `toolbar` after-filter in development. The toolbar injects a collector panel into compatible HTML responses; collectors can show timeline, database, log, view and route information. Confirm `CI_ENVIRONMENT = production` and that debug/toolbar filters are not exposed on production responses, especially JSON/download endpoints.
+
 ---
 
 # 149. Debugging Performance
@@ -8387,10 +8877,11 @@ Instead of repeating:
 
 ```php
 [
-    'invoice_number' => '...',
-    'amount' => ...,
-    'vendor_id' => ...,
-    // 20 fields
+    'invoice_number' => 'INV-1001',
+    'amount' => '5000.00',
+    'vendor_id' => 25,
+    'status' => 'pending',
+    'created_by' => 10,
 ]
 ```
 
@@ -9466,7 +9957,7 @@ CODEIGNITER 4
 # Appendix J — Quick Decision Table
 
 | Problem | First Tool/Pattern to Consider |
-|---|---|
+| --- | --- |
 | URL maps to action | Route |
 | Handle request | Controller |
 | Read request input | Request object |

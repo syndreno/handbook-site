@@ -11,6 +11,12 @@
 
 Do not try to memorize Kubernetes YAML. Learn the **problem each object solves**, then learn how the objects cooperate.
 
+Prerequisites are basic Linux command-line use, YAML indentation, networking
+terms such as IP address, port, DNS, and HTTP, plus container fundamentals such
+as images, processes, environment variables, and volumes. You can learn those
+alongside Kubernetes, but troubleshooting is much easier when the underlying
+container and network layers are not mysterious.
+
 A good learning order is:
 
 1. Containers and why orchestration exists.
@@ -39,7 +45,7 @@ For every Kubernetes object, answer five questions:
 
 ---
 
-# Table of Contents
+## Table of Contents
 
 1. [Kubernetes in One Mental Model](#1-kubernetes-in-one-mental-model)
 2. [Containers Before Kubernetes](#2-containers-before-kubernetes)
@@ -128,7 +134,7 @@ For every Kubernetes object, answer five questions:
 
 ---
 
-# 1. Kubernetes in One Mental Model
+## 1. Kubernetes in One Mental Model
 
 Kubernetes is a **desired-state control system** for containerized workloads.
 
@@ -165,7 +171,7 @@ This is the central idea behind Kubernetes:
 Declare → Observe → Reconcile → Repeat
 ```
 
-## Example
+### Example
 
 You declare:
 
@@ -183,13 +189,13 @@ Desired Pods = 3
 
 The Deployment controller eventually causes another Pod to be created.
 
-### Important distinction
+#### Important distinction
 
 Kubernetes is not primarily a collection of shell commands. It is a set of **APIs + controllers** implementing reconciliation loops.
 
 ---
 
-# 2. Containers Before Kubernetes
+## 2. Containers Before Kubernetes
 
 A container packages an application with the runtime dependencies required to execute it.
 
@@ -225,7 +231,7 @@ Docker/containerd solves **container execution**. Kubernetes solves **container 
 
 ---
 
-# 3. Why Kubernetes Exists
+## 3. Why Kubernetes Exists
 
 Imagine manually managing 200 containers on 20 servers.
 
@@ -263,7 +269,7 @@ Kubernetes provides abstractions for these problems.
 
 ---
 
-# 4. Cluster Architecture
+## 4. Cluster Architecture
 
 A Kubernetes cluster has two major sides:
 
@@ -285,7 +291,7 @@ The **control plane** makes cluster-wide decisions and stores desired state.
 
 The **worker nodes** run application workloads.
 
-## Typical request flow
+### Typical request flow
 
 When you execute:
 
@@ -317,9 +323,9 @@ container runtime pulls image and starts containers
 
 ---
 
-# 5. Control Plane Components
+## 5. Control Plane Components
 
-## 5.1 kube-apiserver
+### 5.1 kube-apiserver
 
 The API server is the front door of Kubernetes.
 
@@ -344,7 +350,7 @@ Responsibilities include:
 - Reading/writing cluster objects.
 - Exposing watch streams to controllers and clients.
 
-## 5.2 etcd
+### 5.2 etcd
 
 `etcd` is a distributed key-value store containing Kubernetes cluster state.
 
@@ -360,7 +366,7 @@ It stores information such as:
 
 Treat etcd backup as a critical disaster-recovery asset for self-managed control planes.
 
-## 5.3 kube-scheduler
+### 5.3 kube-scheduler
 
 The scheduler decides **which node should run an unscheduled Pod**.
 
@@ -376,7 +382,7 @@ It considers factors including:
 
 It does not normally start the container itself. It assigns the Pod to a node.
 
-## 5.4 kube-controller-manager
+### 5.4 kube-controller-manager
 
 Runs many reconciliation controllers.
 
@@ -390,7 +396,7 @@ Examples:
 
 Controllers continuously attempt to make actual state match desired state.
 
-## 5.5 cloud-controller-manager
+### 5.5 cloud-controller-manager
 
 In cloud integrations, cloud-specific operations may be handled separately.
 
@@ -403,9 +409,9 @@ Examples:
 
 ---
 
-# 6. Worker Node Components
+## 6. Worker Node Components
 
-## 6.1 kubelet
+### 6.1 kubelet
 
 The kubelet is the node agent.
 
@@ -415,7 +421,7 @@ Its job is approximately:
 
 It communicates with the container runtime through CRI-compatible mechanisms.
 
-## 6.2 Container runtime
+### 6.2 Container runtime
 
 Commonly `containerd` or CRI-O.
 
@@ -426,7 +432,7 @@ Responsibilities include:
 - Start/stop containers.
 - Manage low-level container execution.
 
-## 6.3 Networking implementation
+### 6.3 Networking implementation
 
 Cluster networking is typically supplied through a CNI-compatible plugin.
 
@@ -441,7 +447,7 @@ The exact feature set varies.
 
 ---
 
-# 7. Kubernetes API and Declarative State
+## 7. Kubernetes API and Declarative State
 
 Kubernetes exposes a resource-oriented API.
 
@@ -477,7 +483,7 @@ kubectl apply -f deployment.yaml
 
 Kubernetes records the desired state.
 
-## Declarative vs imperative
+### Declarative vs imperative
 
 Imperative:
 
@@ -493,7 +499,7 @@ kubectl apply -f web.yaml
 
 For repeatable production infrastructure, declarative configuration is normally easier to review, version, reproduce, and integrate with GitOps.
 
-### Use imperative commands for
+#### Use imperative commands for
 
 - Learning.
 - Fast experiments.
@@ -510,7 +516,7 @@ kubectl create deployment web \
 
 ---
 
-# 8. Installing a Learning Cluster
+## 8. Installing a Learning Cluster
 
 Good local options include:
 
@@ -525,7 +531,7 @@ For serious cluster-administration practice:
 - Cloud VMs.
 - Managed Kubernetes services.
 
-## kind example
+### kind example
 
 ```bash
 kind create cluster --name learn-k8s
@@ -533,13 +539,19 @@ kubectl cluster-info --context kind-learn-k8s
 kubectl get nodes
 ```
 
+`kind create cluster` creates a local cluster whose nodes are containers;
+`--name` gives it a predictable identity. `kubectl cluster-info --context ...`
+explicitly queries that cluster, and `kubectl get nodes` should show at least
+one node in `Ready` state after system components initialize. If the context is
+wrong, fix the context rather than applying resources to an unintended cluster.
+
 Delete:
 
 ```bash
 kind delete cluster --name learn-k8s
 ```
 
-## Basic validation
+### Basic validation
 
 ```bash
 kubectl version
@@ -550,11 +562,11 @@ kubectl get pods -A
 
 ---
 
-# 9. kubectl and kubeconfig
+## 9. kubectl and kubeconfig
 
 `kubectl` is the primary Kubernetes command-line client.
 
-## 9.1 kubeconfig
+### 9.1 kubeconfig
 
 A kubeconfig typically contains:
 
@@ -585,7 +597,7 @@ Set default namespace for context:
 kubectl config set-context --current --namespace=payments
 ```
 
-## 9.2 Essential kubectl pattern
+### 9.2 Essential kubectl pattern
 
 ```bash
 kubectl <verb> <resource> <name> [flags]
@@ -600,13 +612,20 @@ kubectl logs web-abc123
 kubectl delete pod web-abc123
 ```
 
+The verb requests an operation, the resource identifies an API kind, the name
+selects one object, and flags change scope or output. For example, `-n shop`
+selects the `shop` namespace and `-o yaml` returns the server's object as YAML.
+Most successful read commands print objects; mutation commands print a status
+such as `created`, `configured`, or `deleted`. Always read errors and events:
+an accepted Deployment does not guarantee that its Pods later become healthy.
+
 Aliases often used by experienced operators:
 
 ```bash
 alias k=kubectl
 ```
 
-## 9.3 Discover the API
+### 9.3 Discover the API
 
 ```bash
 kubectl api-resources
@@ -620,7 +639,7 @@ kubectl explain pod.spec.containers
 
 ---
 
-# 10. Kubernetes YAML Anatomy
+## 10. Kubernetes YAML Anatomy
 
 Most Kubernetes resources contain:
 
@@ -633,7 +652,7 @@ spec:
   ...
 ```
 
-## 10.1 apiVersion
+### 10.1 apiVersion
 
 Identifies the API group/version.
 
@@ -651,7 +670,7 @@ apiVersion: apps/v1
 
 Deployments and StatefulSets use the `apps` API group.
 
-## 10.2 kind
+### 10.2 kind
 
 Resource type:
 
@@ -659,7 +678,7 @@ Resource type:
 kind: Deployment
 ```
 
-## 10.3 metadata
+### 10.3 metadata
 
 Identity and metadata:
 
@@ -671,11 +690,11 @@ metadata:
     app: payment-api
 ```
 
-## 10.4 spec
+### 10.4 spec
 
 Desired configuration.
 
-## 10.5 status
+### 10.5 status
 
 Observed runtime state, generally populated by Kubernetes/controllers.
 
@@ -687,7 +706,7 @@ kubectl get deployment payment-api -o yaml
 
 You will usually see both `spec` and `status`.
 
-### Desired vs observed
+#### Desired vs observed
 
 ```text
 spec   = what you want
@@ -696,7 +715,7 @@ status = what Kubernetes currently sees
 
 ---
 
-# 11. Namespaces
+## 11. Namespaces
 
 Namespaces provide logical grouping/isolation for namespaced resources.
 
@@ -754,7 +773,7 @@ kubectl api-resources --namespaced=true
 kubectl api-resources --namespaced=false
 ```
 
-## Scenario
+### Scenario
 
 A company has 15 application teams.
 
@@ -778,9 +797,9 @@ A namespace is not by itself a complete hard multi-tenancy security boundary.
 
 ---
 
-# 12. Labels, Selectors, and Annotations
+## 12. Labels, Selectors, and Annotations
 
-## 12.1 Labels
+### 12.1 Labels
 
 Labels are queryable key/value metadata used for grouping and selection.
 
@@ -805,7 +824,7 @@ Set-based selector:
 kubectl get pods -l 'environment in (staging,production)'
 ```
 
-## 12.2 Why labels matter
+### 12.2 Why labels matter
 
 A Service usually sends traffic to Pods selected by labels.
 
@@ -819,7 +838,7 @@ Service selector app=web
 
 Incorrect labels can produce a perfectly healthy Service with **zero endpoints**.
 
-## 12.3 Annotations
+### 12.3 Annotations
 
 Annotations hold non-identifying metadata.
 
@@ -845,7 +864,7 @@ Need descriptive/tool metadata? → annotation
 
 ---
 
-# 13. Pods
+## 13. Pods
 
 A Pod is the smallest deployable compute unit in Kubernetes.
 
@@ -889,7 +908,7 @@ Delete:
 kubectl delete pod nginx-demo
 ```
 
-## 13.1 Pods are disposable
+### 13.1 Pods are disposable
 
 Do not design around a Pod IP remaining forever.
 
@@ -901,13 +920,13 @@ Use:
 - StatefulSet for identity-sensitive stateful replicas.
 - Service for stable networking.
 
-## 13.2 Enter a container
+### 13.2 Enter a container
 
 ```bash
 kubectl exec -it nginx-demo -- /bin/sh
 ```
 
-## 13.3 Port forwarding
+### 13.3 Port forwarding
 
 ```bash
 kubectl port-forward pod/nginx-demo 8080:80
@@ -923,7 +942,7 @@ This is useful for local testing, not normal production exposure.
 
 ---
 
-# 14. Multi-Container Pods
+## 14. Multi-Container Pods
 
 Multiple containers belong in one Pod when they are tightly coupled and should share the Pod lifecycle/network/storage context.
 
@@ -956,19 +975,25 @@ spec:
 
     - name: reader
       image: busybox:1.36
-      command: ["sh", "-c", "tail -f /data/log.txt"]
+      command: ["sh", "-c", "touch /data/log.txt && tail -f /data/log.txt"]
       volumeMounts:
         - name: shared
           mountPath: /data
 ```
 
-### Do not create multi-container Pods merely because two services communicate.
+Both containers mount the same Pod-scoped `emptyDir`. The writer appends the
+current date every five seconds; the reader creates the file if necessary and
+then follows it, avoiding a startup race where `tail` sees no file. The volume
+and its data disappear when the Pod is removed. This example demonstrates
+sharing, not durable logging.
+
+### Do not create multi-container Pods merely because two services communicate
 
 If two applications can scale or deploy independently, they usually belong in separate workloads.
 
 ---
 
-# 15. Pod Lifecycle and Restart Behavior
+## 15. Pod Lifecycle and Restart Behavior
 
 A Pod can move through phases such as:
 
@@ -992,7 +1017,7 @@ kubectl describe pod mypod
 kubectl get pod mypod -o jsonpath='{.status.containerStatuses}'
 ```
 
-## Restart policy
+### Restart policy
 
 Pod-level `restartPolicy`:
 
@@ -1008,7 +1033,7 @@ Values:
 
 Workload controllers impose appropriate behaviors. For example, Deployments normally use Pods with `Always` restart semantics.
 
-## Why `CrashLoopBackOff` happens
+### Why `CrashLoopBackOff` happens
 
 Typical sequence:
 
@@ -1034,9 +1059,9 @@ kubectl describe pod pod-name
 
 ---
 
-# 16. Init Containers, Sidecars, and Lifecycle Hooks
+## 16. Init Containers, Sidecars, and Lifecycle Hooks
 
-## 16.1 Init containers
+### 16.1 Init containers
 
 Init containers run before normal application containers.
 
@@ -1062,7 +1087,7 @@ spec:
 
 Avoid excessive dependency waiting when resilient retry logic inside the application is more appropriate.
 
-## 16.2 Sidecar pattern
+### 16.2 Sidecar pattern
 
 Common conceptual uses:
 
@@ -1073,7 +1098,7 @@ Common conceptual uses:
 
 Sidecar support has evolved in Kubernetes; always verify behavior for the Kubernetes version you run.
 
-## 16.3 Lifecycle hooks
+### 16.3 Lifecycle hooks
 
 Example `preStop`:
 
@@ -1091,13 +1116,19 @@ Use cases:
 
 Do not use arbitrary sleeps as a substitute for correct application shutdown unless you understand why the delay is necessary.
 
+Kubernetes invokes the `preStop` hook before sending the normal termination
+signal to the container process, and the hook consumes part of the Pod's
+termination grace period. The sleep example delays signal delivery; it does not
+itself make the application graceful. Prefer an application that handles
+`SIGTERM`, stops accepting new work, and exits within a measured grace period.
+
 ---
 
-# 17. Health Probes
+## 17. Health Probes
 
 Three major probe types:
 
-## 17.1 Liveness probe
+### 17.1 Liveness probe
 
 Question:
 
@@ -1112,7 +1143,7 @@ livenessProbe:
   periodSeconds: 10
 ```
 
-## 17.2 Readiness probe
+### 17.2 Readiness probe
 
 Question:
 
@@ -1128,7 +1159,7 @@ readinessProbe:
 
 When readiness fails, the Pod can stay running but should be removed from ready Service endpoints.
 
-## 17.3 Startup probe
+### 17.3 Startup probe
 
 Useful for slow-starting applications.
 
@@ -1143,7 +1174,7 @@ startupProbe:
 
 It protects slow startup from premature liveness failure.
 
-## Scenario
+### Scenario
 
 Java service:
 
@@ -1168,7 +1199,7 @@ livenessProbe detects deadlock after startup
 
 ---
 
-# 18. ReplicaSets
+## 18. ReplicaSets
 
 ReplicaSet ensures a specified number of matching Pod replicas exist.
 
@@ -1200,7 +1231,7 @@ Pods
 
 ---
 
-# 19. Deployments
+## 19. Deployments
 
 Deployment is the standard controller for stateless applications.
 
@@ -1281,7 +1312,7 @@ Rollback:
 kubectl rollout undo deployment/api
 ```
 
-## Deployment updates
+### Deployment updates
 
 A typical rolling update:
 
@@ -1298,7 +1329,7 @@ Exact temporary counts depend on strategy settings.
 
 ---
 
-# 20. StatefulSets
+## 20. StatefulSets
 
 Use StatefulSet when replicas need stable identities and/or stable storage semantics.
 
@@ -1326,6 +1357,18 @@ api-7f8c4d6f6b-x9d2p
 Example:
 
 ```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+spec:
+  clusterIP: None
+  selector:
+    app: redis
+  ports:
+    - name: redis
+      port: 6379
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -1359,15 +1402,19 @@ spec:
             storage: 10Gi
 ```
 
-Each replica may receive its own PVC.
+The headless Service supplies direct DNS discovery for the stable Pod identities
+named by `serviceName`. Each replica receives its own PVC when a default
+StorageClass or another matching provisioning arrangement exists. These three
+Pods are still separate Redis processes; this manifest does not configure Redis
+replication, quorum, or failover.
 
-### StatefulSet does not magically make a database highly available.
+### StatefulSet does not magically make a database highly available
 
 Application/database-level clustering, replication, leader election, backups, and recovery still matter.
 
 ---
 
-# 21. DaemonSets
+## 21. DaemonSets
 
 DaemonSet runs a Pod on matching nodes.
 
@@ -1404,9 +1451,9 @@ If there are five eligible nodes, the DaemonSet generally aims for one Pod on ea
 
 ---
 
-# 22. Jobs and CronJobs
+## 22. Jobs and CronJobs
 
-## 22.1 Job
+### 22.1 Job
 
 Use Job for finite work that should complete.
 
@@ -1433,7 +1480,7 @@ spec:
   backoffLimit: 4
 ```
 
-## 22.2 CronJob
+### 22.2 CronJob
 
 Use CronJob for scheduled Jobs.
 
@@ -1444,6 +1491,7 @@ metadata:
   name: nightly-report
 spec:
   schedule: "0 2 * * *"
+  timeZone: "Etc/UTC"
   concurrencyPolicy: Forbid
   jobTemplate:
     spec:
@@ -1455,7 +1503,14 @@ spec:
               image: example/report:1.0
 ```
 
-### Scenario
+The five-field schedule means minute `0`, hour `2`, every day/month/weekday.
+`timeZone` makes the intended zone explicit, and `Forbid` skips a new start
+when the previous Job is still active. A CronJob creates Jobs; each Job then
+creates Pods. Scheduled execution can be delayed by control-plane downtime or
+capacity, so the work should be idempotent and able to detect duplicate or late
+runs where the business process requires it.
+
+#### Scenario
 
 If a financial batch must never overlap with the previous execution:
 
@@ -1474,11 +1529,11 @@ For critical schedules, also think about:
 
 ---
 
-# 23. Services
+## 23. Services
 
 Pods are ephemeral. Services provide stable access to a logical group of Pods.
 
-## 23.1 ClusterIP
+### 23.1 ClusterIP
 
 Default Service type. Reachable inside the cluster.
 
@@ -1505,7 +1560,7 @@ api Service :80
 ready Pod :8080
 ```
 
-## 23.2 NodePort
+### 23.2 NodePort
 
 Exposes a port through cluster nodes.
 
@@ -1516,7 +1571,7 @@ spec:
 
 Often used for learning, specific infrastructure patterns, or as a building block. It is not usually the most convenient direct internet-facing design for production web applications.
 
-## 23.3 LoadBalancer
+### 23.3 LoadBalancer
 
 Requests an external load balancer in supported environments.
 
@@ -1527,7 +1582,7 @@ spec:
 
 Cloud integrations typically provision or configure the infrastructure behind it.
 
-## 23.4 ExternalName
+### 23.4 ExternalName
 
 Provides DNS-style mapping to an external DNS name.
 
@@ -1541,7 +1596,7 @@ spec:
   externalName: database.example.internal
 ```
 
-## 23.5 Headless Service
+### 23.5 Headless Service
 
 ```yaml
 spec:
@@ -1550,7 +1605,7 @@ spec:
 
 Useful when clients need direct discovery of individual Pod endpoints, often with StatefulSets.
 
-## Service debugging
+### Service debugging
 
 ```bash
 kubectl get svc
@@ -1563,7 +1618,7 @@ The most common beginner Service bug is a selector that does not match Pod label
 
 ---
 
-# 24. Cluster DNS and Service Discovery
+## 24. Cluster DNS and Service Discovery
 
 Inside the cluster, Services receive DNS names.
 
@@ -1608,9 +1663,9 @@ kubectl get pods -n kube-system
 
 ---
 
-# 25. Ingress and Gateway API
+## 25. Ingress and Gateway API
 
-## 25.1 Ingress
+### 25.1 Ingress
 
 Ingress defines HTTP/HTTPS routing rules. An **Ingress controller** is required to implement them.
 
@@ -1649,7 +1704,7 @@ Pods
 
 Ingress resources alone do not route traffic unless a compatible controller is installed.
 
-## 25.2 Gateway API
+### 25.2 Gateway API
 
 Gateway API provides a newer, role-oriented networking model with resources such as:
 
@@ -1673,7 +1728,7 @@ Always verify which Gateway API features your Kubernetes version and chosen impl
 
 ---
 
-# 26. Kubernetes Networking Model
+## 26. Kubernetes Networking Model
 
 A useful simplified model:
 
@@ -1683,7 +1738,7 @@ A useful simplified model:
 4. CNI implementation provides Pod networking.
 5. NetworkPolicy can restrict permitted traffic when supported by the networking implementation.
 
-## Layers to distinguish
+### Layers to distinguish
 
 ```text
 Application routing      → HTTPRoute / Ingress
@@ -1698,7 +1753,7 @@ Many troubleshooting mistakes come from mixing these layers.
 
 ---
 
-# 27. CNI and Network Plugins
+## 27. CNI and Network Plugins
 
 CNI stands for Container Network Interface.
 
@@ -1716,7 +1771,7 @@ A CNI plugin may provide:
 
 Do not assume all CNIs support identical policy behavior or operational tooling.
 
-## Cluster symptom when CNI is broken
+### Cluster symptom when CNI is broken
 
 Possible observations:
 
@@ -1739,7 +1794,7 @@ On self-managed nodes, also inspect runtime/kubelet/network plugin logs.
 
 ---
 
-# 28. NetworkPolicy
+## 28. NetworkPolicy
 
 NetworkPolicy is Kubernetes' native abstraction for controlling allowed Pod network traffic.
 
@@ -1747,7 +1802,7 @@ A powerful rule:
 
 > A policy only has effect when your network implementation enforces NetworkPolicy.
 
-## Default deny ingress
+### Default deny ingress
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -1761,7 +1816,7 @@ spec:
     - Ingress
 ```
 
-## Allow frontend to API
+### Allow frontend to API
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -1785,7 +1840,13 @@ spec:
           port: 8080
 ```
 
-## Scenario
+The policy selects Pods labeled `app=api`. Its `from.podSelector` matches
+frontend Pods in the *same namespace* because no `namespaceSelector` is
+present, and it permits TCP destination port `8080`. NetworkPolicy rules are
+additive: another matching policy may allow additional traffic. Test policy
+from both allowed and denied clients before treating it as verified isolation.
+
+### Scenario
 
 Without policy:
 
@@ -1807,13 +1868,13 @@ Be careful with DNS egress when applying deny-by-default egress policies.
 
 ---
 
-# 29. Volumes
+## 29. Volumes
 
 Containers have ephemeral writable layers. Kubernetes volumes provide storage mounted into containers.
 
 Different volume types solve different problems.
 
-## emptyDir
+### emptyDir
 
 Lives for the Pod lifetime.
 
@@ -1831,17 +1892,17 @@ Use for:
 
 Not suitable for data that must survive Pod replacement.
 
-## ConfigMap/Secret projected as volumes
+### ConfigMap/Secret projected as volumes
 
 Configuration can be mounted as files.
 
-## Persistent storage
+### Persistent storage
 
 Use PVC-backed storage when data needs a lifecycle independent of an individual Pod.
 
 ---
 
-# 30. PersistentVolume and PersistentVolumeClaim
+## 30. PersistentVolume and PersistentVolumeClaim
 
 Mental model:
 
@@ -1855,7 +1916,7 @@ PV represents provisioned storage
 Storage backend
 ```
 
-## PVC example
+### PVC example
 
 ```yaml
 apiVersion: v1
@@ -1886,7 +1947,7 @@ spec:
           mountPath: /var/lib/app
 ```
 
-## Access modes
+### Access modes
 
 Common concepts:
 
@@ -1899,7 +1960,7 @@ Do not assume a requested access mode is supported by every storage backend.
 
 ---
 
-# 31. StorageClass and Dynamic Provisioning
+## 31. StorageClass and Dynamic Provisioning
 
 StorageClass describes a class of storage and provisioning behavior.
 
@@ -1939,7 +2000,7 @@ PV appears/binds
 Pod mounts volume
 ```
 
-## Reclaim policy
+### Reclaim policy
 
 Important for data safety.
 
@@ -1950,13 +2011,13 @@ Possible policies include:
 
 Understand the storage provider's behavior before deleting claims in production.
 
-## volumeBindingMode
+### volumeBindingMode
 
 `WaitForFirstConsumer` can delay volume provisioning/binding until Pod scheduling constraints are known, useful for topology-aware storage.
 
 ---
 
-# 32. CSI, Snapshots, and Advanced Storage
+## 32. CSI, Snapshots, and Advanced Storage
 
 CSI = Container Storage Interface.
 
@@ -1971,7 +2032,7 @@ Capabilities can include:
 - Cloning.
 - Topology awareness.
 
-## Production storage questions
+### Production storage questions
 
 Before choosing storage ask:
 
@@ -1988,7 +2049,7 @@ Kubernetes storage orchestration is not a substitute for database-consistent bac
 
 ---
 
-# 33. ConfigMaps
+## 33. ConfigMaps
 
 ConfigMaps store non-secret configuration.
 
@@ -2030,9 +2091,23 @@ volumes:
   - name: config
     configMap:
       name: api-config
+containers:
+  - name: api
+    image: example/api:1.0
+    volumeMounts:
+      - name: config
+        mountPath: /etc/api-config
+        readOnly: true
 ```
 
-## Important rollout behavior
+Each ConfigMap key becomes a file under `/etc/api-config` by default. The
+application must read those files; declaring the volume alone does not mount
+it. Mounted ConfigMap data can update after a delay, but applications do not
+necessarily reload changed files automatically, and mounts using `subPath` do
+not receive normal projected updates. Choose an explicit reload or rollout
+strategy.
+
+### Important rollout behavior
 
 If configuration is consumed as environment variables, changing the ConfigMap does not magically rewrite the environment of an already-running process. A rollout/restart pattern is commonly needed.
 
@@ -2040,7 +2115,7 @@ Many deployment systems use checksum annotations to trigger a new Pod template w
 
 ---
 
-# 34. Secrets
+## 34. Secrets
 
 Secrets represent sensitive values such as:
 
@@ -2073,7 +2148,7 @@ env:
         key: password
 ```
 
-## Critical security concept
+### Critical security concept
 
 Base64 encoding is **not encryption**.
 
@@ -2098,7 +2173,7 @@ Never commit plaintext production Secrets into a public repository.
 
 ---
 
-# 35. Resource Requests and Limits
+## 35. Resource Requests and Limits
 
 Resource configuration strongly affects scheduling and runtime behavior.
 
@@ -2114,7 +2189,7 @@ resources:
     memory: 512Mi
 ```
 
-## Requests
+### Requests
 
 Scheduler uses requests when deciding whether a Pod fits on a node.
 
@@ -2122,7 +2197,7 @@ Scheduler uses requests when deciding whether a Pod fits on a node.
 request.cpu = 250m = 0.25 CPU
 ```
 
-## Limits
+### Limits
 
 Limits constrain resource use differently depending on resource type and runtime implementation.
 
@@ -2130,7 +2205,7 @@ A memory limit can lead to an OOM-related container termination if exceeded.
 
 CPU limits generally throttle CPU rather than killing the process merely for sustained CPU use.
 
-## Scenario
+### Scenario
 
 Node:
 
@@ -2162,7 +2237,7 @@ Look at scheduling events.
 
 ---
 
-# 36. QoS Classes
+## 36. QoS Classes
 
 Kubernetes classifies Pods into QoS classes based on resource configuration.
 
@@ -2172,11 +2247,17 @@ Common classes:
 - Burstable.
 - BestEffort.
 
-## Why it matters
+| Class | How a Pod qualifies | Operational meaning |
+|---|---|---|
+| Guaranteed | Every container has CPU and memory requests equal to limits | Strongest QoS classification; still not immune to all failure |
+| Burstable | At least one request or limit exists, but Guaranteed rules are not met | Most normally sized applications |
+| BestEffort | No container has CPU or memory requests or limits | Weakest protection under node pressure |
+
+### Why it matters
 
 Under node resource pressure, QoS and actual usage influence eviction decisions.
 
-### BestEffort example
+#### BestEffort example
 
 No requests/limits:
 
@@ -2184,7 +2265,7 @@ No requests/limits:
 resources: {}
 ```
 
-### Better production practice
+#### Better production practice
 
 Define realistic resource requests for important workloads.
 
@@ -2192,9 +2273,9 @@ Do not blindly set CPU and memory values copied from another application. Measur
 
 ---
 
-# 37. LimitRange and ResourceQuota
+## 37. LimitRange and ResourceQuota
 
-## LimitRange
+### LimitRange
 
 Controls/defaults resource constraints within a namespace.
 
@@ -2217,7 +2298,7 @@ spec:
         memory: 512Mi
 ```
 
-## ResourceQuota
+### ResourceQuota
 
 Limits aggregate namespace consumption.
 
@@ -2236,7 +2317,7 @@ spec:
     pods: "50"
 ```
 
-## Scenario
+### Scenario
 
 Shared cluster with 20 teams:
 
@@ -2256,7 +2337,7 @@ blast radius is reduced
 
 ---
 
-# 38. Scheduling
+## 38. Scheduling
 
 Scheduling answers:
 
@@ -2283,9 +2364,9 @@ Avoid jumping immediately to “scheduler is broken.” Usually the scheduler is
 
 ---
 
-# 39. nodeSelector and Node Affinity
+## 39. nodeSelector and Node Affinity
 
-## 39.1 nodeSelector
+### 39.1 nodeSelector
 
 Simple exact label match.
 
@@ -2303,7 +2384,7 @@ spec:
     workload: gpu
 ```
 
-## 39.2 Node affinity
+### 39.2 Node affinity
 
 More expressive.
 
@@ -2343,13 +2424,13 @@ preferred = try to satisfy
 
 ---
 
-# 40. Pod Affinity and Anti-Affinity
+## 40. Pod Affinity and Anti-Affinity
 
 Pod affinity places workloads near matching Pods.
 
 Pod anti-affinity separates workloads.
 
-## Scenario: high availability
+### Scenario: high availability
 
 You run three API replicas and want to avoid placing all on the same node.
 
@@ -2371,7 +2452,7 @@ Be careful: strict anti-affinity can make Pods unschedulable in small clusters.
 
 ---
 
-# 41. Taints and Tolerations
+## 41. Taints and Tolerations
 
 Taints repel Pods. Tolerations allow Pods to tolerate matching taints.
 
@@ -2407,7 +2488,7 @@ Affinity: “this Pod wants/must be here”
 
 ---
 
-# 42. Topology Spread Constraints
+## 42. Topology Spread Constraints
 
 Topology spread constraints distribute Pods across failure domains.
 
@@ -2430,7 +2511,7 @@ topologySpreadConstraints:
         app: api
 ```
 
-## Scenario
+### Scenario
 
 Six replicas, three zones.
 
@@ -2446,7 +2527,7 @@ This reduces the chance that losing one zone removes every replica.
 
 ---
 
-# 43. Priority and Preemption
+## 43. Priority and Preemption
 
 PriorityClass assigns relative scheduling priority.
 
@@ -2475,7 +2556,7 @@ Use carefully. If every team marks every workload critical, priority becomes mea
 
 ---
 
-# 44. Authentication, Authorization, and Admission
+## 44. Authentication, Authorization, and Admission
 
 Kubernetes API request flow can be mentally modeled as:
 
@@ -2491,7 +2572,7 @@ Admission: Is this request acceptable / should it be mutated?
 Persist object
 ```
 
-## Authentication
+### Authentication
 
 Examples of mechanisms may include:
 
@@ -2500,11 +2581,11 @@ Examples of mechanisms may include:
 - ServiceAccount tokens.
 - Cloud-provider identity integration.
 
-## Authorization
+### Authorization
 
 Most commonly RBAC.
 
-## Admission
+### Admission
 
 Admission controllers can:
 
@@ -2516,7 +2597,7 @@ Examples include Pod Security Admission and webhook-based policy systems.
 
 ---
 
-# 45. RBAC
+## 45. RBAC
 
 RBAC = Role-Based Access Control.
 
@@ -2529,7 +2610,7 @@ RoleBinding         → grants Role/ClusterRole in a namespace
 ClusterRoleBinding  → grants ClusterRole cluster-wide
 ```
 
-## Read Pods in one namespace
+### Read Pods in one namespace
 
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -2576,7 +2657,7 @@ kubectl auth can-i get secrets \
   -n production
 ```
 
-## Principle of least privilege
+### Principle of least privilege
 
 Avoid broad permissions such as:
 
@@ -2589,7 +2670,7 @@ unless genuinely required and carefully controlled.
 
 ---
 
-# 46. ServiceAccounts
+## 46. ServiceAccounts
 
 ServiceAccounts provide identities for workloads interacting with Kubernetes or identity-integrated systems.
 
@@ -2612,19 +2693,24 @@ spec:
 
 Then grant only required permissions through RBAC.
 
-## Scenario
+### Scenario
 
 A report worker only needs to list ConfigMaps in its namespace.
 
 Do not run it with broad cluster-admin permissions.
 
-## Token handling
+### Token handling
 
 Modern Kubernetes uses projected ServiceAccount token mechanisms for Pods. Design integrations around short-lived/scoped identity where possible rather than manually copying long-lived credentials.
 
+If a Pod does not call the Kubernetes API and does not need an
+identity-integrated token, set `automountServiceAccountToken: false` at the Pod
+or ServiceAccount level. A ServiceAccount object grants no API permissions by
+itself; RoleBindings or ClusterRoleBindings grant those permissions.
+
 ---
 
-# 47. SecurityContext
+## 47. SecurityContext
 
 SecurityContext controls security-related Pod/container settings.
 
@@ -2647,6 +2733,12 @@ spec:
             - ALL
 ```
 
+`runAsNonRoot` asks the runtime to reject a container that would run as root;
+the image must declare or support a non-root user. A read-only root filesystem
+also requires the application to direct legitimate writes to explicitly
+writable volumes such as an `emptyDir`. Test the image under these constraints
+instead of adding exceptions after deployment.
+
 Other relevant controls can include:
 
 - runAsUser.
@@ -2657,7 +2749,7 @@ Other relevant controls can include:
 - Privileged mode.
 - seccomp.
 
-## Scenario
+### Scenario
 
 A web API has no need to alter kernel networking settings or write to the container root filesystem.
 
@@ -2672,7 +2764,7 @@ root filesystem?  read-only if app supports it
 
 ---
 
-# 48. Pod Security Standards and Admission
+## 48. Pod Security Standards and Admission
 
 Kubernetes Pod Security Standards define policy levels:
 
@@ -2701,7 +2793,7 @@ PodSecurityPolicy is an old removed mechanism; do not build new designs around i
 
 ---
 
-# 49. Image and Supply-Chain Security
+## 49. Image and Supply-Chain Security
 
 Production image practices:
 
@@ -2728,7 +2820,7 @@ Better: inject runtime credentials through an appropriate secret-management mech
 
 ---
 
-# 50. Horizontal, Vertical, and Cluster Autoscaling
+## 50. Horizontal, Vertical, and Cluster Autoscaling
 
 Three different scaling questions:
 
@@ -2738,7 +2830,7 @@ VPA: How much CPU/RAM per Pod?
 Node/cluster autoscaler: How many worker nodes?
 ```
 
-## 50.1 Horizontal Pod Autoscaler
+### 50.1 Horizontal Pod Autoscaler
 
 Example:
 
@@ -2765,7 +2857,7 @@ spec:
 
 For CPU-utilization-based scaling, correct CPU requests are important because utilization is related to requested capacity.
 
-## 50.2 VPA
+### 50.2 VPA
 
 Vertical Pod Autoscaling is typically provided via an additional component rather than being a built-in core controller in the same way HPA is exposed.
 
@@ -2773,7 +2865,7 @@ It can recommend or adjust resource requests depending on configured mode.
 
 Be careful combining automatic VPA resource updates and HPA on the same resource metric without understanding interaction.
 
-## 50.3 Node autoscaling
+### 50.3 Node autoscaling
 
 If HPA creates more Pods but there is no room:
 
@@ -2785,13 +2877,13 @@ cluster fits 10
 
 A node autoscaler can add capacity when supported/configured.
 
-## Event-driven autoscaling
+### Event-driven autoscaling
 
 Ecosystem tools such as KEDA can scale workloads based on event sources/metrics such as queues, depending on setup.
 
 ---
 
-# 51. Disruptions and PodDisruptionBudget
+## 51. Disruptions and PodDisruptionBudget
 
 Disruptions may be:
 
@@ -2820,22 +2912,22 @@ A PDB is not a guarantee against involuntary failures.
 
 ---
 
-# 52. Rolling Updates, Rollbacks, Blue-Green, Canary
+## 52. Rolling Updates, Rollbacks, Blue-Green, Canary
 
-## Rolling update
+### Rolling update
 
 Built into Deployment strategy.
 
 Best for normal version changes when old/new versions can coexist safely.
 
-## Rollback
+### Rollback
 
 ```bash
 kubectl rollout history deployment/api
 kubectl rollout undo deployment/api
 ```
 
-## Blue-green
+### Blue-green
 
 Run two environments:
 
@@ -2849,7 +2941,7 @@ Switch Service routing when green is verified.
 Simplified labels:
 
 ```yaml
-# Service
+## Service
 selector:
   app: api
   version: green
@@ -2857,13 +2949,13 @@ selector:
 
 Rollback = switch selector back to blue.
 
-## Canary
+### Canary
 
 Gradually send a portion of traffic to new version.
 
 Kubernetes Service alone does not provide precise weighted HTTP traffic control. Canary routing is often implemented using ingress/gateway/service-mesh/deployment tooling.
 
-## Before a rollout
+### Before a rollout
 
 Check:
 
@@ -2876,7 +2968,7 @@ Check:
 
 ---
 
-# 53. Observability
+## 53. Observability
 
 Three pillars:
 
@@ -2907,7 +2999,7 @@ external dependencies
 
 ---
 
-# 54. Logging
+## 54. Logging
 
 Basic logs:
 
@@ -2924,7 +3016,7 @@ Deployment logs by label:
 kubectl logs -l app=api --all-containers=true
 ```
 
-## Production logging architecture
+### Production logging architecture
 
 Do not rely on manually running `kubectl logs` for every incident.
 
@@ -2953,7 +3045,7 @@ Never log secrets or access tokens.
 
 ---
 
-# 55. Metrics
+## 55. Metrics
 
 Common metric categories:
 
@@ -2981,7 +3073,7 @@ Production commonly uses systems such as Prometheus-compatible collection and Gr
 
 ---
 
-# 56. Tracing
+## 56. Tracing
 
 Distributed tracing follows a request across services.
 
@@ -3005,7 +3097,7 @@ OpenTelemetry is a common instrumentation ecosystem.
 
 ---
 
-# 57. Events
+## 57. Events
 
 Events often explain scheduling, pulling, mounting, and restart problems.
 
@@ -3036,13 +3128,13 @@ Events can expire; important operational data should also reach your centralized
 
 ---
 
-# 58. Troubleshooting Methodology
+## 58. Troubleshooting Methodology
 
 Do not randomly restart everything.
 
 Use a layered process.
 
-## Step 1: Define symptom
+### Step 1: Define symptom
 
 Examples:
 
@@ -3056,7 +3148,7 @@ PVC Pending
 Rollout stuck
 ```
 
-## Step 2: Determine scope
+### Step 2: Determine scope
 
 ```text
 one container?
@@ -3067,7 +3159,7 @@ one namespace?
 whole cluster?
 ```
 
-## Step 3: Inspect desired and actual state
+### Step 3: Inspect desired and actual state
 
 ```bash
 kubectl get ...
@@ -3075,7 +3167,7 @@ kubectl describe ...
 kubectl get ... -o yaml
 ```
 
-## Step 4: Inspect logs and events
+### Step 4: Inspect logs and events
 
 ```bash
 kubectl logs ...
@@ -3083,7 +3175,7 @@ kubectl logs ... --previous
 kubectl get events ...
 ```
 
-## Step 5: Follow dependency chain
+### Step 5: Follow dependency chain
 
 For web request:
 
@@ -3107,15 +3199,15 @@ application
 database/dependency
 ```
 
-## Step 6: Change one thing at a time
+### Step 6: Change one thing at a time
 
 Record before/after state.
 
 ---
 
-# 59. Common Failure Scenarios
+## 59. Common Failure Scenarios
 
-## 59.1 ImagePullBackOff
+### 59.1 ImagePullBackOff
 
 Check:
 
@@ -3131,7 +3223,7 @@ Possible causes:
 - Image does not exist.
 - Network/DNS issue.
 
-## 59.2 CrashLoopBackOff
+### 59.2 CrashLoopBackOff
 
 Check:
 
@@ -3150,7 +3242,7 @@ Possible causes:
 - Permission error.
 - Dependency unavailable.
 
-## 59.3 Pod Pending
+### 59.3 Pod Pending
 
 ```bash
 kubectl describe pod pod-name
@@ -3164,7 +3256,7 @@ Possible causes:
 - PVC not bound.
 - Strict affinity.
 
-## 59.4 OOMKilled
+### 59.4 OOMKilled
 
 Inspect:
 
@@ -3182,7 +3274,7 @@ Then investigate:
 
 Do not blindly raise the memory limit without understanding usage.
 
-## 59.5 Service has no endpoints
+### 59.5 Service has no endpoints
 
 ```bash
 kubectl get svc api -o yaml
@@ -3196,7 +3288,7 @@ Most likely causes:
 - Pods not Ready.
 - Wrong namespace.
 
-## 59.6 PVC Pending
+### 59.6 PVC Pending
 
 ```bash
 kubectl describe pvc app-data
@@ -3212,9 +3304,9 @@ Possible causes:
 
 ---
 
-# 60. Debugging Pods, Services, DNS, and Nodes
+## 60. Debugging Pods, Services, DNS, and Nodes
 
-## Temporary debugging Pod
+### Temporary debugging Pod
 
 ```bash
 kubectl run toolbox \
@@ -3230,7 +3322,7 @@ nslookup api
 wget -qO- http://api
 ```
 
-## Debug using ephemeral containers
+### Debug using ephemeral containers
 
 Modern Kubernetes supports `kubectl debug` workflows for troubleshooting containers/Pods/nodes depending on permissions and runtime support.
 
@@ -3242,7 +3334,7 @@ kubectl debug -it pod-name --image=busybox:1.36 --target=app
 
 Check your cluster version and security policy.
 
-## Node checks
+### Node checks
 
 ```bash
 kubectl get nodes
@@ -3261,7 +3353,7 @@ Runtime tooling may include `crictl` when configured.
 
 ---
 
-# 61. Helm
+## 61. Helm
 
 Helm is a package manager/template system commonly used for Kubernetes applications.
 
@@ -3314,7 +3406,7 @@ helm upgrade --install myapp ./mychart \
   --set replicaCount=5
 ```
 
-## Good Helm practices
+### Good Helm practices
 
 - Keep templates understandable.
 - Use JSON schema validation where useful.
@@ -3328,7 +3420,7 @@ helm template myapp ./mychart
 
 ---
 
-# 62. Kustomize
+## 62. Kustomize
 
 Kustomize customizes Kubernetes YAML without requiring a templating language for many common cases.
 
@@ -3354,6 +3446,8 @@ overlays/
 Base `kustomization.yaml`:
 
 ```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
 resources:
   - deployment.yaml
   - service.yaml
@@ -3362,6 +3456,8 @@ resources:
 Production overlay:
 
 ```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
 resources:
   - ../../base
 
@@ -3381,7 +3477,7 @@ Use Kustomize when you want clean base resources with structured overlays.
 
 ---
 
-# 63. GitOps
+## 63. GitOps
 
 GitOps uses Git as the source of declared cluster/application state and has automation reconcile the cluster toward that state.
 
@@ -3401,7 +3497,7 @@ Cluster reconciled
 
 Popular ecosystem implementations include Argo CD and Flux.
 
-## Benefits
+### Benefits
 
 - Change history.
 - Peer review.
@@ -3409,11 +3505,11 @@ Popular ecosystem implementations include Argo CD and Flux.
 - Drift detection/reconciliation.
 - Easier environment promotion patterns.
 
-## Security principle
+### Security principle
 
 CI should not necessarily need unrestricted direct cluster credentials if a pull/reconciliation model can be used.
 
-## Repository model example
+### Repository model example
 
 ```text
 clusters/
@@ -3431,9 +3527,9 @@ Do not commit plaintext secrets merely because your cluster configuration lives 
 
 ---
 
-# 64. CRDs, Custom Resources, and Operators
+## 64. CRDs, Custom Resources, and Operators
 
-## CustomResourceDefinition
+### CustomResourceDefinition
 
 CRD extends the Kubernetes API with your own resource kind.
 
@@ -3451,7 +3547,7 @@ spec:
 
 The CRD defines the schema/API for this custom kind.
 
-## Operator
+### Operator
 
 An Operator is a controller that understands domain-specific operational knowledge.
 
@@ -3483,7 +3579,7 @@ Examples of domain logic:
 
 ---
 
-# 65. Admission Webhooks
+## 65. Admission Webhooks
 
 Admission webhooks extend request validation/mutation.
 
@@ -3492,7 +3588,7 @@ Two broad types:
 - Mutating admission webhook.
 - Validating admission webhook.
 
-## Example policy
+### Example policy
 
 Reject Deployments whose containers do not specify memory requests.
 
@@ -3508,7 +3604,7 @@ admission webhook called
 allow or deny
 ```
 
-## Operational warning
+### Operational warning
 
 A broken admission webhook can block resource creation cluster-wide or namespace-wide depending on configuration.
 
@@ -3523,22 +3619,22 @@ Design for:
 
 ---
 
-# 66. Kubernetes API Patterns
+## 66. Kubernetes API Patterns
 
 Understanding Kubernetes becomes easier when you recognize API machinery concepts.
 
-## 66.1 spec/status
+### 66.1 spec/status
 
 ```text
 spec   = desired state
 status = observed state
 ```
 
-## 66.2 generation / observedGeneration
+### 66.2 generation / observedGeneration
 
 Controllers can use generation-related fields to indicate whether observed status corresponds to the latest desired specification.
 
-## 66.3 ownerReferences
+### 66.3 ownerReferences
 
 Objects can declare ownership relationships.
 
@@ -3551,7 +3647,7 @@ ReplicaSet owns Pods
 
 This supports garbage-collection behavior.
 
-## 66.4 finalizers
+### 66.4 finalizers
 
 Finalizers can delay object deletion until cleanup occurs.
 
@@ -3571,13 +3667,13 @@ object disappears
 
 Stuck finalizers are a common reason resources remain in `Terminating` state.
 
-## 66.5 watch
+### 66.5 watch
 
 Controllers use watch/list-style mechanisms to efficiently react to resource changes.
 
 ---
 
-# 67. etcd and Cluster State
+## 67. etcd and Cluster State
 
 For self-managed clusters, etcd is one of the most critical components.
 
@@ -3589,7 +3685,7 @@ It should be:
 - Monitored.
 - Hosted on reliable low-latency storage.
 
-## Why etcd backup matters
+### Why etcd backup matters
 
 If worker nodes disappear but the control-plane state survives, workloads can often be recreated.
 
@@ -3606,7 +3702,7 @@ You may need both.
 
 ---
 
-# 68. Cluster Creation with kubeadm
+## 68. Cluster Creation with kubeadm
 
 `kubeadm` is a standard tool for bootstrapping Kubernetes clusters.
 
@@ -3630,7 +3726,7 @@ kubeadm join worker nodes
 
 Example commands vary by Kubernetes version, operating system, runtime, network design, and repository configuration, so use the official installation guide for exact current commands.
 
-## What kubeadm does not magically solve
+### What kubeadm does not magically solve
 
 You still need to design:
 
@@ -3648,7 +3744,7 @@ You still need to design:
 
 ---
 
-# 69. High Availability Control Plane
+## 69. High Availability Control Plane
 
 A production self-managed control plane commonly avoids a single control-plane node.
 
@@ -3676,7 +3772,7 @@ HA is more than “three servers.” Failure-domain independence matters.
 
 ---
 
-# 70. Upgrades and Version Skew
+## 70. Upgrades and Version Skew
 
 Kubernetes upgrades require planning.
 
@@ -3703,23 +3799,23 @@ Do not blindly upgrade multiple minor versions without checking the supported pa
 
 ---
 
-# 71. Backup and Disaster Recovery
+## 71. Backup and Disaster Recovery
 
 A Kubernetes DR strategy has multiple layers.
 
-## Layer 1: cluster configuration
+### Layer 1: cluster configuration
 
 Store declarative manifests/Helm/Kustomize/GitOps state in version control.
 
-## Layer 2: cluster state
+### Layer 2: cluster state
 
 Self-managed control plane: etcd backup/restore planning.
 
-## Layer 3: persistent application data
+### Layer 3: persistent application data
 
 Database and volume backups.
 
-## Layer 4: external dependencies
+### Layer 4: external dependencies
 
 Examples:
 
@@ -3730,7 +3826,7 @@ Examples:
 - Cloud load balancers.
 - Identity provider configuration.
 
-## DR exercise
+### DR exercise
 
 A backup is not proven until restoration is tested.
 
@@ -3748,7 +3844,7 @@ Example exercise:
 
 ---
 
-# 72. Managed Kubernetes: EKS, AKS, GKE
+## 72. Managed Kubernetes: EKS, AKS, GKE
 
 Managed Kubernetes reduces some operational responsibility, especially around the control plane, but does not eliminate Kubernetes architecture decisions.
 
@@ -3781,7 +3877,7 @@ Do not memorize cloud-specific commands before understanding the Kubernetes obje
 
 ---
 
-# 73. Multi-Tenancy
+## 73. Multi-Tenancy
 
 Multi-tenancy means multiple teams/workloads share infrastructure while requiring boundaries.
 
@@ -3796,11 +3892,11 @@ Possible isolation dimensions:
 - Dedicated node pools.
 - Separate clusters for stronger boundaries.
 
-## Soft multi-tenancy
+### Soft multi-tenancy
 
 Teams trust each other and primarily need organization/resource fairness.
 
-## Harder multi-tenancy
+### Harder multi-tenancy
 
 Untrusted tenants require stronger isolation assumptions. A separate cluster may be more appropriate depending on threat model.
 
@@ -3814,9 +3910,9 @@ Questions:
 
 ---
 
-# 74. Production Readiness Checklist
+## 74. Production Readiness Checklist
 
-## Workloads
+### Workloads
 
 - [ ] Use controllers, not naked Pods, for long-running applications.
 - [ ] Configure readiness probes.
@@ -3829,7 +3925,7 @@ Questions:
 - [ ] Avoid mutable image tags for controlled releases where reproducibility matters.
 - [ ] Run multiple replicas for critical stateless services.
 
-## Availability
+### Availability
 
 - [ ] Spread replicas across nodes/failure zones where required.
 - [ ] Configure PDB where voluntary-disruption protection is needed.
@@ -3837,7 +3933,7 @@ Questions:
 - [ ] Test node loss.
 - [ ] Test dependency failure.
 
-## Networking
+### Networking
 
 - [ ] Service selectors are correct.
 - [ ] TLS is configured for external traffic.
@@ -3845,7 +3941,7 @@ Questions:
 - [ ] DNS dependency behavior is understood.
 - [ ] Load balancer health checks are understood.
 
-## Security
+### Security
 
 - [ ] Least-privilege RBAC.
 - [ ] Dedicated ServiceAccounts where needed.
@@ -3857,7 +3953,7 @@ Questions:
 - [ ] Image scanning/signing policy considered.
 - [ ] Pod Security Admission configured.
 
-## Storage
+### Storage
 
 - [ ] StorageClass behavior understood.
 - [ ] PVC deletion impact understood.
@@ -3865,7 +3961,7 @@ Questions:
 - [ ] Restore tested.
 - [ ] Zone/failure-domain behavior understood.
 
-## Operations
+### Operations
 
 - [ ] Central logs.
 - [ ] Metrics/alerts.
@@ -3877,7 +3973,7 @@ Questions:
 
 ---
 
-# 75. Complete Production-Style Application Example
+## 75. Complete Production-Style Application Example
 
 This example combines:
 
@@ -3916,6 +4012,13 @@ type: Opaque
 stringData:
   DB_PASSWORD: replace-in-real-secret-system
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: api
+  namespace: shop
+automountServiceAccountToken: false
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -3937,7 +4040,7 @@ spec:
         app: api
         tier: backend
     spec:
-      serviceAccountName: default
+      serviceAccountName: api
       terminationGracePeriodSeconds: 30
       securityContext:
         seccompProfile:
@@ -4046,7 +4149,7 @@ spec:
           port: 8080
 ```
 
-## What this manifest still does not solve
+### What this manifest still does not solve
 
 Production architecture still needs decisions for:
 
@@ -4066,11 +4169,18 @@ Production architecture still needs decisions for:
 
 This is a crucial mindset: **no single YAML file makes a platform production-ready.**
 
+The sample ServiceAccount deliberately disables automatic API-token mounting
+because the application shown does not call the Kubernetes API. The Secret is
+a placeholder committed here only to demonstrate object wiring; create real
+production values through the chosen secret-management workflow. The image
+must support non-root execution and a read-only root filesystem, or you must
+add narrowly scoped writable volumes for its legitimate paths.
+
 ---
 
-# 76. Real-World Scenario Playbook
+## 76. Real-World Scenario Playbook
 
-## Scenario 1: Deploy a stateless REST API
+### Scenario 1: Deploy a stateless REST API
 
 Requirements:
 
@@ -4092,7 +4202,7 @@ resource requests
 HPA
 ```
 
-## Scenario 2: Run one log collector per node
+### Scenario 2: Run one log collector per node
 
 Use:
 
@@ -4102,7 +4212,7 @@ DaemonSet
 
 Not Deployment with replicas equal to node count, because node membership changes.
 
-## Scenario 3: Nightly cleanup at 2 AM
+### Scenario 3: Nightly cleanup at 2 AM
 
 Use:
 
@@ -4112,7 +4222,7 @@ CronJob
 
 Make cleanup idempotent and define concurrency behavior.
 
-## Scenario 4: Stateful database replicas
+### Scenario 4: Stateful database replicas
 
 Likely components:
 
@@ -4127,7 +4237,7 @@ backup system
 
 Do not assume StatefulSet alone provides database replication.
 
-## Scenario 5: GPU workloads only on GPU nodes
+### Scenario 5: GPU workloads only on GPU nodes
 
 Use combination:
 
@@ -4138,7 +4248,7 @@ taints/tolerations
 resource/device plugin mechanisms as required by platform
 ```
 
-## Scenario 6: Production Pods should not all run on one node
+### Scenario 6: Production Pods should not all run on one node
 
 Use:
 
@@ -4146,7 +4256,7 @@ Use:
 pod anti-affinity and/or topologySpreadConstraints
 ```
 
-## Scenario 7: Team can deploy but not read Secrets
+### Scenario 7: Team can deploy but not read Secrets
 
 Use:
 
@@ -4156,7 +4266,7 @@ namespace-scoped RBAC
 
 Grant only required verbs/resources.
 
-## Scenario 8: API should accept traffic only from frontend
+### Scenario 8: API should accept traffic only from frontend
 
 Use:
 
@@ -4166,20 +4276,20 @@ NetworkPolicy
 
 assuming CNI enforces it.
 
-## Scenario 9: Node maintenance
+### Scenario 9: Node maintenance
 
 Workflow:
 
 ```bash
 kubectl cordon worker-1
 kubectl drain worker-1 --ignore-daemonsets
-# maintenance
+## maintenance
 kubectl uncordon worker-1
 ```
 
 Understand PDBs and local data before draining.
 
-## Scenario 10: Deployment update is broken
+### Scenario 10: Deployment update is broken
 
 ```bash
 kubectl rollout status deployment/api
@@ -4191,7 +4301,7 @@ kubectl rollout undo deployment/api
 
 Then fix root cause before redeploying.
 
-## Scenario 11: Service returns connection refused
+### Scenario 11: Service returns connection refused
 
 Trace:
 
@@ -4211,7 +4321,7 @@ Is app listening on expected interface/port?
 Does NetworkPolicy permit traffic?
 ```
 
-## Scenario 12: Pod stuck Terminating
+### Scenario 12: Pod stuck Terminating
 
 Investigate:
 
@@ -4230,7 +4340,7 @@ Look for:
 
 Do not immediately force-delete important stateful Pods without understanding consequences.
 
-## Scenario 13: HPA does not scale
+### Scenario 13: HPA does not scale
 
 Check:
 
@@ -4247,7 +4357,7 @@ Then verify:
 - Target object supports scale.
 - HPA conditions explain limitations.
 
-## Scenario 14: Pods constantly OOMKilled
+### Scenario 14: Pods constantly OOMKilled
 
 Steps:
 
@@ -4259,7 +4369,7 @@ Steps:
 6. Check workload concurrency.
 7. Fix leak or resize deliberately.
 
-## Scenario 15: One zone fails
+### Scenario 15: One zone fails
 
 Production design should already have considered:
 
@@ -4274,9 +4384,9 @@ A PDB cannot recover Pods if every replica was placed in the failed zone.
 
 ---
 
-# 77. Common Kubernetes Anti-Patterns
+## 77. Common Kubernetes Anti-Patterns
 
-## 77.1 Naked Pods for applications
+### 77.1 Naked Pods for applications
 
 Bad:
 
@@ -4292,7 +4402,7 @@ Better:
 Deployment
 ```
 
-## 77.2 `latest` image tag everywhere
+### 77.2 `latest` image tag everywhere
 
 Bad:
 
@@ -4310,11 +4420,11 @@ image: example/api:1.4.7
 
 or digest pinning where desired.
 
-## 77.3 No resource requests
+### 77.3 No resource requests
 
 Scheduler lacks realistic capacity signals.
 
-## 77.4 Liveness probe checks every dependency
+### 77.4 Liveness probe checks every dependency
 
 If database goes down and liveness depends on DB:
 
@@ -4327,35 +4437,53 @@ DB failure
 
 Use readiness/dependency resilience carefully.
 
-## 77.5 Storing secrets in ConfigMap
+### 77.5 Storing secrets in ConfigMap
 
 Use appropriate Secret/external secret mechanism.
 
-## 77.6 One giant namespace
+### 77.6 One giant namespace
 
 Makes RBAC, quotas, ownership, and policy harder.
 
-## 77.7 Giving developers cluster-admin
+### 77.7 Giving developers cluster-admin
 
 Violates least privilege.
 
-## 77.8 Using Kubernetes as a database backup mechanism
+### 77.8 Using Kubernetes as a database backup mechanism
 
 PVC is not backup.
 
-## 77.9 Assuming restart fixes root cause
+### 77.9 Assuming restart fixes root cause
 
 A restart may hide an issue temporarily. Observe before changing state when incident severity permits.
 
-## 77.10 Overcomplicated Helm templates
+### 77.10 Overcomplicated Helm templates
 
 If nobody can understand the rendered YAML, maintenance cost rises rapidly.
 
 ---
 
-# 78. kubectl Master Cheat Sheet
+## 78. kubectl Master Cheat Sheet
 
-## Cluster
+Replace placeholders such as `<pod>` and `<node>` with real resource names.
+Unless `-n NAMESPACE` is supplied, namespaced commands use the namespace in the
+current context. `get`, `describe`, `logs`, `top`, `explain`, and `auth can-i`
+are primarily observational; `apply`, `create`, `set`, `scale`, `rollout
+restart`, `label`, and `delete` request changes. Before a mutating command,
+confirm both `kubectl config current-context` and the namespace.
+
+Common flags:
+
+| Flag | Meaning | Typical output effect |
+|---|---|---|
+| `-n NAME` | Use one namespace | Limits a namespaced request |
+| `-A` | Use all namespaces where supported | Adds namespace-wide results |
+| `-o wide` | Add useful columns | More placement or address detail |
+| `-o yaml` / `-o json` | Serialize the API object | Machine-readable desired and observed fields |
+| `-l KEY=VALUE` | Select by label | Filters matching objects |
+| `-w` | Watch changes | Keeps streaming updates until interrupted |
+
+### Cluster
 
 ```bash
 kubectl cluster-info
@@ -4365,7 +4493,7 @@ kubectl get nodes -o wide
 kubectl describe node <node>
 ```
 
-## Namespaces
+### Namespaces
 
 ```bash
 kubectl get ns
@@ -4374,7 +4502,7 @@ kubectl delete ns dev
 kubectl get all -n dev
 ```
 
-## Pods
+### Pods
 
 ```bash
 kubectl get pods
@@ -4390,7 +4518,7 @@ kubectl exec -it <pod> -- sh
 kubectl delete pod <pod>
 ```
 
-## Workloads
+### Workloads
 
 ```bash
 kubectl get deploy
@@ -4401,7 +4529,7 @@ kubectl get jobs
 kubectl get cronjobs
 ```
 
-## Deployments
+### Deployments
 
 ```bash
 kubectl create deployment web --image=nginx
@@ -4410,10 +4538,10 @@ kubectl set image deployment/web nginx=nginx:1.27
 kubectl rollout status deployment/web
 kubectl rollout history deployment/web
 kubectl rollout undo deployment/web
-kubectl restart deployment/web
+kubectl rollout restart deployment/web
 ```
 
-## Services
+### Services
 
 ```bash
 kubectl get svc
@@ -4422,7 +4550,7 @@ kubectl get endpointslices
 kubectl port-forward svc/api 8080:80
 ```
 
-## ConfigMaps and Secrets
+### ConfigMaps and Secrets
 
 ```bash
 kubectl get configmaps
@@ -4432,7 +4560,7 @@ kubectl get secrets
 
 Avoid printing production secret values casually.
 
-## Storage
+### Storage
 
 ```bash
 kubectl get pv
@@ -4441,7 +4569,7 @@ kubectl get storageclass
 kubectl describe pvc <name>
 ```
 
-## Networking
+### Networking
 
 ```bash
 kubectl get ingress -A
@@ -4450,7 +4578,7 @@ kubectl get svc -A
 kubectl get endpointslices -A
 ```
 
-## RBAC
+### RBAC
 
 ```bash
 kubectl get role -A
@@ -4461,20 +4589,20 @@ kubectl auth can-i get pods
 kubectl auth can-i --list -n dev
 ```
 
-## Resource usage
+### Resource usage
 
 ```bash
 kubectl top nodes
 kubectl top pods -A
 ```
 
-## Events
+### Events
 
 ```bash
 kubectl get events -A --sort-by=.metadata.creationTimestamp
 ```
 
-## Apply/delete
+### Apply/delete
 
 ```bash
 kubectl apply -f app.yaml
@@ -4482,7 +4610,7 @@ kubectl apply -f ./manifests/
 kubectl delete -f app.yaml
 ```
 
-## Output formats
+### Output formats
 
 ```bash
 kubectl get pod <pod> -o yaml
@@ -4491,7 +4619,7 @@ kubectl get pods -o name
 kubectl get pods -o wide
 ```
 
-## JSONPath examples
+### JSONPath examples
 
 ```bash
 kubectl get pods -o jsonpath='{.items[*].metadata.name}'
@@ -4503,14 +4631,14 @@ Node names:
 kubectl get nodes -o jsonpath='{.items[*].metadata.name}'
 ```
 
-## Field selectors
+### Field selectors
 
 ```bash
 kubectl get pods --field-selector=status.phase=Running
 kubectl get pods -A --field-selector=spec.nodeName=worker-1
 ```
 
-## Labels
+### Labels
 
 ```bash
 kubectl get pods -l app=api
@@ -4518,7 +4646,7 @@ kubectl label pod mypod environment=dev
 kubectl label pod mypod environment-
 ```
 
-## Explain
+### Explain
 
 ```bash
 kubectl explain pod
@@ -4528,9 +4656,16 @@ kubectl explain deployment.spec.strategy
 
 ---
 
-# 79. Reusable YAML Templates
+## 79. Reusable YAML Templates
 
-## 79.1 Namespace
+These snippets are starting points, not complete production manifests. Replace
+names, namespaces, images, ports, selectors, and resource values; then validate
+the result with `kubectl apply --dry-run=server -f FILE` against the target
+cluster when supported. Server-side dry-run performs API validation and
+admission without persisting the object, but it cannot prove that an image,
+dependency, or future rollout will work.
+
+### 79.1 Namespace
 
 ```yaml
 apiVersion: v1
@@ -4539,7 +4674,7 @@ metadata:
   name: app
 ```
 
-## 79.2 Deployment
+### 79.2 Deployment
 
 ```yaml
 apiVersion: apps/v1
@@ -4569,7 +4704,7 @@ spec:
               memory: 256Mi
 ```
 
-## 79.3 Service
+### 79.3 Service
 
 ```yaml
 apiVersion: v1
@@ -4584,7 +4719,7 @@ spec:
       targetPort: 8080
 ```
 
-## 79.4 ConfigMap
+### 79.4 ConfigMap
 
 ```yaml
 apiVersion: v1
@@ -4595,7 +4730,7 @@ data:
   LOG_LEVEL: info
 ```
 
-## 79.5 Secret
+### 79.5 Secret
 
 ```yaml
 apiVersion: v1
@@ -4607,7 +4742,7 @@ stringData:
   API_KEY: replace-me
 ```
 
-## 79.6 PVC
+### 79.6 PVC
 
 ```yaml
 apiVersion: v1
@@ -4622,7 +4757,7 @@ spec:
       storage: 10Gi
 ```
 
-## 79.7 HPA
+### 79.7 HPA
 
 ```yaml
 apiVersion: autoscaling/v2
@@ -4645,7 +4780,7 @@ spec:
           averageUtilization: 60
 ```
 
-## 79.8 PDB
+### 79.8 PDB
 
 ```yaml
 apiVersion: policy/v1
@@ -4659,7 +4794,7 @@ spec:
       app: app
 ```
 
-## 79.9 Default-deny NetworkPolicy
+### 79.9 Default-deny NetworkPolicy
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -4677,45 +4812,45 @@ Be sure to explicitly allow required DNS and application traffic before enforcin
 
 ---
 
-# 80. Interview Questions and Answers
+## 80. Interview Questions and Answers
 
-## Q1. What is Kubernetes?
+### Q1. What is Kubernetes?
 
 A platform that manages containerized workloads through APIs and controllers, providing scheduling, scaling, self-healing, service discovery, configuration, storage integration, and related orchestration capabilities.
 
-## Q2. What is a Pod?
+### Q2. What is a Pod?
 
 The smallest deployable Kubernetes compute unit, containing one or more tightly coupled containers sharing the Pod's network and other resources.
 
-## Q3. Pod vs Deployment?
+### Q3. Pod vs Deployment?
 
 ```text
 Pod        → running unit
 Deployment → controller managing stateless Pod replicas and rollouts
 ```
 
-## Q4. Deployment vs StatefulSet?
+### Q4. Deployment vs StatefulSet?
 
 ```text
 Deployment  → interchangeable stateless replicas
 StatefulSet → stable identity/order/storage-oriented replicas
 ```
 
-## Q5. Deployment vs DaemonSet?
+### Q5. Deployment vs DaemonSet?
 
 ```text
 Deployment → desired replica count
 DaemonSet  → Pod on each eligible node
 ```
 
-## Q6. Service vs Ingress?
+### Q6. Service vs Ingress?
 
 ```text
 Service → stable network access to Pods
 Ingress → HTTP/HTTPS routing to Services through an Ingress controller
 ```
 
-## Q7. ConfigMap vs Secret?
+### Q7. ConfigMap vs Secret?
 
 ```text
 ConfigMap → non-sensitive config
@@ -4724,81 +4859,81 @@ Secret    → sensitive data object
 
 Both still require correct cluster security and access control.
 
-## Q8. Requests vs limits?
+### Q8. Requests vs limits?
 
 ```text
 requests → scheduling/resource reservation signal
 limits   → runtime usage ceiling behavior
 ```
 
-## Q9. Readiness vs liveness?
+### Q9. Readiness vs liveness?
 
 ```text
 readiness → should receive traffic?
 liveness  → should container be restarted?
 ```
 
-## Q10. What is CrashLoopBackOff?
+### Q10. What is CrashLoopBackOff?
 
 A condition where a container repeatedly exits and Kubernetes/kubelet applies increasing restart backoff.
 
-## Q11. What is ImagePullBackOff?
+### Q11. What is ImagePullBackOff?
 
 Repeated failure to pull a container image, commonly due to name/tag/auth/network issues.
 
-## Q12. What does the scheduler do?
+### Q12. What does the scheduler do?
 
 Chooses a suitable node for unscheduled Pods based on resources, constraints, policies, topology, and other scheduling inputs.
 
-## Q13. What does kubelet do?
+### Q13. What does kubelet do?
 
 Runs on nodes and ensures Pods assigned to that node are executed according to their specifications.
 
-## Q14. What is etcd?
+### Q14. What is etcd?
 
 Distributed key-value storage used for Kubernetes cluster state.
 
-## Q15. What is CNI?
+### Q15. What is CNI?
 
 A standard/plugin model used by Kubernetes networking implementations to provide Pod networking.
 
-## Q16. What is CSI?
+### Q16. What is CSI?
 
 A storage interface standard used by drivers integrating storage systems with Kubernetes.
 
-## Q17. What is RBAC?
+### Q17. What is RBAC?
 
 Role-Based Access Control used to define and bind permissions to users, groups, or ServiceAccounts.
 
-## Q18. What is a ServiceAccount?
+### Q18. What is a ServiceAccount?
 
 A Kubernetes identity used by workloads and automation, commonly combined with RBAC.
 
-## Q19. What is a headless Service?
+### Q19. What is a headless Service?
 
 A Service with `clusterIP: None`, allowing DNS-based discovery of individual backend endpoints rather than normal virtual-IP load balancing.
 
-## Q20. Why is a Pod Pending?
+### Q20. Why is a Pod Pending?
 
 Typical reasons include insufficient resources, unsatisfied placement constraints, taints, or storage binding issues.
 
-## Q21. What is a finalizer?
+### Q21. What is a finalizer?
 
 Metadata that prevents final deletion until a controller performs required cleanup and removes the finalizer.
 
-## Q22. What is an Operator?
+### Q22. What is an Operator?
 
 A Kubernetes controller implementing domain-specific lifecycle automation around custom or standard resources.
 
-## Q23. What is HPA?
+### Q23. What is HPA?
 
 Horizontal Pod Autoscaler adjusts workload replica count based on metrics.
 
-## Q24. What is PDB?
+### Q24. What is PDB?
 
 PodDisruptionBudget limits voluntary disruptions so a minimum availability level can be maintained for selected Pods.
 
-## Q25. Why can a Service exist but traffic still fail?
+### Q25. Why can a Service exist but traffic still fail?
 
 Possible causes:
 
@@ -4810,31 +4945,31 @@ Possible causes:
 - DNS issue.
 - Ingress/Gateway misconfiguration.
 
-## Q26. Why should application Pods handle SIGTERM?
+### Q26. Why should application Pods handle SIGTERM?
 
 During termination Kubernetes allows a grace period. Graceful shutdown reduces dropped requests, incomplete jobs, and data corruption.
 
-## Q27. Why do requests matter to HPA?
+### Q27. Why do requests matter to HPA?
 
 CPU utilization targets are commonly computed relative to CPU requests, so missing or unrealistic requests can prevent sensible utilization-based scaling.
 
-## Q28. Can NetworkPolicy protect traffic if the CNI does not implement it?
+### Q28. Can NetworkPolicy protect traffic if the CNI does not implement it?
 
 No. The policy object requires enforcement support from the networking implementation.
 
-## Q29. Does a PVC equal a backup?
+### Q29. Does a PVC equal a backup?
 
 No. A PVC provides persistent storage attachment semantics, not an independent recovery copy.
 
-## Q30. Does StatefulSet automatically make PostgreSQL/MySQL highly available?
+### Q30. Does StatefulSet automatically make PostgreSQL/MySQL highly available?
 
 No. Database-specific replication, failover, consistency, backup, and recovery logic are still required.
 
 ---
 
-# 81. Hands-On Labs and Projects
+## 81. Hands-On Labs and Projects
 
-## Lab 1 — Your first Pod
+### Lab 1 — Your first Pod
 
 Goal:
 
@@ -4852,7 +4987,7 @@ Tasks:
 6. Port-forward it.
 7. Delete it.
 
-## Lab 2 — Deployment self-healing
+### Lab 2 — Deployment self-healing
 
 1. Create 3-replica Deployment.
 2. List Pods.
@@ -4865,7 +5000,7 @@ kubectl get pods -w
 
 Observe the reconciliation loop.
 
-## Lab 3 — Service discovery
+### Lab 3 — Service discovery
 
 1. Deploy API with 3 replicas.
 2. Create ClusterIP Service.
@@ -4873,7 +5008,7 @@ Observe the reconciliation loop.
 4. Resolve Service DNS.
 5. Call Service repeatedly.
 
-## Lab 4 — Broken Service selector
+### Lab 4 — Broken Service selector
 
 Intentionally set:
 
@@ -4891,7 +5026,7 @@ kubectl get endpointslices
 
 Then fix it.
 
-## Lab 5 — ConfigMap rollout behavior
+### Lab 5 — ConfigMap rollout behavior
 
 1. Create ConfigMap.
 2. Consume through env variable.
@@ -4901,7 +5036,7 @@ Then fix it.
 
 Understand why configuration delivery strategy matters.
 
-## Lab 6 — Secret
+### Lab 6 — Secret
 
 1. Create Secret.
 2. Mount it as a file.
@@ -4909,7 +5044,7 @@ Understand why configuration delivery strategy matters.
 4. Inspect RBAC exposure.
 5. Delete test secret afterward.
 
-## Lab 7 — Probes
+### Lab 7 — Probes
 
 Build a small application with endpoints:
 
@@ -4921,7 +5056,7 @@ Build a small application with endpoints:
 
 Toggle readiness and watch Service endpoint behavior.
 
-## Lab 8 — Resource scheduling
+### Lab 8 — Resource scheduling
 
 Create a Pod requesting more CPU than your node can provide.
 
@@ -4933,7 +5068,7 @@ kubectl describe pod
 
 Learn `FailedScheduling` events.
 
-## Lab 9 — PVC
+### Lab 9 — PVC
 
 1. Create PVC.
 2. Mount into Pod.
@@ -4941,7 +5076,7 @@ Learn `FailedScheduling` events.
 4. Recreate Pod with same PVC.
 5. Verify data persists.
 
-## Lab 10 — NetworkPolicy
+### Lab 10 — NetworkPolicy
 
 1. Create frontend and API Pods.
 2. Verify connectivity.
@@ -4950,7 +5085,7 @@ Learn `FailedScheduling` events.
 5. Add explicit allow.
 6. Verify recovery.
 
-## Lab 11 — Rolling update
+### Lab 11 — Rolling update
 
 1. Deploy app v1.
 2. Change image to v2.
@@ -4959,7 +5094,7 @@ Learn `FailedScheduling` events.
 5. Diagnose.
 6. Roll back.
 
-## Lab 12 — HPA
+### Lab 12 — HPA
 
 1. Install/use cluster metrics support.
 2. Deploy CPU-consuming sample.
@@ -4968,7 +5103,7 @@ Learn `FailedScheduling` events.
 5. Generate load.
 6. Watch replica count.
 
-## Project 1 — Three-tier application
+### Project 1 — Three-tier application
 
 Build:
 
@@ -4993,7 +5128,7 @@ Requirements:
 - PVC.
 - NetworkPolicy.
 
-## Project 2 — Production platform simulation
+### Project 2 — Production platform simulation
 
 Add:
 
@@ -5008,7 +5143,7 @@ Add:
 - Central logs.
 - Alert rules.
 
-## Project 3 — Build an Operator
+### Project 3 — Build an Operator
 
 Create a simple CRD:
 
@@ -5028,9 +5163,9 @@ Then update child resources when the custom resource changes.
 
 ---
 
-# 82. Learning Roadmap
+## 82. Learning Roadmap
 
-## Phase 0 — Prerequisites
+### Phase 0 — Prerequisites
 
 Learn:
 
@@ -5044,7 +5179,7 @@ Learn:
 
 Target time depends on your existing background.
 
-## Phase 1 — Beginner Kubernetes
+### Phase 1 — Beginner Kubernetes
 
 Master:
 
@@ -5062,7 +5197,7 @@ labels/selectors
 
 You should be able to deploy and expose a stateless app.
 
-## Phase 2 — Intermediate Kubernetes
+### Phase 2 — Intermediate Kubernetes
 
 Master:
 
@@ -5081,7 +5216,7 @@ ServiceAccounts
 
 You should be able to run a multi-tier application safely.
 
-## Phase 3 — Advanced workload engineering
+### Phase 3 — Advanced workload engineering
 
 Master:
 
@@ -5099,7 +5234,7 @@ Pod Security Standards
 
 You should be able to design for availability and controlled failure.
 
-## Phase 4 — Production operations
+### Phase 4 — Production operations
 
 Master:
 
@@ -5114,7 +5249,7 @@ cluster autoscaling
 policy enforcement
 ```
 
-## Phase 5 — Platform engineering
+### Phase 5 — Platform engineering
 
 Master:
 
@@ -5129,7 +5264,7 @@ SLOs
 internal developer platforms
 ```
 
-## Phase 6 — Cluster administration
+### Phase 6 — Cluster administration
 
 For self-managed Kubernetes learn:
 
@@ -5147,7 +5282,7 @@ DR
 
 ---
 
-# 83. Glossary
+## 83. Glossary
 
 **Admission Controller** — Component that can validate or mutate API requests after authentication/authorization and before persistence.
 
@@ -5241,27 +5376,27 @@ DR
 
 ---
 
-# 84. Official References
+## 84. Official References
 
 Use official Kubernetes documentation as the final source of truth for version-specific behavior.
 
-- Kubernetes documentation: https://kubernetes.io/docs/
-- Concepts: https://kubernetes.io/docs/concepts/
-- Components: https://kubernetes.io/docs/concepts/overview/components/
-- Workloads: https://kubernetes.io/docs/concepts/workloads/
-- Services and networking: https://kubernetes.io/docs/concepts/services-networking/
-- Storage: https://kubernetes.io/docs/concepts/storage/
-- Security: https://kubernetes.io/docs/concepts/security/
-- kubectl reference: https://kubernetes.io/docs/reference/kubectl/
-- kubectl cheat sheet: https://kubernetes.io/docs/reference/kubectl/quick-reference/
-- Kubernetes API reference: https://kubernetes.io/docs/reference/kubernetes-api/
-- Tutorials: https://kubernetes.io/docs/tutorials/
+- [Kubernetes documentation](https://kubernetes.io/docs/)
+- [Concepts](https://kubernetes.io/docs/concepts/)
+- [Components](https://kubernetes.io/docs/concepts/overview/components/)
+- [Workloads](https://kubernetes.io/docs/concepts/workloads/)
+- [Services and networking](https://kubernetes.io/docs/concepts/services-networking/)
+- [Storage](https://kubernetes.io/docs/concepts/storage/)
+- [Security](https://kubernetes.io/docs/concepts/security/)
+- [kubectl reference](https://kubernetes.io/docs/reference/kubectl/)
+- [kubectl cheat sheet](https://kubernetes.io/docs/reference/kubectl/quick-reference/)
+- [Kubernetes API reference](https://kubernetes.io/docs/reference/kubernetes-api/)
+- [Tutorials](https://kubernetes.io/docs/tutorials/)
 
 ---
 
-# Appendix A — Deep Mental Models
+## Appendix A — Deep Mental Models
 
-## A.1 Kubernetes is an API-driven database plus reconcilers
+### A.1 Kubernetes is an API-driven database plus reconcilers
 
 You can simplify Kubernetes into three ideas:
 
@@ -5277,14 +5412,14 @@ Example:
 
 ```bash
 kubectl exec -it pod -- sh
-# manually edit /app/config.ini
+## manually edit /app/config.ini
 ```
 
 If the Pod is replaced, the manual change disappears unless represented through persistent/configuration mechanisms.
 
 Infrastructure should normally be reproducible from declared state.
 
-## A.2 Controllers manage populations, not pets
+### A.2 Controllers manage populations, not pets
 
 Traditional server mindset:
 
@@ -5302,7 +5437,7 @@ controller maintains desired population
 
 This is why immutable container images and automated rollouts fit Kubernetes well.
 
-## A.3 Stable abstraction over unstable implementation
+### A.3 Stable abstraction over unstable implementation
 
 Pods change:
 
@@ -5319,7 +5454,7 @@ api.shop.svc.cluster.local
 
 The Service is the stable abstraction.
 
-## A.4 Scheduling uses declared needs
+### A.4 Scheduling uses declared needs
 
 Scheduler cannot reliably infer your application's true future memory requirement.
 
@@ -5332,7 +5467,7 @@ requests:
 
 If you lie to the scheduler with unrealistic requests, cluster packing and reliability suffer.
 
-## A.5 Readiness protects users; liveness attempts recovery
+### A.5 Readiness protects users; liveness attempts recovery
 
 A database outage may mean your API cannot serve requests.
 
@@ -5352,9 +5487,9 @@ Those are different questions.
 
 ---
 
-# Appendix B — Troubleshooting Decision Trees
+## Appendix B — Troubleshooting Decision Trees
 
-## B.1 Pod is not Running
+### B.1 Pod is not Running
 
 ```text
 kubectl get pod
@@ -5376,7 +5511,7 @@ kubectl get pod
            └─ inspect readiness probe and app logs
 ```
 
-## B.2 Service unreachable
+### B.2 Service unreachable
 
 ```text
 Can DNS resolve Service?
@@ -5396,7 +5531,7 @@ Does NetworkPolicy allow traffic?
 Check application-level failure
 ```
 
-## B.3 External HTTP unreachable
+### B.3 External HTTP unreachable
 
 ```text
 DNS public record
@@ -5414,7 +5549,7 @@ endpoints ready
 application healthy
 ```
 
-## B.4 PVC Pending
+### B.4 PVC Pending
 
 ```text
 PVC
@@ -5432,7 +5567,7 @@ Events show root cause
 
 ---
 
-# Appendix C — Example Microservices Architecture
+## Appendix C — Example Microservices Architecture
 
 ```text
                          Internet
@@ -5474,11 +5609,11 @@ This is how individual Kubernetes resources combine into a system.
 
 ---
 
-# Appendix D — Design Questions Before Deploying Any Application
+## Appendix D — Design Questions Before Deploying Any Application
 
 Ask the application owner:
 
-## Runtime
+### Runtime
 
 - What command starts the application?
 - Which port does it listen on?
@@ -5486,13 +5621,13 @@ Ask the application owner:
 - How long does startup take?
 - How does it handle SIGTERM?
 
-## Health
+### Health
 
 - What endpoint indicates process health?
 - What endpoint indicates traffic readiness?
 - Which dependencies are required to serve traffic?
 
-## Resources
+### Resources
 
 - Typical CPU usage?
 - Peak CPU?
@@ -5500,27 +5635,27 @@ Ask the application owner:
 - Is memory usage bounded?
 - Does workload require GPU or special hardware?
 
-## Scaling
+### Scaling
 
 - Is the application stateless?
 - Can requests go to any replica?
 - What metric should trigger scaling?
 - Are background jobs safe to duplicate?
 
-## Data
+### Data
 
 - What must persist across Pod replacement?
 - Is storage shared or per replica?
 - What are backup/restore requirements?
 
-## Network
+### Network
 
 - Who calls this application?
 - What does it call?
 - Is public ingress required?
 - Which ports/protocols are necessary?
 
-## Security
+### Security
 
 - Can it run as non-root?
 - Does it need filesystem writes?
@@ -5528,7 +5663,7 @@ Ask the application owner:
 - What Secrets are required?
 - Does it need Kubernetes API access?
 
-## Availability
+### Availability
 
 - Required replicas?
 - Zone failure tolerance?
@@ -5539,7 +5674,7 @@ Answering these questions makes Kubernetes manifest design much more rational.
 
 ---
 
-# Appendix E — Kubernetes + CI/CD Example Flow
+## Appendix E — Kubernetes + CI/CD Example Flow
 
 ```text
 Developer pushes code
@@ -5581,9 +5716,9 @@ This creates a clearer deployment audit trail.
 
 ---
 
-# Appendix F — Day-1 / Day-2 Operations
+## Appendix F — Day-1 / Day-2 Operations
 
-## Day 1
+### Day 1
 
 Initial deployment concerns:
 
@@ -5595,7 +5730,7 @@ Initial deployment concerns:
 - CI/CD.
 - Monitoring.
 
-## Day 2
+### Day 2
 
 Ongoing operations:
 
@@ -5614,7 +5749,7 @@ Kubernetes expertise is largely Day-2 expertise: understanding what happens afte
 
 ---
 
-# Appendix G — Ten Rules Worth Remembering
+## Appendix G — Ten Rules Worth Remembering
 
 1. **Controllers, not naked Pods, for long-running production workloads.**
 2. **Services give stable discovery over disposable Pods.**
@@ -5629,7 +5764,7 @@ Kubernetes expertise is largely Day-2 expertise: understanding what happens afte
 
 ---
 
-# Final Learning Challenge
+## Final Learning Challenge
 
 Build a small e-commerce platform containing:
 

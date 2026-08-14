@@ -84,7 +84,7 @@
 71. [Glossary](#71-glossary)
 72. [Official References](#72-official-references)
 
-### Advanced Appendices
+## Advanced Appendices
 
 - [Appendix A — AppConfig, Application Registry, and System Checks](#appendix-a-appconfig-application-registry-and-system-checks)
 - [Appendix B — Multiple Databases and Database Routers](#appendix-b-multiple-databases-and-database-routers)
@@ -162,6 +162,8 @@ Before learning Django deeply, understand:
 
 ## 3.1 Python
 
+Django applications are Python programs, so you should be able to read ordinary Python before learning framework-specific syntax. You do not need advanced Python expertise, but you should understand how names, collections, functions, classes, imports, and exceptions work.
+
 ```python
 name = "Alex"
 numbers = [1, 2, 3]
@@ -175,6 +177,8 @@ class Employee:
     def __init__(self, name):
         self.name = name
 ```
+
+In this example, `name` and `numbers` are variables, `user` is a dictionary of key-value pairs, `greet()` is a function that returns a string, and `Employee` is a class used to create objects. Django uses all of these ideas: settings are Python variables, request data often behaves like a mapping, views are functions or classes, and models are classes.
 
 Important topics:
 
@@ -192,7 +196,11 @@ Important topics:
 - type hints
 - async/await
 
+Decorators, type hints, and asynchronous code become useful later, but they are not prerequisites for building your first Django CRUD application.
+
 ## 3.2 HTML
+
+HTML describes the structure of pages and forms sent to a browser. A Django template is mostly HTML with small template tags and variables added by Django.
 
 ```html
 <form method="post">
@@ -201,9 +209,11 @@ Important topics:
 </form>
 ```
 
+The form sends a POST request. The input's `name="username"` becomes the key Django reads from `request.POST`. In a real Django template, a state-changing POST form also needs `{% csrf_token %}` so Django can verify that the request came from an allowed page.
+
 ## 3.3 HTTP
 
-Understand request, response, URL, headers, cookies, status codes, and the HTTP methods GET, POST, PUT, PATCH, and DELETE.
+HTTP is the request-response protocol used by browsers and web APIs. A client sends a request containing a method, URL, headers, and sometimes a body; the server returns a response containing a status code, headers, and a body.
 
 ```text
 GET /products/42/
@@ -212,7 +222,17 @@ PATCH /api/users/15/
 DELETE /api/orders/91/
 ```
 
+- `GET` reads a resource and should not create or modify important state.
+- `POST` usually creates a resource or starts an operation.
+- `PUT` conventionally replaces a resource representation.
+- `PATCH` applies a partial update.
+- `DELETE` removes a resource.
+
+HTML forms directly support GET and POST. API clients can use the other methods. Django places query-string data in `request.GET`, HTML form data in `request.POST`, uploaded files in `request.FILES`, and the unparsed request body in `request.body`.
+
 ## 3.4 SQL and relational databases
+
+A relational database stores data in tables. Each row is one record, a primary key identifies a row, and a foreign key connects a row to another table. SQL is the language used to read and change those rows.
 
 ```sql
 SELECT * FROM product;
@@ -221,7 +241,9 @@ UPDATE product SET price = 899 WHERE id = 1;
 DELETE FROM product WHERE id = 1;
 ```
 
-Know table, row, column, primary key, foreign key, unique constraint, index, join, and transaction. Django's ORM generates SQL, but SQL knowledge makes you much stronger at debugging and performance work.
+The four statements above read, insert, update, and delete data. The `WHERE` clause limits which rows are changed; omitting it from an `UPDATE` or `DELETE` can affect every row.
+
+Know table, row, column, primary key, foreign key, unique constraint, index, join, and transaction. Django's ORM generates SQL for normal model operations, but SQL knowledge makes you much stronger at debugging, data modeling, and performance work.
 
 ---
 
@@ -281,6 +303,15 @@ Understanding this flow makes debugging systematic rather than random.
 
 # 5. Environment Setup
 
+Run the following commands from a terminal. Use a currently supported Python version for your chosen Django release, and confirm which interpreter the terminal is using:
+
+```bash
+python --version
+python -m pip --version
+```
+
+On systems where `python` points to Python 2 or does not exist, use `python3` consistently. The important rule is that the interpreter used to create the virtual environment is also the one used to install packages and run Django.
+
 ## 5.1 Create a virtual environment
 
 Windows:
@@ -317,14 +348,22 @@ Check:
 python -m django --version
 ```
 
+Expected output for the pinned example:
+
+```text
+6.1
+```
+
+For a new production project, choose either the current feature release or a supported LTS release deliberately. Do not copy a version pin without checking that your Python version, database driver, and other dependencies support it.
+
 ## 5.3 Dependency file
 
 ```bash
-pip freeze > requirements.txt
-pip install -r requirements.txt
+python -m pip freeze > requirements.txt
+python -m pip install -r requirements.txt
 ```
 
-Larger teams may use `uv`, Poetry, pip-tools, or other lockfile workflows.
+`freeze` records every installed package in the current environment, including transitive dependencies. This is simple and useful for learning, but it can also capture unrelated packages if the environment was not clean. Larger teams may use `uv`, Poetry, pip-tools, or another lockfile workflow that separates direct dependencies from the fully resolved environment.
 
 ---
 
@@ -336,6 +375,12 @@ cd django-master-project
 django-admin startproject config .
 python manage.py runserver
 ```
+
+What each command does:
+
+- `mkdir` creates a project directory and `cd` enters it.
+- `django-admin startproject config .` creates a Django project named `config` in the current directory. The final dot prevents an unnecessary extra directory level.
+- `python manage.py runserver` starts Django's development server.
 
 Structure:
 
@@ -355,6 +400,8 @@ Development URL:
 ```text
 http://127.0.0.1:8000/
 ```
+
+Opening that URL should display Django's installation success page. The terminal will show requests such as `GET / HTTP/1.1` as the browser loads the page. Stop the server with `Ctrl+C`.
 
 `runserver` is for development, not production.
 
@@ -551,6 +598,8 @@ Configuration belongs in settings/environment. Business logic does not.
 
 # 10. URL Routing
 
+URL routing connects an incoming path to the view that should handle it. Django checks `urlpatterns` from top to bottom and uses the first matching pattern. `path()` receives a route string, a view callable, and usually a stable `name` used for reverse URL generation.
+
 Project:
 
 ```python
@@ -587,6 +636,10 @@ path("<uuid:id>/", view)
 path("<path:file_path>/", view)
 ```
 
+A converter parses one path segment and passes the converted value to the view as a keyword argument. For example, a request to `/products/42/` matched by `path("<int:pk>/", product_detail)` calls `product_detail(request, pk=42)`. The `int` converter rejects non-digits before the view runs; `slug` accepts letters, numbers, hyphens, and underscores; `path` can also include `/` characters.
+
+Converters validate URL shape, not authorization or object existence. A valid integer can still refer to a missing or unauthorized object.
+
 ## 10.2 Named URLs
 
 Prefer:
@@ -604,6 +657,12 @@ from django.urls import reverse
 url = reverse("products:detail", args=[product.pk])
 ```
 
+`reverse()` returns a URL string; it does not redirect the browser. Use `redirect("products:detail", pk=product.pk)` when a view should return an HTTP redirect response. Prefer keyword arguments when they make the route clearer:
+
+```python
+url = reverse("products:detail", kwargs={"pk": product.pk})
+```
+
 Namespaces prevent collisions such as `products:list` and `orders:list`.
 
 ---
@@ -619,6 +678,8 @@ def home(request):
     return HttpResponse("Hello Django")
 ```
 
+For a request to the URL connected to `home`, the response body is `Hello Django`, the default status is `200 OK`, and the default content type is `text/html; charset=utf-8`.
+
 Useful request data:
 
 ```python
@@ -633,6 +694,8 @@ request.session
 request.path
 request.body
 ```
+
+`request.GET` and `request.POST` are `QueryDict` objects that can contain more than one value for a key. Use `.get("name")` for one value and `.getlist("tag")` when repeated fields matter. `request.POST` contains decoded HTML form data; it does not automatically parse a JSON request body.
 
 Query:
 
@@ -650,6 +713,12 @@ JSON:
 ```python
 from django.http import JsonResponse
 return JsonResponse({"status": "success", "id": 10})
+```
+
+`JsonResponse` serializes a dictionary to JSON, sets an application/json content type, and returns an HTTP response. A client receives a body similar to:
+
+```json
+{"status": "success", "id": 10}
 ```
 
 Important status codes:
@@ -672,12 +741,21 @@ Important status codes:
 
 # 12. Function-Based Views
 
+A function-based view (FBV) is a Python function whose first argument is the request. URL parameters follow it. The function must return an HTTP response on every reachable path.
+
 ```python
 from django.shortcuts import render
 
 def product_list(request):
-    return render(request, "products/list.html")
+    products = Product.objects.filter(is_active=True)
+    return render(
+        request,
+        "products/list.html",
+        {"products": products},
+    )
 ```
+
+Here, `Product.objects.filter()` builds a database query for active products. `render()` loads the template, supplies the `products` context variable, renders HTML, and returns an `HttpResponse`.
 
 Detail:
 
@@ -688,6 +766,8 @@ def product_detail(request, pk):
     product = get_object_or_404(Product, pk=pk)
     return render(request, "products/detail.html", {"product": product})
 ```
+
+`pk` comes from a URL pattern such as `path("<int:pk>/", product_detail)`. `get_object_or_404()` returns the matching model instance or raises an HTTP 404 response when no row exists. It does not perform object-level authorization, so protected data should be fetched from an already-authorized queryset.
 
 Create:
 
@@ -706,11 +786,15 @@ def product_create(request):
     return render(request, "products/form.html", {"form": form})
 ```
 
+On GET, the view creates an unbound empty form. On POST, it binds `request.POST`, validates the submitted fields with `is_valid()`, saves a `Product`, and redirects. Redirecting after a successful POST implements the POST → Redirect → GET pattern, which avoids accidental resubmission when the user refreshes the result page.
+
 FBVs are explicit and excellent for custom workflows.
 
 ---
 
 # 13. Class-Based Views
+
+A class-based view (CBV) groups behavior by HTTP method and can reuse framework mixins. `View.as_view()` creates the callable placed in `urlpatterns`; Django then dispatches GET requests to `get()`, POST requests to `post()`, and so on.
 
 ```python
 from django.views import View
@@ -726,6 +810,8 @@ URL:
 ```python
 path("", HomeView.as_view(), name="home")
 ```
+
+Calling `HomeView()` directly is not the normal URL configuration. Use `.as_view()` so Django can construct the view instance, run dispatch logic, and return the response.
 
 ## 13.1 Generic views
 
@@ -760,6 +846,8 @@ class ProductCreateView(CreateView):
 
 Similar generic classes exist for update and delete flows.
 
+`ListView` returns a collection, `DetailView` returns one object, and form-oriented views such as `CreateView`, `UpdateView`, and `DeleteView` handle common validation and redirect behavior. Their convenience depends on conventional attributes such as `model`, `queryset`, `template_name`, and `success_url`. Override `get_queryset()` to enforce per-user or per-tenant visibility; hiding an object in a template is not authorization.
+
 ## 13.2 Mixins
 
 ```python
@@ -781,6 +869,8 @@ Use FBVs when custom control flow is clearest. Use CBVs when reusable behavior g
 ---
 
 # 14. Templates
+
+Django templates turn a template file plus a context dictionary into text, usually HTML. Template variables such as `{{ product.name }}` display values, tags such as `{% for %}` control rendering, and filters such as `|date` transform display output. Templates intentionally provide less power than Python so business logic remains outside the presentation layer.
 
 View:
 
@@ -853,7 +943,17 @@ Filters:
 
 Custom filter:
 
+Place custom filters inside an installed app's `templatetags` package:
+
+```text
+products/
+└── templatetags/
+    ├── __init__.py
+    └── currency.py
+```
+
 ```python
+# products/templatetags/currency.py
 from django import template
 
 register = template.Library()
@@ -863,9 +963,28 @@ def inr(value):
     return f"₹{value:,.2f}"
 ```
 
+Load and use the registered filter in a template:
+
+```django
+{% load currency %}
+{{ product.price|inr }}
+```
+
+For a price of `4999`, the rendered text is `₹4,999.00`. The filter receives the value on its left and returns the text inserted into the output. Handle `None` or unexpected types if the filter may receive them in real data.
+
 Auto-escaping protects HTML output by default. Use `|safe` only for trusted/sanitized content.
 
-Modern Django also supports template partials, useful for reusable cards, table rows, and HTMX-style fragments.
+Django 6.0 and later also support named template partials, useful for reusable cards, table rows, and fragment responses:
+
+```django
+{% partialdef product-card %}
+  <article>{{ product.name }}</article>
+{% endpartialdef %}
+
+{% partial product-card %}
+```
+
+`partialdef` defines a named fragment and `partial` renders it in the same template. Template loaders can also address a fragment using `"products/list.html#product-card"`. On older Django versions, use `{% include %}` with a separate template file or an appropriate third-party package.
 
 ---
 
@@ -895,11 +1014,34 @@ Production static collection:
 python manage.py collectstatic
 ```
 
+`collectstatic` copies static assets discovered in installed apps and configured static directories into the configured `STATIC_ROOT` or storage backend. It does not collect user uploads.
+
+During development, `runserver` serves static files when `django.contrib.staticfiles` is installed. To serve media files locally while `DEBUG=True`, a project can add this development-only URL configuration:
+
+```python
+from django.conf import settings
+from django.conf.urls.static import static
+
+urlpatterns = [
+    # application routes
+]
+
+if settings.DEBUG:
+    urlpatterns += static(
+        settings.MEDIA_URL,
+        document_root=settings.MEDIA_ROOT,
+    )
+```
+
+Do not use this helper as a production media-serving strategy.
+
 Production media is normally served from dedicated/object storage or a web server, not through ordinary Django views.
 
 ---
 
 # 16. Models
+
+A model is a Python class that describes stored data. Each model field normally becomes a database column, each model instance represents one row, and the model's manager—`objects` by default—creates QuerySets used to read or change rows. After changing model structure, create and apply a migration so the database schema matches the Python definition.
 
 ```python
 from django.db import models
@@ -932,6 +1074,23 @@ models.JSONField()
 models.FileField()
 models.ImageField()
 ```
+
+Frequently used field inputs and outputs:
+
+| Field | Typical Python value | Important parameters or behavior |
+| --- | --- | --- |
+| `CharField` | `str` | Requires `max_length`; use for bounded text. |
+| `TextField` | `str` | Use for longer text without a small application-level length limit. |
+| `IntegerField` | `int` | Stores whole numbers; database range depends on the field/backend. |
+| `DecimalField` | `Decimal` | `max_digits` is total digits; `decimal_places` is digits after the decimal point. |
+| `BooleanField` | `bool` | Often uses a callable or literal `default`. |
+| `DateField` | `datetime.date` | A date without a time. |
+| `DateTimeField` | `datetime.datetime` | A date and time; use timezone-aware values in normal Django projects. |
+| `EmailField` | `str` | Adds email-shaped validation; it does not prove the mailbox exists. |
+| `JSONField` | JSON-compatible Python values | Useful for flexible structured data, not a replacement for all relations. |
+| `FileField` | `FieldFile` | Stores a file name/reference; bytes live in the configured storage. |
+
+Field declarations configure both database behavior and Django validation, but calling `model.save()` does not automatically run every validator. Forms and serializers normally run validation; other write paths need deliberate validation and database constraints.
 
 For money, normally prefer `DecimalField` instead of floating point.
 
@@ -996,6 +1155,8 @@ class Invoice(models.Model):
     def total(self):
         return self.subtotal + self.tax
 ```
+
+`@property` makes `invoice.total` look like an attribute while computing it from the current in-memory values. It is not a database column and cannot be used directly in a QuerySet filter such as `Invoice.objects.filter(total__gt=100)`. Use an ORM expression/annotation or a generated/stored field when the database must query the value.
 
 ## 16.5 Meta, indexes, constraints
 
@@ -1062,7 +1223,19 @@ total = models.GeneratedField(
 
 ## 16.8 Composite primary keys
 
-Modern Django supports composite-primary-key use cases. Before using them, verify compatibility with your admin usage, relations, third-party packages, and serializers. A normal surrogate ID plus a unique business constraint is still often simpler.
+Django 5.2 and later can define a primary key made from more than one field:
+
+```python
+class OrderLineItem(models.Model):
+    pk = models.CompositePrimaryKey("product_id", "order_id")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    order = models.ForeignKey(Order, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField()
+```
+
+The `pk` value is a tuple, such as `(15, 1007)`, and can be queried with `OrderLineItem.objects.get(pk=(15, 1007))`.
+
+Use this only when the multi-column key is genuinely part of the database design. In Django 6.1, models with composite primary keys cannot be registered in Django admin, normal relationship fields cannot point to them, and Django does not support migrating an existing table to or from a composite primary key through ordinary field migrations. Third-party packages and serializers may also assume a single-column key. A surrogate `id` plus a `UniqueConstraint` over the business fields remains simpler for many applications.
 
 ---
 
@@ -1181,6 +1354,19 @@ WHERE is_active = TRUE;
 ```
 
 The ORM is not a replacement for database knowledge. It is a structured abstraction over database access.
+
+Most manager methods either return a lazy `QuerySet`, return one model object, return a scalar/summary value, or issue a write. Keeping those return types clear prevents many beginner mistakes:
+
+| Operation | Returns | Executes immediately? |
+| --- | --- | --- |
+| `.all()`, `.filter()`, `.exclude()`, `.order_by()` | `QuerySet` | Usually no; QuerySets are lazy. |
+| `.get()` | One model instance | Yes; raises if zero or multiple rows match. |
+| `.first()`, `.last()` | Model instance or `None` | Yes. |
+| `.exists()` | `bool` | Yes. |
+| `.count()` | `int` | Yes. |
+| `.create()` | Saved model instance | Yes. |
+| `.update()` | Number of matched rows | Yes; performs a direct SQL update. |
+| `.delete()` | `(deleted_count, per_model_counts)` tuple | Yes. |
 
 ## 18.1 Create
 
@@ -1328,7 +1514,7 @@ Bulk update through queryset:
 Product.objects.filter(category="old").update(is_active=False)
 ```
 
-`QuerySet.update()` operates directly in SQL and does not behave exactly like calling `save()` on each object. Understand signals and model-method implications before using it.
+`QuerySet.update()` returns the number of matched rows. It operates directly in SQL: it does not call each model's `save()` method and does not send `pre_save` or `post_save` signals. Use it for set-based updates when that behavior is intended; use instance saves when per-object logic is required.
 
 ## 18.13 Delete
 
@@ -1342,7 +1528,7 @@ Bulk:
 Product.objects.filter(is_active=False).delete()
 ```
 
-Deletion may cascade according to relationships.
+Deletion may cascade according to relationships. Both instance and QuerySet deletion return a tuple containing the total deleted objects and a per-model count. Django sends deletion signals for affected objects, so large cascades can have application-level costs as well as database costs.
 
 ## 18.14 `values()`
 
@@ -1385,7 +1571,7 @@ customer, created = Customer.objects.get_or_create(
 )
 ```
 
-Useful when the operation is logically “find this object, otherwise create it.” Make sure the identifying fields have appropriate database uniqueness where concurrency matters.
+The return value is `(object, created)`, where `created` is `True` only when a new row was inserted. `defaults` provides values used for creation but not lookup. The operation is concurrency-safe only when the lookup fields are protected by an appropriate database uniqueness constraint; otherwise concurrent requests can create duplicates.
 
 ## 18.17 `update_or_create()`
 
@@ -1396,6 +1582,8 @@ customer, created = Customer.objects.update_or_create(
 )
 ```
 
+This also returns `(object, created)`. Matching rows are updated from `defaults`; a missing row is created. Treat it as a database write and enforce uniqueness on the lookup fields when duplicates would be invalid.
+
 ## 18.18 Bulk create
 
 ```python
@@ -1405,7 +1593,7 @@ Product.objects.bulk_create([
 ])
 ```
 
-Useful for large inserts, but know the documented limitations for your Django/database version.
+`bulk_create()` returns a list of the created objects. It avoids one insert per object, but it does not call each object's `save()` method and does not send `pre_save` or `post_save`. Primary-key population, conflict options, generated values, and batch behavior vary by database and Django version, so check the exact API before depending on those details.
 
 ## 18.19 Bulk update
 
@@ -1417,6 +1605,8 @@ for product in products:
 
 Product.objects.bulk_update(products, ["is_active"])
 ```
+
+`bulk_update()` returns the number of objects updated. Like QuerySet `update()`, it bypasses model `save()` and save signals. Do not use it when each row needs custom `save()` behavior or validation.
 
 ## 18.20 Relationship filtering
 
@@ -1494,7 +1684,7 @@ This produces readable, reusable domain queries.
 
 Advanced ORM knowledge is one of the biggest differences between beginner and experienced Django developers.
 
-# 19.1 `Q` objects
+## 19.1 `Q` objects
 
 Use for OR, NOT, and dynamic logical conditions.
 
@@ -1533,7 +1723,9 @@ def search_products(term):
     )
 ```
 
-# 19.2 `F` expressions
+Each `Q()` contains one or more lookup keyword arguments. `|` means OR, `&` means AND, and `~` negates a condition. Parentheses are important because Python operator precedence determines how the expression is grouped. Positional `Q` objects must appear before ordinary keyword filters in a `filter()` call.
+
+## 19.2 `F` expressions
 
 `F()` refers to a database column.
 
@@ -1556,13 +1748,21 @@ Product.objects.filter(pk=product_id).update(
 
 This makes the arithmetic happen in the database and avoids some read-modify-write race conditions.
 
+`update()` returns the number of matched rows, not the updated model. If you assign an `F()` expression to a model instance and call `save()`, refresh the object before trusting the in-memory field value:
+
+```python
+product.stock = F("stock") - 1
+product.save(update_fields=["stock"])
+product.refresh_from_db(fields=["stock"])
+```
+
 Compare columns:
 
 ```python
 Invoice.objects.filter(paid_amount__lt=F("total_amount"))
 ```
 
-# 19.3 Aggregation
+## 19.3 Aggregation
 
 ```python
 from django.db.models import Avg, Count, Max, Min, Sum
@@ -1584,7 +1784,9 @@ Result:
 }
 ```
 
-# 19.4 Annotation
+`aggregate()` collapses the whole QuerySet into one result dictionary. With no matching rows, functions such as `Sum` and `Avg` commonly return `None`, while `Count` returns `0`; handle that possibility when producing totals.
+
+## 19.4 Annotation
 
 Attach calculated values to each result.
 
@@ -1607,7 +1809,9 @@ projects = Project.objects.annotate(
 )
 ```
 
-# 19.5 Conditional expressions
+Unlike `aggregate()`, `annotate()` keeps one result per object and adds a calculated attribute to each result. The grouping produced by later `values()`, filters, and ordering can change the SQL, so inspect complex reporting queries rather than assuming call order is irrelevant.
+
+## 19.5 Conditional expressions
 
 ```python
 from django.db.models import Case, CharField, Value, When
@@ -1622,11 +1826,16 @@ invoices = Invoice.objects.annotate(
 )
 ```
 
-# 19.6 Database functions
+`When()` supplies a condition and result, `Value()` represents a literal, and `Case()` chooses the first matching branch. `output_field` tells Django the result type when it cannot infer it reliably.
+
+## 19.6 Database functions
 
 Examples include:
 
 ```python
+from decimal import Decimal
+
+from django.db.models import DecimalField, Value
 from django.db.models.functions import Coalesce, Lower
 
 Product.objects.annotate(
@@ -1636,11 +1845,20 @@ Product.objects.annotate(
 
 ```python
 Order.objects.annotate(
-    safe_discount=Coalesce("discount", 0)
+    safe_discount=Coalesce(
+        "discount",
+        Value(Decimal("0.00")),
+        output_field=DecimalField(
+            max_digits=12,
+            decimal_places=2,
+        ),
+    )
 )
 ```
 
-# 19.7 Subquery
+`Lower()` asks the database to lowercase a value. `Coalesce()` returns the first non-NULL expression; the explicit decimal fallback avoids mixing an integer literal with a decimal database field.
+
+## 19.7 Subquery
 
 Suppose you want each customer annotated with their latest order amount.
 
@@ -1660,7 +1878,9 @@ customers = Customer.objects.annotate(
 
 Subqueries are powerful but can become complex. Inspect the generated SQL and execution plan for performance-critical queries.
 
-# 19.8 `Exists`
+`OuterRef("pk")` refers to the current customer row from the surrounding query. The inner QuerySet orders that customer's orders newest-first, selects only `amount`, and `[:1]` limits the scalar subquery to one value. The annotation is `None` for a customer with no order.
+
+## 19.8 `Exists`
 
 ```python
 from django.db.models import Exists, OuterRef
@@ -1675,7 +1895,9 @@ customers = Customer.objects.annotate(
 )
 ```
 
-# 19.9 `select_related()`
+`Exists()` returns a database boolean and can stop after the database finds one matching row. Use it when the question is “does at least one related row exist?” rather than when related data itself is needed.
+
+## 19.9 `select_related()`
 
 Use for single-valued relationships such as `ForeignKey` and `OneToOneField`.
 
@@ -1703,7 +1925,9 @@ orders = Order.objects.select_related("customer")
 
 This normally performs a SQL join.
 
-# 19.10 `prefetch_related()`
+`select_related()` cannot load a many-to-many collection because one base row could correspond to many joined rows. It is best for forward foreign keys, reverse one-to-one relations, and nested single-valued paths such as `"customer__company"`.
+
+## 19.10 `prefetch_related()`
 
 Use for many-valued relationships such as reverse foreign keys and many-to-many relations.
 
@@ -1720,6 +1944,8 @@ for customer in customers:
 ```
 
 Django usually uses separate queries and connects objects in Python.
+
+Prefetching consumes memory for the base results and related caches. It helps only when the code later uses the prefetched relation. A different related-manager query, such as `customer.orders.filter(status="paid")`, does not reuse a cache populated for plain `customer.orders.all()` unless a matching custom `Prefetch` was used.
 
 ## Custom prefetch
 
@@ -1741,7 +1967,7 @@ Usage:
 customer.paid_orders
 ```
 
-# 19.11 `only()` and `defer()`
+## 19.11 `only()` and `defer()`
 
 ```python
 Product.objects.only("id", "name")
@@ -1755,7 +1981,7 @@ These can reduce initial column loading but may accidentally create extra querie
 
 Modern Django 6.1 introduces configurable field fetch modes. These can help control how unfetched fields behave, including fetching peer instances together or raising rather than silently issuing an unexpected query. Treat these as advanced performance tools, not something every query needs.
 
-# 19.12 Inspect SQL
+## 19.12 Inspect SQL
 
 ```python
 qs = Product.objects.filter(price__gte=1000)
@@ -1764,7 +1990,9 @@ print(qs.query)
 
 Use this when learning and debugging.
 
-# 19.13 Query plan
+`str(qs.query)` is useful for understanding query shape, but its display is not a safe SQL string to execute or a substitute for parameter inspection. Use database logging/debug tooling when exact bound values matter.
+
+## 19.13 Query plan
 
 ```python
 print(
@@ -1781,7 +2009,9 @@ Database execution plans help answer:
 - Is the join strategy expensive?
 - Is sorting dominating the query?
 
-# 19.14 Raw SQL
+Options accepted by `.explain()` vary by backend. On PostgreSQL, `analyze=True` executes the query to collect actual timing/row data, so do not use it casually on expensive or write-producing statements in production.
+
+## 19.14 Raw SQL
 
 Use the ORM by default, but raw SQL is valid when it is genuinely a better fit.
 
@@ -1866,7 +2096,26 @@ with transaction.atomic():
         pass
 ```
 
-This can leave transaction state confusing/broken. Structure exception handling according to Django's documented transaction behavior.
+After a database error, Django may mark the current transaction as needing rollback. Catching the exception *inside* the same `atomic()` block hides the failure from the block manager, and later queries can raise `TransactionManagementError`.
+
+Catch the expected database exception around an inner atomic block instead:
+
+```python
+from django.db import IntegrityError, transaction
+
+with transaction.atomic():
+    create_parent_record()
+
+    try:
+        with transaction.atomic():
+            create_optional_child_record()
+    except IntegrityError:
+        handle_duplicate_child()
+
+    continue_with_valid_transaction()
+```
+
+The inner block creates a savepoint. If `create_optional_child_record()` violates a constraint, Django rolls back to that savepoint before the exception handler continues in the still-valid outer transaction. Catch specific exceptions; do not treat every unexpected failure as recoverable.
 
 ## 20.3 `select_for_update()`
 
@@ -2092,12 +2341,19 @@ def contact(request):
             name = form.cleaned_data["name"]
             email = form.cleaned_data["email"]
             message = form.cleaned_data["message"]
-            # process data
+            send_contact_message(
+                name=name,
+                email=email,
+                message=message,
+            )
+            return redirect("contact-thanks")
     else:
         form = ContactForm()
 
     return render(request, "contact.html", {"form": form})
 ```
+
+This view requires `render` and `redirect` from `django.shortcuts`, the locally defined `ContactForm`, and an application function such as `send_contact_message()`. The redirect after success prevents a refresh from submitting the form a second time. Invalid bound forms fall through to the template with field errors and the user's submitted values preserved.
 
 Template:
 
@@ -2901,17 +3157,22 @@ request_started
 request_finished
 ```
 
-Example:
+Example using a lazy model label, which also avoids importing a concrete user class during app loading:
 
 ```python
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-@receiver(post_save, sender=User)
+from .models import UserProfile
+
+
+@receiver(post_save, sender="accounts.User")
 def create_profile(sender, instance, created, **kwargs):
     if created:
-        UserProfile.objects.create(user=instance)
+        UserProfile.objects.get_or_create(user=instance)
 ```
+
+Replace `accounts.User` with the actual `app_label.ModelName`. `sender` identifies the model that emitted the signal, `instance` is the saved user, and `created` is true only for the first insert. `get_or_create()` makes this small auxiliary action more tolerant of a repeated call, but the one-to-one database constraint remains the real duplicate protection.
 
 ## 32.1 Why signals can become dangerous
 
@@ -3093,6 +3354,8 @@ send_mail(
 )
 ```
 
+`send_mail()` accepts a subject, plain-text body, sender address, and a list of recipients. It returns the number of messages accepted by the configured backend—normally `0` or `1` for this call. A successful return means the backend accepted the message; it does not necessarily prove that the recipient's mailbox delivered it.
+
 ## 34.1 HTML email
 
 ```python
@@ -3118,12 +3381,22 @@ Always provide a meaningful text alternative when practical.
 ## 34.2 Development console backend
 
 ```python
-EMAIL_BACKEND = (
-    "django.core.mail.backends.console.EmailBackend"
-)
+MAILERS = {
+    "default": {
+        "BACKEND": (
+            "django.core.mail.backends.console.EmailBackend"
+        ),
+    },
+}
 ```
 
-This prints emails in the development console instead of sending them.
+In Django 6.1, this prints emails in the development console instead of sending them. For Django 6.0, 5.2, and older existing projects, the equivalent legacy setting is:
+
+```python
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+```
+
+Django 6.1 deprecates `EMAIL_BACKEND` and the related `EMAIL_*` settings in favor of `MAILERS`; they remain available during the transition to Django 7.0.
 
 ## 34.3 Production email
 
@@ -3724,6 +3997,18 @@ SECURE_CSP = {
 }
 ```
 
+The setting alone is not enough. Enable the middleware so Django adds the policy header:
+
+```python
+MIDDLEWARE = [
+    # ...
+    "django.middleware.csp.ContentSecurityPolicyMiddleware",
+    # ...
+]
+```
+
+When a policy uses `CSP.NONCE`, add `"django.template.context_processors.csp"` to the Django template engine's `context_processors`, then add `nonce="{{ csp_nonce }}"` to the intended inline script/style element. A nonce allows that specific inline element; it should not be hard-coded, reused across responses, or embedded in a full-page cache shared between requests.
+
 Roll out CSP carefully. A good strategy is often:
 
 1. inventory legitimate resources
@@ -3894,7 +4179,9 @@ Enqueue concept:
 process_invoice.enqueue(invoice.pk)
 ```
 
-The built-in framework standardizes task definition/queueing behavior, but worker execution still depends on an appropriate task backend/infrastructure. Development/test backends are not automatically a full production worker platform.
+`enqueue()` validates/serializes the arguments through the configured task backend and returns a task result handle. Pass stable serializable identifiers such as `invoice.pk`, not a live model instance.
+
+The framework standardizes task definition, validation, queueing, and result handling, but Django does **not** provide a production worker. Its built-in backends are for development and testing: the default `ImmediateBackend` runs the function during the caller's process instead of in the background, while `DummyBackend` records a result without executing the task. A production system needs a suitable third-party backend plus external worker/queue infrastructure.
 
 ## 42.2 Queue after commit
 
@@ -4012,6 +4299,7 @@ class ProductListViewTest(TestCase):
 ```python
 class DashboardTest(TestCase):
     def setUp(self):
+        User = get_user_model()
         self.user = User.objects.create_user(
             username="alex",
             password="StrongPassword123!",
@@ -4026,6 +4314,8 @@ class DashboardTest(TestCase):
         response = self.client.get("/dashboard/")
         self.assertEqual(response.status_code, 200)
 ```
+
+The example requires `from django.contrib.auth import get_user_model` and `from django.test import TestCase`. `get_user_model()` respects `AUTH_USER_MODEL`; importing Django's concrete default `User` would break a project with a swapped user model.
 
 ## 43.4 Permission test
 
@@ -4330,12 +4620,24 @@ Cross-field:
 
 ```python
 def validate(self, attrs):
-    if attrs["sale_price"] > attrs["price"]:
+    price = attrs.get("price", getattr(self.instance, "price", None))
+    sale_price = attrs.get(
+        "sale_price",
+        getattr(self.instance, "sale_price", None),
+    )
+
+    if (
+        price is not None
+        and sale_price is not None
+        and sale_price > price
+    ):
         raise serializers.ValidationError(
             "Sale price cannot exceed price."
         )
     return attrs
 ```
+
+Using `.get()` plus existing instance values makes the cross-field rule work for partial updates where only one field is submitted. On creation, decide separately whether either field is required; do not let `None` silently bypass a required business rule.
 
 ## 46.3 APIView
 
@@ -6824,8 +7126,11 @@ Transactions should be as short as practical.
 Bad:
 
 ```python
-except Exception:
-    return None
+def load_value():
+    try:
+        return perform_operation()
+    except Exception:
+        return None
 ```
 
 It turns real failures into mysterious state.
@@ -8169,12 +8474,10 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "primary",
-        ...
     },
     "reporting": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "reporting",
-        ...
     },
 }
 ```
@@ -8961,4 +9264,3 @@ The final step is not learning more syntax. It is repeatedly designing, shipping
 > For every feature, ask: where does input enter, where is it validated, who is authorized, where is state changed, what database guarantees protect it, what side effects happen, how is failure handled, how is it tested, and how will it behave under concurrency and production traffic?
 
 If you can answer those questions, you are no longer only learning Django syntax — you are learning Django engineering.
-

@@ -1,8 +1,8 @@
 # Laravel Master Handbook
 
 > **A beginner-to-advanced, scenario-driven learning guide for Laravel 13.x**  
-> Core concepts are also highly applicable to Laravel 12.x.  
-> Updated for the Laravel 13 documentation structure and PHP 8.3+.
+> Baseline verified against **Laravel Framework 13.25.0** in August 2026. Laravel 13 supports PHP 8.3–8.5, receives bug fixes through Q3 2027, and security fixes through March 17, 2028.  
+> Core concepts are also applicable to Laravel 12.x, but Chapter 61 and other explicitly marked Laravel 13 features require a 13.x application. Always use the newest compatible patch release and read the upgrade guide before changing major versions.
 
 ---
 
@@ -306,7 +306,7 @@ Content-Type: application/json
 ## 4.3 Common HTTP methods
 
 | Method | Typical purpose |
-|---|---|
+| --- | --- |
 | GET | Read data |
 | POST | Create or trigger operation |
 | PUT | Replace a resource |
@@ -316,7 +316,7 @@ Content-Type: application/json
 ## 4.4 Common status codes
 
 | Code | Meaning |
-|---:|---|
+| ---: | --- |
 | 200 | Success |
 | 201 | Created |
 | 204 | Success, no body |
@@ -343,7 +343,7 @@ HTTP is inherently stateless. Applications create continuity using mechanisms su
 
 # 5. Installation and First Project
 
-Laravel 13 requires PHP 8.3 or newer.
+Laravel 13 requires PHP 8.3 or newer and officially supports PHP through 8.5.
 
 Typical prerequisites:
 
@@ -352,6 +352,21 @@ Typical prerequisites:
 - Laravel installer or Composer;
 - Node.js/npm when compiling frontend assets;
 - database server if not using SQLite.
+
+Confirm the tools before creating a project:
+
+```bash
+php -v
+composer --version
+node --version
+npm --version
+```
+
+Install the Laravel installer if the `laravel` command is not already available:
+
+```bash
+composer global require laravel/installer
+```
 
 Create a project using the Laravel installer:
 
@@ -372,6 +387,17 @@ php artisan serve
 ```
 
 Then open the local development URL shown by the command.
+
+Verify the installed framework and environment:
+
+```bash
+php artisan --version
+composer show laravel/framework
+php artisan about
+php artisan test
+```
+
+For this handbook, `php artisan --version` should report Laravel Framework `13.x`. `composer show` displays the exact patch and dependency constraints; the test command should finish without failures in a new application. The installer may prompt for a starter kit, database, and testing framework, so actual generated files depend on those choices.
 
 ## 5.1 First useful command
 
@@ -733,7 +759,7 @@ Route::resource('products', ProductController::class);
 Typical generated actions:
 
 | HTTP | URI | Action |
-|---|---|---|
+| --- | --- | --- |
 | GET | `/products` | index |
 | GET | `/products/create` | create |
 | POST | `/products` | store |
@@ -996,6 +1022,31 @@ middleware may:
 
 Do not repeat this tenant-resolution logic in every controller.
 
+## 12.4 Register and apply a middleware alias
+
+In the current application skeleton, register custom aliases in `bootstrap/app.php`:
+
+```php
+use App\Http\Middleware\EnsureUserIsAdmin;
+use Illuminate\Foundation\Configuration\Middleware;
+
+->withMiddleware(function (Middleware $middleware): void {
+    $middleware->alias([
+        'admin' => EnsureUserIsAdmin::class,
+    ]);
+})
+```
+
+Then apply it to routes:
+
+```php
+Route::middleware(['auth', 'admin'])->group(function () {
+    Route::resource('admin/products', AdminProductController::class);
+});
+```
+
+The alias is configuration; the middleware's `handle()` method performs the check. A missing alias causes route compilation/resolution errors, while a failed check should return `403`.
+
 ---
 
 # 13. Blade Templates
@@ -1074,7 +1125,6 @@ Use raw output only when the HTML is trusted or sanitized.
 
 ---
 
-
 ## 13.6 Choosing a Laravel Frontend Architecture
 
 Laravel supports several frontend styles. Learn Blade first so you understand Laravel's server-rendered model, then choose based on product needs.
@@ -1142,7 +1192,7 @@ Laravel 13 provides official starter-kit paths for React, Svelte, Vue, and Livew
 ### Decision table
 
 | Need | Good starting choice |
-|---|---|
+| --- | --- |
 | Simple CRUD/admin | Blade or Livewire |
 | Dynamic Laravel-first UI | Livewire |
 | React/Vue/Svelte team | Inertia |
@@ -1226,11 +1276,14 @@ php artisan make:request StoreProductRequest
 ```
 
 ```php
+use App\Models\Product;
+use Illuminate\Foundation\Http\FormRequest;
+
 class StoreProductRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->can('create', Product::class) ?? false;
     }
 
     public function rules(): array
@@ -1249,9 +1302,15 @@ Controller:
 ```php
 public function store(StoreProductRequest $request)
 {
-    Product::create($request->validated());
+    $product = Product::create($request->validated());
+
+    return redirect()
+        ->route('products.show', $product)
+        ->with('success', 'Product created.');
 }
 ```
+
+`authorize()` runs before the controller. Returning `false` produces a `403`; validation failure redirects browser requests back with errors (or returns `422` JSON when the client expects JSON). `validated()` returns only fields that passed the declared rules.
 
 ## 15.2 Validation is not authorization
 
@@ -1671,6 +1730,22 @@ DB::table('products')->where('id', 10)->delete();
 
 ## 22.7 Query Builder vs Eloquent
 
+The most common return contracts are:
+
+| Operation | Input | Return value |
+| --- | --- | --- |
+| `get()` | Built query | Collection of result objects |
+| `first()` | Built query | First result object or `null` |
+| `firstOrFail()` | Built query | First result or a not-found exception |
+| `value('column')` | Column name | Single scalar value or `null` |
+| `exists()` | Built query | Boolean |
+| `insert([...])` | One row or multiple rows | Boolean success indicator |
+| `insertGetId([...])` | One row | Inserted primary-key value |
+| `update([...])` | Changed columns | Number of affected rows |
+| `delete()` | Built query | Number of affected rows |
+
+Always include a deliberate `where` clause before an update or delete unless changing every row is truly intended. Check affected-row counts when “record did not exist” must be distinguished from success.
+
 Use Eloquent when:
 
 - records represent domain entities;
@@ -1687,6 +1762,7 @@ Use Query Builder when:
 Both are valid tools.
 
 ---
+
 # 23. Migrations
 
 Migrations are version control for database schema.
@@ -2554,6 +2630,8 @@ Security is not a single package. It is a collection of practices.
 
 Protect state-changing browser forms using Laravel's CSRF protection.
 
+Laravel 13 formalizes this protection in the origin-aware `PreventRequestForgery` middleware while retaining token-based compatibility. Keep `@csrf` in browser forms, send the expected CSRF/XSRF token from same-origin JavaScript clients, and do not disable protection globally to “fix” a misconfigured domain or session cookie.
+
 ## 32.2 XSS
 
 Blade escaped output:
@@ -2757,9 +2835,23 @@ Sanctum is commonly used for:
 - simple personal access tokens;
 - mobile/API token use cases.
 
+Install the default API stack in a new application with:
+
+```bash
+php artisan install:api
+```
+
+For first-party SPA authentication, Sanctum uses the normal session cookie and CSRF protection rather than placing a bearer token in browser storage. For personal access tokens, send the token in the `Authorization: Bearer ...` header and grant only required abilities.
+
 ## 34.2 Passport
 
 Passport provides OAuth2 server capabilities for scenarios requiring OAuth2 flows and third-party delegated authorization.
+
+When OAuth2 is truly required, the installer can configure Passport:
+
+```bash
+php artisan install:api --passport
+```
 
 ## 34.3 Choosing
 
@@ -2869,6 +2961,27 @@ Rate-limit by the right identity:
 - API token;
 - a combination when needed.
 
+Define a named limiter in a service provider and apply it to the route:
+
+```php
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
+
+RateLimiter::for('reports', function (Request $request) {
+    $identity = $request->user()?->id ?: $request->ip();
+
+    return Limit::perMinute(10)->by((string) $identity);
+});
+```
+
+```php
+Route::post('/reports', GenerateReportController::class)
+    ->middleware(['auth', 'throttle:reports']);
+```
+
+The limiter returns a `Limit` policy; the route returns `429` after that identity exhausts it. In a tenant system, include the tenant ID when the limit is tenant-scoped.
+
 ---
 
 # 37. Cache and Redis
@@ -2964,7 +3077,19 @@ Common disks:
 Store upload:
 
 ```php
-$path = $request->file('invoice')->store('invoices');
+$this->authorize('create', Invoice::class);
+
+$validated = $request->validate([
+    'invoice' => [
+        'required',
+        'file',
+        'mimes:pdf',
+        'mimetypes:application/pdf',
+        'max:10240',
+    ],
+]);
+
+$path = $validated['invoice']->store('invoices', 'local');
 ```
 
 Specific disk:
@@ -2972,6 +3097,8 @@ Specific disk:
 ```php
 $path = $request->file('invoice')->store('invoices', 's3');
 ```
+
+`store()` returns the relative path on the selected disk. Save that path plus trusted metadata in the database; do not treat it as a public URL.
 
 ## 38.1 Validate before storing
 
@@ -3016,6 +3143,24 @@ KYC documents
 ```
 
 Private files should be served through authorization-aware download routes or signed object-storage URLs when appropriate.
+
+```php
+use Illuminate\Support\Facades\Storage;
+
+public function download(Invoice $invoice)
+{
+    $this->authorize('view', $invoice);
+
+    abort_unless(Storage::disk('local')->exists($invoice->file_path), 404);
+
+    return Storage::disk('local')->download(
+        $invoice->file_path,
+        "invoice-{$invoice->id}.pdf"
+    );
+}
+```
+
+For higher-risk files, store privately, scan before use, restrict size and content type, and never execute uploaded content. `mimes` inspects the detected file type rather than trusting only the client-provided extension; `mimetypes` adds an explicit MIME requirement.
 
 ## 38.4 Storage link
 
@@ -3273,6 +3418,14 @@ This avoids:
 job starts -> record not visible yet -> fails
 ```
 
+Dispatch explicitly after commit when needed:
+
+```php
+ProcessInvoiceOcr::dispatch($invoice->id)->afterCommit();
+```
+
+Alternatively, set the queue connection's `after_commit` option when that behavior should be the default. Remember that “dispatched” means accepted for queueing; monitor workers and failed jobs to know whether it completed.
+
 ---
 
 # 43. Task Scheduling
@@ -3290,8 +3443,12 @@ Examples:
 Conceptual schedule:
 
 ```php
+use Illuminate\Support\Facades\Schedule;
+
 Schedule::command('reports:daily')->dailyAt('07:00');
 ```
+
+In current Laravel applications, application schedules commonly live in `routes/console.php`. Confirm registration and next run times with `php artisan schedule:list`; use `php artisan schedule:work` during local development.
 
 Server cron normally invokes Laravel's scheduler every minute, and Laravel decides what is due.
 
@@ -3339,9 +3496,14 @@ if ($response->successful()) {
 Transient failures may be retried carefully.
 
 ```php
-$response = Http::retry(3, 200)
-    ->get($url);
+$response = Http::timeout(10)
+    ->connectTimeout(3)
+    ->retry(3, 200)
+    ->get($url)
+    ->throw();
 ```
+
+This returns an `Illuminate\Http\Client\Response` on success and throws for terminal `4xx`/`5xx` responses. Retry only failures that may actually be transient; unsafe write requests also need provider-supported idempotency.
 
 ## 44.2 Never omit timeouts
 
@@ -3523,6 +3685,17 @@ Concurrent work can approach the slowest task plus overhead when infrastructure 
 
 Do not parallelize tasks that depend on each other's result.
 
+```php
+use Illuminate\Support\Facades\Concurrency;
+
+[$sales, $inventory] = Concurrency::run([
+    fn () => Order::paid()->sum('total'),
+    fn () => Product::sum('stock'),
+]);
+```
+
+`run()` receives independent closures and returns results in the same order. Measure the serialization/process overhead; concurrency can be slower for tiny queries and does not make an already overloaded database faster.
+
 ## 48.2 Processes
 
 Laravel can manage external processes where that is appropriate.
@@ -3534,6 +3707,20 @@ Use cases:
 - document tooling.
 
 Security rule: never concatenate untrusted input into shell commands.
+
+```php
+use Illuminate\Support\Facades\Process;
+
+$result = Process::timeout(30)->run(['ffmpeg', '-version']);
+
+if ($result->failed()) {
+    throw new RuntimeException($result->errorOutput());
+}
+
+$versionOutput = $result->output();
+```
+
+The result exposes success/failure, exit code, standard output, and standard error. Array arguments avoid shell interpolation; still validate every user-influenced value and prefer purpose-built libraries when possible.
 
 ## 48.3 Context
 
@@ -3549,6 +3736,18 @@ integration correlation ID
 ```
 
 This is extremely useful when debugging distributed/background workflows.
+
+```php
+use Illuminate\Support\Facades\Context;
+use Illuminate\Support\Str;
+
+Context::add('request_id', (string) Str::uuid());
+Context::add('tenant_id', $tenant->id);
+
+$requestId = Context::get('request_id');
+```
+
+Context metadata can travel into supported queued work and logging. It improves correlation; it is not an authorization source, and sensitive payloads should not be copied into it.
 
 ---
 
@@ -3736,23 +3935,43 @@ Tests behavior through more of Laravel.
 Example:
 
 ```php
-public function test_user_can_create_product(): void
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Gate;
+use Tests\TestCase;
+
+class CreateProductTest extends TestCase
 {
-    $user = User::factory()->create();
+    use RefreshDatabase;
 
-    $response = $this->actingAs($user)->post('/products', [
-        'sku' => 'KB-001',
-        'name' => 'Keyboard',
-        'price' => 2500,
-    ]);
+    public function test_user_can_create_product(): void
+    {
+        $user = User::factory()->create();
 
-    $response->assertRedirect();
+        Gate::before(
+            fn (User $authenticated) => $authenticated->is($user) ? true : null
+        );
 
-    $this->assertDatabaseHas('products', [
-        'sku' => 'KB-001',
-    ]);
+        $response = $this->actingAs($user)->post('/products', [
+            'sku' => 'KB-001',
+            'name' => 'Keyboard',
+            'price' => 2500,
+        ]);
+
+        $response->assertRedirect();
+
+        $this->assertDatabaseHas('products', [
+            'sku' => 'KB-001',
+        ]);
+    }
 }
 ```
+
+The test-only `Gate::before()` grants this fixture user all abilities so the test reaches the creation path; production authorization still comes from real gates/policies. Add companion tests for redirect-to-login/`401`, `403`, and `422`; a happy-path test alone does not prove security.
 
 ## 52.3 Test behavior, not implementation trivia
 
@@ -3797,6 +4016,14 @@ external failure if integration exists
 # 53. Browser Testing
 
 Laravel Dusk provides browser-level testing.
+
+Dusk is an optional development dependency, not part of every fresh application:
+
+```bash
+composer require laravel/dusk --dev
+php artisan dusk:install
+php artisan dusk
+```
 
 Use browser tests for flows where real browser behavior matters:
 
@@ -4003,6 +4230,19 @@ Typical flow:
 10. Monitor errors
 ```
 
+A conventional release command sequence may include:
+
+```bash
+composer install --no-dev --prefer-dist --optimize-autoloader
+npm ci
+npm run build
+php artisan migrate --force
+php artisan optimize
+php artisan queue:restart
+```
+
+Run the test suite and build artifacts before sending traffic to the release. `--force` permits migrations in production; it is not a safety guarantee, so inspect each migration and take/back-test backups appropriate to the data risk. `queue:restart` asks workers to exit gracefully after their current job; a supervisor must start replacement processes.
+
 Useful production optimization commands commonly include:
 
 ```bash
@@ -4091,7 +4331,7 @@ Containers do not remove the need to understand Linux, networking, volumes, port
 Important official packages/tools to recognize:
 
 | Package/tool | Main purpose |
-|---|---|
+| --- | --- |
 | Sanctum | SPA/simple API authentication |
 | Passport | OAuth2 server |
 | Horizon | Redis queue dashboard/monitoring |
@@ -4108,6 +4348,9 @@ Important official packages/tools to recognize:
 | Sail | Docker development environment |
 | Fortify | Backend authentication features |
 | Precognition | Live validation-oriented workflows |
+| AI SDK | Provider-agnostic agents, generation, embeddings, files, and vector stores |
+| MCP | MCP servers, clients, tools, resources, and prompts |
+| Boost | Version-aware context and agentic development guidance |
 
 Do not install packages simply because they are official. Understand whether the application needs the capability.
 
@@ -4144,11 +4387,24 @@ One 20-line helper used only inside one project
 Package extraction creates maintenance overhead. Extract when reuse and boundaries justify it.
 
 ---
+
 # 61. Laravel 13 AI SDK, MCP, and AI-Aware Development
 
 Laravel 13 introduces first-party AI capabilities as a major framework area. Treat AI as another external/nondeterministic dependency, not magic.
 
+The AI SDK and MCP support are first-party Composer packages; they are not automatically installed in every Laravel application.
+
 ## 61.1 AI SDK concepts
+
+Install and publish the AI SDK, then run its conversation-storage migrations:
+
+```bash
+composer require laravel/ai
+php artisan vendor:publish --provider="Laravel\Ai\AiServiceProvider"
+php artisan migrate
+```
+
+Configure a provider credential such as `OPENAI_API_KEY` in `.env`, keep the key out of version control, and access provider selection through `config/ai.php`. Before sending production data, define retention, privacy, regional, cost, and incident-response requirements with the chosen provider.
 
 The first-party AI SDK covers capabilities including:
 
@@ -4175,6 +4431,8 @@ $response = InvoiceAssistant::make()->prompt(
 return (string) $response;
 ```
 
+The prompt call returns a response object; casting it to `string` yields generated text. It may perform network I/O and can fail, time out, cost money, or produce incorrect output. Put slow calls in jobs when the HTTP response does not need to wait, and fake the AI boundary in normal automated tests.
+
 Your real production agent should have deliberate:
 
 - instructions;
@@ -4200,13 +4458,15 @@ invoice/vendor description matching
 RAG retrieval
 ```
 
-Concept:
+Generate an embedding through the configured AI provider:
 
 ```php
-$vector = Str::of($text)->toEmbeddings();
+use Illuminate\Support\Str;
+
+$embedding = Str::of('PO does not match the invoice')->toEmbeddings();
 ```
 
-An embedding is not a human-readable summary. It is numerical representation used for similarity calculations.
+The call returns an embedding value suitable for supported vector operations. An embedding is not a human-readable summary; it is a numerical representation used for similarity calculations. Cache/reuse embeddings when the source text and model are unchanged, and record the embedding model/version so later migrations are possible.
 
 ## 61.4 Semantic/vector search
 
@@ -4221,6 +4481,20 @@ Semantic search asks:
 ```text
 Which documents are conceptually closest to “PO does not match invoice”?
 ```
+
+Laravel 13 query-builder example, scoped to the current tenant before similarity search:
+
+```php
+use Illuminate\Support\Facades\DB;
+
+$documents = DB::table('documents')
+    ->where('tenant_id', $tenant->id)
+    ->whereVectorSimilarTo('embedding', $query)
+    ->limit(10)
+    ->get();
+```
+
+`whereVectorSimilarTo()` accepts the vector column and a natural-language query, then returns ordinary query results after `get()`. Enforce tenant/user metadata constraints in the database/vector query itself, not only after retrieving a global top-N set.
 
 This is powerful for natural-language search, but still requires:
 
@@ -4239,8 +4513,8 @@ A typical retrieval pipeline can be:
 ```text
 query
  -> generate query embedding
- -> vector search top 50
- -> metadata/security filters
+ -> authorization and tenant metadata constraints
+ -> vector search permitted top 50
  -> rerank top candidates
  -> choose top 5
  -> provide to model
@@ -4316,6 +4590,26 @@ Resource/tool definition
 
 The same normal backend security rules still apply.
 
+Minimal setup:
+
+```bash
+composer require laravel/mcp
+php artisan vendor:publish --tag=ai-routes
+php artisan make:mcp-server InvoiceServer
+```
+
+Register a protected web server in the generated `routes/ai.php`:
+
+```php
+use App\Mcp\Servers\InvoiceServer;
+use Laravel\Mcp\Facades\Mcp;
+
+Mcp::web('/mcp/invoices', InvoiceServer::class)
+    ->middleware(['auth', 'throttle:60,1']);
+```
+
+Publishing creates the AI routes file; creating the server creates a class under `app/Mcp/Servers`. A route alone is not sufficient security: every tool must validate its structured inputs and authorize the authenticated user for the exact record/action. Do not expose a broad “run SQL”, filesystem, or shell tool to a remote model.
+
 ## 61.10 Laravel Boost and agentic development
 
 Laravel's AI-assisted development tooling can provide agents with version-specific Laravel context and conventions.
@@ -4348,18 +4642,50 @@ JSON:API is useful when clients benefit from a standardized representation of:
 
 Use ordinary API Resources for simple APIs when JSON:API's stronger convention is unnecessary.
 
+Generate a JSON:API resource:
+
+```bash
+php artisan make:resource PostResource --json-api
+```
+
+```php
+use Illuminate\Http\Resources\JsonApi\JsonApiResource;
+
+class PostResource extends JsonApiResource
+{
+    public $attributes = [
+        'title',
+        'body',
+        'created_at',
+    ];
+
+    public $relationships = [
+        'author',
+        'comments',
+    ];
+}
+```
+
+Returning `new PostResource($post)` produces a JSON:API `data` object and the `application/vnd.api+json` content type. Relationships are included only when requested through supported `include` behavior. Treat sparse fieldsets and includes as serialization controls—not authorization—and avoid exposing a relationship the caller may not access.
+
 ## 61.12 Laravel 13 queue routing
 
 Laravel 13 can centrally route classes of jobs to particular queue connections/queues.
 
-Concept:
+Register the default route centrally, such as in `AppServiceProvider::boot()`:
 
 ```php
-Queue::route(ProcessInvoiceOcr::class,
+use App\Jobs\ProcessInvoiceOcr;
+use Illuminate\Support\Facades\Queue;
+
+Queue::route(
+    ProcessInvoiceOcr::class,
     connection: 'redis',
-    queue: 'ocr'
+    queue: 'ocr',
 );
 ```
+
+The connection selects the backend configuration; the queue selects the workload lane within that connection. Workers must listen to `ocr` or routed jobs will remain pending.
 
 Scenario:
 
@@ -4378,9 +4704,43 @@ Laravel 13 expands attribute-based declarations for concerns such as middleware,
 
 Attributes can improve locality:
 
-```text
-Class method
-  directly declares middleware/authorization metadata
+```php
+use App\Models\Comment;
+use App\Models\Post;
+use Illuminate\Routing\Attributes\Controllers\Authorize;
+use Illuminate\Routing\Attributes\Controllers\Middleware;
+
+#[Middleware('auth')]
+class CommentController
+{
+    #[Authorize('create', [Comment::class, 'post'])]
+    public function store(Post $post)
+    {
+        // Validate and create a comment for the authorized post.
+    }
+}
+```
+
+Queue-job behavior can also be declared explicitly:
+
+```php
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Backoff;
+use Illuminate\Queue\Attributes\FailOnTimeout;
+use Illuminate\Queue\Attributes\Timeout;
+use Illuminate\Queue\Attributes\Tries;
+
+#[Tries(5)]
+#[Backoff([10, 60, 300])]
+#[Timeout(120)]
+#[FailOnTimeout]
+class ProcessInvoiceOcr implements ShouldQueue
+{
+    public function handle(): void
+    {
+        // Perform retry-safe OCR work.
+    }
+}
 ```
 
 Do not mix several configuration styles randomly. Pick conventions your team can consistently discover and maintain.
@@ -5436,6 +5796,7 @@ These are precisely the areas where regressions cost the most.
 Know what environment/database you are connected to.
 
 ---
+
 # 70. Troubleshooting Guide
 
 ## 70.1 `Class not found`
@@ -5735,6 +6096,8 @@ php artisan make:factory ProductFactory --model=Product
 ```
 
 ## Database
+
+The final command below destroys all tables in the selected database. Use it only in a disposable development/test database after verifying the active environment and connection.
 
 ```bash
 php artisan migrate
@@ -6518,6 +6881,8 @@ This handbook is a learning companion, not a replacement for framework documenta
 - [Laravel 13 Documentation](https://laravel.com/docs/13.x)
 - [Laravel 13 Installation](https://laravel.com/docs/13.x/installation)
 - [Laravel Release Notes](https://laravel.com/docs/13.x/releases)
+- [Laravel 13 Upgrade Guide](https://laravel.com/docs/13.x/upgrade)
+- [Laravel Framework Package Releases](https://packagist.org/packages/laravel/framework)
 - [Laravel Frontend](https://laravel.com/docs/13.x/frontend)
 - [Laravel Starter Kits](https://laravel.com/docs/13.x/starter-kits)
 - [Laravel Service Container](https://laravel.com/docs/13.x/container)
@@ -6527,9 +6892,11 @@ This handbook is a learning companion, not a replacement for framework documenta
 - [Laravel Database](https://laravel.com/docs/13.x/database)
 - [Laravel Eloquent](https://laravel.com/docs/13.x/eloquent)
 - [Laravel Eloquent Relationships](https://laravel.com/docs/13.x/eloquent-relationships)
+- [Laravel API and JSON:API Resources](https://laravel.com/docs/13.x/eloquent-resources)
 - [Laravel Authentication](https://laravel.com/docs/13.x/authentication)
 - [Laravel Authorization](https://laravel.com/docs/13.x/authorization)
 - [Laravel Queues](https://laravel.com/docs/13.x/queues)
+- [Laravel Request Forgery Protection](https://laravel.com/docs/13.x/csrf)
 - [Laravel Cache](https://laravel.com/docs/13.x/cache)
 - [Laravel Task Scheduling](https://laravel.com/docs/13.x/scheduling)
 - [Laravel Testing](https://laravel.com/docs/13.x/testing)

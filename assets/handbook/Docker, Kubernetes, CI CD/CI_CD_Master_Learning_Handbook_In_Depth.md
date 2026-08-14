@@ -3,6 +3,12 @@
 > A beginner-to-advanced, practical handbook for Continuous Integration,
 > Continuous Delivery, and Continuous Deployment.
 
+This handbook assumes basic familiarity with source files, Git commits, and
+running commands in a terminal. You do not need prior experience with a CI/CD
+product. Part I builds the core mental model; Part II applies it to production
+concerns such as compatibility, GitOps, supply-chain security, governance, and
+recovery.
+
 ## Table of Contents
 
 1.  [CI/CD Fundamentals](#1-cicd-fundamentals)
@@ -66,6 +72,17 @@ releases smaller and more predictable.
 -   **Continuous Deployment:** every change that passes all automated
     gates is automatically deployed to production.
 
+These practices are related, but they are not synonyms:
+
+| Practice | Main action | Typical output | Production automatic? |
+|---|---|---|---|
+| Continuous Integration | Integrate and validate each small change | A verified commit and test results | No |
+| Continuous Delivery | Keep every accepted change releasable | A deployable, approved artifact | Usually requires a decision |
+| Continuous Deployment | Release every accepted change | A running production version | Yes |
+
+CI is the foundation for both meanings of CD. Automating deployment without a
+reliable build and test process merely delivers defects faster.
+
 ### Simple mental model
 
 ``` text
@@ -121,12 +138,22 @@ pipeline/configuration definitions.
 
 ### Important concepts
 
--   Repository, commit, branch, tag
--   Pull/Merge Request (PR/MR)
--   Code review
--   Protected branches
--   Merge checks
--   Semantic version tags such as `v2.4.1`
+- **Repository:** the version-controlled project history.
+- **Commit:** an immutable recorded change with an identifier such as a Git
+  SHA.
+- **Branch:** a movable line of development, such as `main` or a short-lived
+  feature branch.
+- **Tag:** a named reference commonly used to mark a release, such as
+  `v2.4.1`.
+- **Pull/Merge Request (PR/MR):** a proposal to review and merge changes.
+- **Protected branch:** a branch whose rules can prevent direct pushes or
+  unreviewed merges.
+- **Merge check:** an automated or human requirement that must pass before a
+  merge, such as CI success or required review.
+
+The commit SHA is the most reliable link among source, a pipeline run, a build
+artifact, and a deployment record. A release tag is easier for people to read,
+but the tag should still resolve to a known commit.
 
 ### Common branching models
 
@@ -201,6 +228,23 @@ A build converts source into something executable or distributable.
 Examples include Java JAR/WAR files, .NET assemblies, Angular bundles,
 Node packages, Docker images, or native binaries.
 
+The inputs are source code, dependency declarations or lock files, build
+configuration, and a defined toolchain. The output is a build artifact plus
+evidence such as compiler messages, checksums, and metadata. A successful exit
+code means the build command completed; it does not prove the application is
+correct, which is why tests and validation follow.
+
+Example:
+
+```bash
+dotnet publish --configuration Release --output publish
+```
+
+`--configuration Release` selects optimized release settings and `--output`
+chooses the artifact directory. On success, `publish/` contains the files that
+can be packaged or copied into a runtime image. Use the project-specific build
+tool and lock dependencies so CI and developer builds resolve the same inputs.
+
 ### Reproducible builds
 
 The same source + declared dependencies + build environment should
@@ -266,6 +310,20 @@ Examples: all unit tests pass, no critical vulnerabilities, coverage
 does not fall below policy, and required reviewers approve. Avoid
 treating coverage percentage as proof of correctness.
 
+### Choosing the right test layer
+
+| Test type | Main input | Output | Best use | Avoid using it for |
+|---|---|---|---|---|
+| Unit | One function/class and controlled collaborators | Fast pass/fail with precise failures | Business rules and edge cases | Proving real infrastructure integration |
+| Integration | Multiple real components | Compatibility and interaction evidence | Database, broker, filesystem, or API integration | Every small code branch |
+| Contract | Provider/consumer interface expectations | Compatibility result | Independently deployed services | Full user journeys |
+| End-to-end | Deployed system and realistic workflow | User-flow result | A few critical journeys | Exhaustive permutations |
+| Smoke | Newly deployed version | Quick health signal | Release verification | Deep regression coverage |
+
+A test command normally returns exit code `0` when all tests pass and a
+non-zero code when any test fails. CI uses that exit code to stop dependent
+jobs, while test-report files preserve details for humans and dashboards.
+
 ------------------------------------------------------------------------
 
 ## 7. Continuous Delivery vs Deployment
@@ -282,6 +340,12 @@ Use continuous delivery when regulation, risk, business timing, or
 organizational maturity requires human control. Use continuous
 deployment when automated confidence is high and frequent releases are
 beneficial.
+
+Neither approach requires every commit to be exposed to every user. Feature
+flags and progressive delivery can separate *deploying code* from *releasing a
+feature*. A manual approval also should evaluate meaningful risk or timing; an
+approval that is always clicked without reviewing evidence adds delay without
+adding control.
 
 ------------------------------------------------------------------------
 
@@ -355,13 +419,24 @@ closes. This is useful for UI review and integration testing.
 
 Artifacts are immutable outputs from a pipeline.
 
-Examples: - `.jar`, `.war`, `.zip`, `.nupkg`, npm packages - Docker/OCI
-images - Helm charts - SBOM files - Test reports
+Examples:
+
+- `.jar`, `.war`, `.zip`, `.nupkg`, and npm packages
+- Docker/OCI images
+- Helm charts
+- SBOM files
+- test reports
 
 Registries/repositories include artifact repositories and container
 registries. Version artifacts with immutable identifiers such as commit
 SHA plus semantic release version. Avoid relying only on mutable tags
 like `latest`.
+
+Publishing stores an artifact under a controlled identity; downloading or
+pulling retrieves it for testing or deployment. A useful artifact record
+includes the originating commit, build ID, checksum or image digest, creation
+time, and test/security evidence. Treat test reports as evidence, not as the
+deployable application artifact itself.
 
 ------------------------------------------------------------------------
 
@@ -373,7 +448,7 @@ image.
 ### Example Dockerfile
 
 ``` dockerfile
-FROM node:22-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
@@ -383,6 +458,14 @@ RUN npm test && npm run build
 FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 ```
+
+The first stage installs locked npm dependencies with `npm ci`, runs tests, and
+creates the static bundle. The second stage starts from an Nginx runtime and
+copies only the build output from the named `build` stage. `docker build`
+returns an image; the application-specific `dist` path must match the frontend
+tool's actual output. In a real project, pin an intentional base-image version
+or digest and make sure the runtime image can run with the required security
+settings.
 
 ### Multi-stage builds
 
@@ -443,6 +526,12 @@ systems.
 PR -> Format -> Validate -> Security scan -> Plan -> Review -> Apply
 ```
 
+`plan` means preview the proposed change without intentionally applying it;
+`apply` requests the actual infrastructure mutation. Their exact flags and
+outputs depend on the IaC tool. A plan is useful review evidence, but it can
+become stale if infrastructure or input variables change before apply. Create
+or verify a fresh plan at the controlled apply point.
+
 ### Desired benefits
 
 Repeatability, reviewability, disaster recovery, audit history, and
@@ -491,10 +580,13 @@ ALTER TABLE customer ADD COLUMN preferred_name VARCHAR(100) NULL;
 
 ### Expand-contract pattern
 
-For a risky schema change: 1. Add the new schema in a
-backward-compatible way. 2. Deploy code capable of old + new formats. 3.
-Backfill/migrate data. 4. Switch reads/writes. 5. Remove old schema
-later.
+For a risky schema change:
+
+1. Add the new schema in a backward-compatible way.
+2. Deploy code capable of using both old and new formats.
+3. Backfill or migrate existing data in controlled batches.
+4. Switch reads and writes after verification.
+5. Remove the old schema in a later release.
 
 This prevents a new application version from requiring an irreversible
 schema change at exactly the same instant.
@@ -549,6 +641,17 @@ Copy production traffic to a new version without returning its responses
 to users. Useful for validating behavior/performance, with privacy and
 side-effect precautions.
 
+### Strategy comparison
+
+| Strategy | Traffic transition | Extra capacity | Fast reversal | Main caution |
+|---|---|---:|---:|---|
+| Recreate | Old stops, then new starts | Low | Moderate | Downtime |
+| Rolling | Instances change gradually | Small to moderate | Moderate | Old and new versions coexist |
+| Blue-green | Router switches environments | High | Fast | Database and external side effects remain |
+| Canary | Percentage increases gradually | Moderate | Fast traffic abort | Requires reliable metrics and routing |
+| A/B | Cohorts receive variants | Varies | Usually | Measures product behavior, not just safety |
+| Shadow | Mirrored requests, responses ignored | High | Stop mirroring | Prevent duplicate writes and protect data |
+
 ------------------------------------------------------------------------
 
 ## 17. Feature Flags
@@ -567,6 +670,19 @@ Use flags for gradual rollout, kill switches, experiments, and
 incomplete features. Remove stale flags; otherwise they create permanent
 complexity. Never use a client-visible flag as the sole authorization
 control.
+
+A flag evaluation takes a flag key plus context such as user, tenant, region,
+or percentage bucket and returns a variation such as `true`, `false`, or a
+configuration value. The application must define a safe default for missing or
+unreachable flag configuration. Evaluate security authorization separately;
+any client-controlled value can be modified by the client.
+
+Use a short-lived **release flag** to hide code during deployment, an
+**operational flag** as a tested kill switch, or an **experiment flag** to keep
+cohorts stable while measuring outcomes. Do not use flags to avoid versioning a
+breaking database or API change. Record an owner and removal date, test both
+important branches, monitor changes, and delete the flag and dead branch after
+the rollout is complete.
 
 ------------------------------------------------------------------------
 
@@ -661,32 +777,32 @@ Automation and governance are compatible: automate evidence collection
 and standard checks while reserving human approval for meaningful risk
 decisions. Avoid approval steps that merely rubber-stamp every release.
 
+An approval gate consumes evidence such as the exact artifact digest, change
+record, test and security results, migration plan, risk classification, and
+deployment window. Its output is an auditable allow/deny decision for that
+artifact and environment—not a general permission to deploy whatever is built
+later.
+
+Use an approval when a competent reviewer can assess risk that automation
+cannot yet decide, or when policy requires separation of duties. Prefer an
+automated gate for deterministic rules such as signature validity or a known
+vulnerability threshold. Bind approvals to a version and expire or invalidate
+them when relevant inputs change; otherwise a late rebuild can bypass the
+meaning of the original decision.
+
 ------------------------------------------------------------------------
 
 ## 22. Popular CI/CD Tools
 
-  --------------------------------------------------------------------------
-  Tool                    Strong fit                 Pipeline definition
-  ----------------------- -------------------------- -----------------------
-  GitHub Actions          GitHub-hosted projects     YAML
-
-  GitLab CI/CD            Integrated GitLab          `.gitlab-ci.yml`
-                          lifecycle                  
-
-  Jenkins                 Highly                     Jenkinsfile/Groovy
-                          customizable/self-hosted   
-                          environments               
-
-  Azure Pipelines         Microsoft/Azure ecosystems YAML/classic
-
-  CircleCI                Cloud CI                   YAML
-
-  Argo CD                 GitOps continuous delivery Git desired state
-                          to Kubernetes              
-
-  Tekton                  Kubernetes-native pipeline Kubernetes resources
-                          building blocks            
-  --------------------------------------------------------------------------
+| Tool | Strong fit | Pipeline definition |
+|---|---|---|
+| GitHub Actions | Projects hosted on GitHub | Workflow YAML |
+| GitLab CI/CD | Integrated GitLab lifecycle | `.gitlab-ci.yml` |
+| Jenkins | Highly customizable or self-hosted environments | `Jenkinsfile`/Groovy |
+| Azure Pipelines | Microsoft and Azure ecosystems | YAML or classic UI |
+| CircleCI | Managed cloud CI | YAML |
+| Argo CD | GitOps delivery to Kubernetes | Desired state stored in Git |
+| Tekton | Kubernetes-native pipeline building blocks | Kubernetes custom resources |
 
 Tool choice matters less than mastering pipeline concepts.
 
@@ -703,19 +819,34 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
       - run: npm ci
       - run: npm test
       - run: npm run build
 ```
+
+`on` defines the events that create a workflow run. `jobs.test` is one job on
+an Ubuntu runner, and each item under `steps` either invokes a reusable action
+with `uses` or runs a shell command with `run`. `actions/checkout` places the
+repository in the workspace; `actions/setup-node` selects Node.js 24 and
+configures npm caching; `npm ci` installs exactly from the lock file.
+
+The job returns success only when every required step succeeds. The resulting
+workflow status can become a merge check. If the build output is needed by a
+later job, explicitly upload it as an artifact; another job must not assume it
+shares this job's filesystem. For production workflows, declare minimal
+workflow permissions and govern third-party actions as dependencies.
 
 ### Important concepts
 
@@ -728,10 +859,14 @@ concurrency.
 ``` yaml
 strategy:
   matrix:
-    node: [20, 22]
+    node: [22, 24]
 ```
 
-Use a matrix when a library must support multiple runtime versions.
+Each matrix value creates a separate job variation. The job normally references
+the current value, for example with `node-version: ${{ matrix.node }}`. Use a
+matrix when a library must support multiple runtime versions. Do not add
+combinations that provide no compatibility signal because every combination
+consumes time and runner capacity.
 
 ------------------------------------------------------------------------
 
@@ -744,14 +879,14 @@ stages: [test, build, deploy]
 
 test:
   stage: test
-  image: node:22
+  image: node:24
   script:
     - npm ci
     - npm test
 
 build:
   stage: build
-  image: node:22
+  image: node:24
   script:
     - npm ci
     - npm run build
@@ -770,6 +905,15 @@ deploy_prod:
 
 Understand runners, variables, artifacts, cache, `rules`, environments,
 protected variables, child pipelines, includes, and manual jobs.
+
+Here, stages run in the declared order. The `test` job runs in a Node image;
+the `build` job creates `dist/` and publishes it as a job artifact; and
+`deploy_prod` is offered as a manual job only for `main`. `script` is the list
+of shell commands whose exit codes determine job success. The deployment
+script receives artifacts from prior stages by default. In a larger pipeline,
+use `needs` or `dependencies` to make the intended artifact relationship
+explicit and avoid downloading unrelated outputs. Do not rebuild the release
+artifact silently in the deployment job.
 
 ------------------------------------------------------------------------
 
@@ -798,6 +942,14 @@ pipeline {
 }
 ```
 
+`pipeline` defines the workflow, `agent any` asks Jenkins for an available
+agent, `stages` groups work, and `sh` runs a shell command whose non-zero exit
+status fails the step. The `when` condition limits deployment to `main`.
+Because `any` does not guarantee the required tools are installed, production
+pipelines should select a labeled or ephemeral agent image with a defined
+toolchain. Store credentials in Jenkins' credential system and inject only the
+credential needed by the specific stage.
+
 ### Key concepts
 
 Controller, agents, executors, pipelines, credentials, plugins, shared
@@ -823,13 +975,20 @@ pool:
   vmImage: ubuntu-latest
 
 steps:
-- task: NodeTool@0
+- task: UseNode@1
   inputs:
-    versionSpec: '22.x'
+    version: '24.x'
 - script: npm ci
 - script: npm test
 - script: npm run build
 ```
+
+`trigger` starts the pipeline for changes to `main`. `pool.vmImage` chooses a
+Microsoft-hosted Ubuntu agent. `UseNode@1` is a task whose `version` input
+selects a compatible Node.js 24 release, and each `script` entry runs a shell
+command. A failed task or script normally fails the job. Publish the build
+directory explicitly when a later stage or release needs it; the sample only
+validates that the commands work.
 
 Important concepts include pipelines, stages/jobs/steps, service
 connections, variable groups, environments, approvals/checks, artifacts,
@@ -867,6 +1026,13 @@ docker push registry/app:$GIT_SHA
 `verify` can run compilation and tests before packaging. Production
 deploys the image associated with the tested commit.
 
+`./mvnw` uses the project's Maven Wrapper so CI does not depend on an arbitrary
+host Maven version. `clean` removes earlier output and `verify` runs the Maven
+lifecycle through verification. `-t` assigns an image name and immutable
+commit-derived tag; the final `.` is the Docker build context. `docker push`
+uploads that named image and returns a digest that should be recorded for
+deployment traceability.
+
 ### Scenario C: PHP/Laravel
 
 ``` text
@@ -891,6 +1057,12 @@ dotnet publish -c Release -o publish
 ```
 
 Publish output can be packaged or placed in a runtime container.
+
+`restore` resolves declared packages. `build --no-restore` compiles without
+repeating restore, `test --no-build` tests the compiled Release output, and
+`publish -o publish` creates deployable files in `publish/`. These reuse flags
+are safe only because the earlier commands succeeded in the same controlled
+workspace with the same configuration.
 
 ### Scenario E: Legacy IIS application
 
@@ -940,10 +1112,17 @@ periodic full integration pipeline to catch hidden coupling.
 A slow pipeline encourages developers to batch changes or ignore
 feedback. Optimize without removing important confidence.
 
-Techniques: - Dependency caching - Parallel independent jobs - Test
-splitting/sharding - Incremental/affected builds - Smaller container
-build contexts - Docker layer caching - Fail-fast ordering - Right-sized
-runners - Avoid downloading the same artifact repeatedly
+Techniques:
+
+- dependency caching
+- parallel independent jobs
+- test splitting or sharding
+- incremental or affected-project builds
+- smaller container build contexts
+- Docker layer caching
+- fail-fast ordering
+- right-sized runners
+- avoiding repeated downloads of the same artifact
 
 Measure stage duration before optimizing. A cache that occasionally
 creates incorrect builds is worse than no cache.
@@ -988,11 +1167,14 @@ Identify failing stage -> reproduce smallest failing command -> compare environm
 
 ## 31. Metrics and DORA
 
-Common delivery metrics include: - **Deployment frequency:** how often
-production is deployed. - **Lead time for changes:** time from change to
-production. - **Change failure rate:** proportion of changes that cause
-production degradation/remediation. - **Failed deployment recovery
-time:** how quickly service is restored after a failed change.
+Common delivery metrics include:
+
+- **Deployment frequency:** how often production is deployed.
+- **Lead time for changes:** elapsed time for a change to reach production.
+- **Change failure rate:** proportion of changes that cause production
+  degradation or require remediation.
+- **Failed deployment recovery time:** how quickly service is restored after a
+  failed change.
 
 Also monitor pipeline success rate, PR feedback time, queue duration,
 build duration, flaky-test rate, rollback frequency, and time spent
@@ -1255,7 +1437,7 @@ automation.
 
 ------------------------------------------------------------------------
 
-# Final Mental Model
+## Final Mental Model
 
 A mature CI/CD system is not simply a YAML file or Jenkins job. It is a
 **software delivery system** designed to move a change safely from
@@ -1294,11 +1476,11 @@ concepts rather than merely memorizing syntax.
 
 ------------------------------------------------------------------------
 
-# Part II — Advanced Production CI/CD Engineering
+## Part II — Advanced Production CI/CD Engineering
 
 The first part explains the complete CI/CD foundation. This second part goes deeper into the problems that appear after a team moves beyond a basic `build -> test -> deploy` pipeline.
 
-## Part II Table of Contents
+### Part II Table of Contents
 
 38. [Pipeline as Code in Depth](#38-pipeline-as-code-in-depth)
 39. [Pipeline Reuse, Templates, and Standardization](#39-pipeline-reuse-templates-and-standardization)
@@ -1491,11 +1673,18 @@ Application teams provide only application-specific values.
 Example concept:
 
 ```yaml
-uses: company/workflows/node-service.yml
-with:
-  node-version: 22
-  service-name: employee-api
+jobs:
+  service:
+    uses: company/platform-workflows/.github/workflows/node-service.yml@v2
+    with:
+      node-version: 24
+      service-name: employee-api
 ```
+
+In GitHub Actions syntax, a reusable workflow is called at the job level and
+the `@v2` suffix selects the workflow version. Other CI products express the
+same idea with includes, components, templates, or shared libraries. Pin and
+review the reusable component like any other dependency.
 
 ### Template layers
 
@@ -2850,7 +3039,9 @@ Each stage can be attacked.
 Loose dependency:
 
 ```json
-"some-package": "*"
+{
+  "some-package": "*"
+}
 ```
 
 creates unpredictable builds.
@@ -4627,7 +4818,7 @@ Use this before calling a pipeline production-ready.
 
 ------------------------------------------------------------------------
 
-# Final CI/CD Mastery Model
+## Final CI/CD Mastery Model
 
 At beginner level, CI/CD looks like this:
 
@@ -4729,5 +4920,4 @@ If you can answer these questions clearly, you are thinking like a production CI
 
 ------------------------------------------------------------------------
 
-# End of CI/CD Master Learning Handbook
-
+## End of CI/CD Master Learning Handbook

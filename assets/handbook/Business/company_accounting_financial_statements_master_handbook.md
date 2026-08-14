@@ -50,6 +50,8 @@
 38. [Quick Revision Cheat Sheets](#38-quick-revision-cheat-sheets)
 39. [Glossary](#39-glossary)
 40. [Recommended Learning Path](#40-recommended-learning-path)
+41. [Final Mental Model](#41-final-mental-model)
+42. [One-Page Practical Example](#42-one-page-practical-example)
 
 ---
 
@@ -365,6 +367,8 @@ A simple numbering structure might be:
 1690 Accumulated Depreciation
 ```
 
+`Accumulated Depreciation` is a **contra-asset**: it belongs with assets for presentation, but normally carries a credit balance and reduces the gross cost of fixed assets. It is not a liability.
+
 ### Liabilities
 
 ```text
@@ -385,6 +389,8 @@ A simple numbering structure might be:
 3200 Retained Earnings
 3300 Current-Year Profit
 ```
+
+Some systems show current-year profit as a temporary reporting balance before year-end closing. After closing, profit is normally transferred into retained earnings or the appropriate equity account under the entity's reporting framework.
 
 ### Revenue
 
@@ -447,6 +453,22 @@ Examples:
 | Journal adjustment | Approved journal support |
 
 A strong accounting system should preserve an **audit trail** from financial statement number back to the original source document.
+
+The source document proves that an event occurred; it does not by itself determine the accounting treatment. For example, a computer invoice proves that a purchase occurred, but the capitalization policy, useful life, tax treatment, and business purpose determine which accounts are used.
+
+Before posting, a reviewer should normally confirm:
+
+1. **Authenticity** — Is the document genuine and from the expected party?
+2. **Authorization** — Was the purchase, sale, payment, or adjustment approved?
+3. **Accuracy** — Are quantities, prices, calculations, tax, and totals correct?
+4. **Completeness** — Are all pages and supporting records attached?
+5. **Accounting period** — Does the event belong in this month or year?
+6. **Classification** — Is it an expense, asset, liability, revenue, or equity item?
+7. **Duplicate risk** — Has the document already been recorded or paid?
+
+### Evidence retention and corrections
+
+Keep the original document, posting reference, approval history, and any later correction linked together. Do not silently overwrite a posted transaction merely to make the balance look right. A controlled reversal or correction entry preserves what was originally posted, who corrected it, why it changed, and the effect on the ledger.
 
 ---
 
@@ -630,11 +652,25 @@ Tax percentages above are purely illustrative.
 
 ### Debit Note
 
-Often used to increase a receivable or reduce a payable, depending on the business context.
+A debit note records a claim or upward adjustment from the issuer's perspective. A buyer may issue one for damaged goods or a purchase overcharge, which usually reduces the amount owed to the supplier. A seller may use a debit adjustment to increase the amount owed by a customer. The label alone is not enough: identify the issuer, recipient, original invoice, and commercial reason before choosing accounts.
+
+Example from a buyer's books: goods costing ₹5,000 are returned to the supplier before payment.
+
+```text
+Accounts Payable          Dr    5,000
+    Inventory / Purchase Returns   Cr    5,000
+```
 
 ### Credit Note
 
-Often used to reduce a receivable/revenue or reduce the amount billed to a customer.
+A seller normally issues a credit note to reduce a customer's invoice because of a return, discount, pricing error, or service adjustment.
+
+```text
+Sales Returns / Revenue Reduction  Dr    5,000
+    Accounts Receivable                    Cr    5,000
+```
+
+The seller's receivable falls by ₹5,000. In the buyer's books, the same commercial document normally reduces accounts payable and the related inventory, purchase, or expense balance. Tax adjustments may also be required under local rules.
 
 ## 8.2 Voucher lifecycle
 
@@ -753,6 +789,18 @@ The TB can still balance if:
 
 Therefore, reconciliation and review are still essential.
 
+## 10.3 Unadjusted, adjusted, and post-closing trial balances
+
+These reports have the same debit-equals-credit structure but are prepared at different stages:
+
+| Trial Balance | When Prepared | Main Purpose |
+|---|---|---|
+| Unadjusted | Before period-end adjustments | Find posting or balancing issues in the recorded ledger |
+| Adjusted | After accruals, prepayments, depreciation, and other adjustments | Provide the balances used to prepare financial statements |
+| Post-closing | After temporary revenue and expense accounts are closed | Confirm the opening permanent balances for the next period |
+
+To prepare a trial balance, take each general-ledger account's ending balance, place debit balances in the debit column and credit balances in the credit column, then total both columns. A difference means at least one posting or extraction problem exists. If the totals agree, continue with account reconciliations because agreement alone does not prove the balances are correct.
+
 ---
 
 # 11. Profit & Loss Statement
@@ -865,7 +913,17 @@ The March P&L includes ₹20,000 even though no cash was paid in March.
 Gross Profit = Revenue - Cost of Goods Sold
 ```
 
-Gross profit measures profitability after direct product/service costs but before general operating expenses.
+Gross profit measures profitability after the direct cost of goods or services sold but before general operating expenses. Use it to evaluate pricing, purchasing, production efficiency, and product mix.
+
+Example: revenue of ₹500,000 and COGS of ₹300,000 produce gross profit of ₹200,000 and a gross margin of 40%:
+
+```text
+Gross Margin = Gross Profit / Revenue × 100
+             = 200,000 / 500,000 × 100
+             = 40%
+```
+
+Do not compare gross margins until you confirm that both businesses classify freight, production labor, and similar direct costs consistently.
 
 ## 11.6 EBITDA
 
@@ -875,7 +933,17 @@ A commonly used management metric is:
 EBITDA = Earnings Before Interest, Taxes, Depreciation and Amortization
 ```
 
-It is not the same as cash flow.
+One common reconciliation is:
+
+```text
+EBITDA = Net Profit
+       + Income Tax Expense
+       + Net Interest Expense
+       + Depreciation
+       + Amortization
+```
+
+EBITDA is useful for comparing operating performance before financing, tax, and non-cash depreciation policies. It is **not** cash flow: it ignores working-capital movements, capital expenditure, debt principal, and many other cash items. Definitions also vary, especially for "adjusted EBITDA," so identify every adjustment before relying on it.
 
 ## 11.7 EBIT
 
@@ -883,13 +951,13 @@ It is not the same as cash flow.
 EBIT = Earnings Before Interest and Taxes
 ```
 
-Often approximated as operating profit, depending on presentation.
+EBIT includes depreciation and amortization but excludes interest and income tax. It is often close to operating profit, but the two can differ when a statement classifies non-operating gains or losses above or below operating profit. Use the exact definition applied in the report.
 
 ## 11.8 Net profit
 
-Net profit is the residual income after all recognized expenses, finance costs, and taxes.
+Net profit is the residual income after all recognized expenses, finance costs, and taxes. It is the amount that ultimately increases equity before dividends and other equity movements.
 
-A profitable company can still have cash problems.
+A profitable company can still have cash problems when customers pay slowly, inventory grows, loans are repaid, or large assets are purchased. Conversely, a loss-making company may temporarily increase cash by borrowing or receiving owner capital.
 
 ---
 
@@ -1221,6 +1289,18 @@ Effect:
 
 # 15. Accrual Accounting vs Cash Accounting
 
+Both methods record business activity, but they answer different timing questions.
+
+| Question | Cash Basis | Accrual Basis |
+|---|---|---|
+| When is revenue generally recorded? | When cash is received | When earned and recognition conditions are met |
+| When is expense generally recorded? | When cash is paid | When incurred or the related resource is consumed |
+| Tracks receivables and payables? | Usually limited | Yes |
+| Shows unpaid obligations? | Often not fully | Yes |
+| Common use | Simple internal records where legally permitted | General-purpose company financial reporting under applicable standards |
+
+Cash basis can be easier for very small operations, but it can distort performance when billing and payment occur in different periods. Accrual accounting better matches economic activity to the relevant period, but it requires estimates, cut-off procedures, and balance-sheet reconciliations. The required method depends on local law, tax rules, and the reporting framework.
+
 ## 15.1 Cash basis
 
 Revenue and expenses are recognized when cash moves.
@@ -1270,6 +1350,17 @@ Rent Expense              Dr   30,000
 # 16. Core Adjusting Entries
 
 Adjusting entries make financial statements reflect the correct period.
+
+An adjusting entry is posted because the existing ledger is incomplete or classified incorrectly at the reporting date. The usual workflow is:
+
+1. identify the event and the period it belongs to;
+2. calculate the amount using invoices, schedules, contracts, usage, or a documented estimate;
+3. post equal debits and credits;
+4. attach the calculation and approval;
+5. decide whether the entry should reverse next period;
+6. reconcile the balance after the actual invoice, payment, or settlement arrives.
+
+Do not reverse every adjustment automatically. Recurring accruals are often reversed to prevent double counting when an invoice is posted, while depreciation and prepaid-expense consumption normally remain as permanent entries.
 
 ## 16.1 Accrued expense
 
@@ -1544,13 +1635,33 @@ Opening Inventory
 
 Common cost-flow methods include:
 
-- FIFO
-- Weighted Average
-- Specific Identification
+- **FIFO (First In, First Out)** — treats the earliest available costs as the cost of units sold. Ending inventory therefore contains more recent costs.
+- **Weighted Average** — assigns units a common average cost. Under a perpetual system, the average is commonly recalculated after each purchase; under a periodic system, one period-wide average may be used.
+- **Specific Identification** — tracks the actual cost of each distinct item. It is appropriate for unique, high-value items such as individually identifiable vehicles or custom equipment.
 
 Permitted methods depend on the applicable accounting framework and circumstances.
 
-## 19.5 Inventory write-down
+Example: two units cost ₹100 and ₹120, and one unit is sold.
+
+| Method | COGS | Ending Inventory |
+|---|---:|---:|
+| FIFO | ₹100 | ₹120 |
+| Weighted average | ₹110 | ₹110 |
+| Specific identification | Actual cost of the identified sold unit | Cost of the identified remaining unit |
+
+The physical item sold does not always determine the cost-flow assumption. Apply the selected method consistently to similar inventory unless the reporting framework permits and the facts justify a change.
+
+## 19.5 Perpetual vs periodic records
+
+A **perpetual** system updates inventory and COGS as purchases and sales occur. A **periodic** system records purchases during the period and calculates COGS after a physical count:
+
+```text
+COGS = Opening Inventory + Net Purchases - Closing Inventory
+```
+
+Perpetual records provide timely quantities and margins, but physical counts are still needed to identify theft, damage, recording errors, and obsolete stock. Periodic records are simpler but provide less timely information.
+
+## 19.6 Inventory write-down
 
 If inventory's carrying amount is no longer recoverable under the applicable accounting policy, an adjustment may be required.
 
@@ -1597,12 +1708,22 @@ Residual value = ₹0
 Annual depreciation = ₹120,000
 ```
 
+The straight-line formula is:
+
+```text
+Annual Depreciation = (Cost - Residual Value) / Useful Life
+```
+
+`Cost` can include directly attributable expenditure required to bring the asset to the location and condition necessary for use, subject to the applicable policy. `Residual value` is the estimated amount recoverable at the end of useful life, and `useful life` is the expected period of consumption—not necessarily the asset's physical life.
+
 Entry:
 
 ```text
 Depreciation Expense      Dr  120,000
     Accumulated Depreciation     Cr  120,000
 ```
+
+Depreciation generally begins when the asset is **available for use**, not simply when cash is paid. Land is normally not depreciated because it usually has an indefinite useful life; components, leasehold improvements, intangible assets, and impaired assets may require different treatment. Review useful lives, residual values, impairment indicators, additions, and disposals under the applicable standards and company policy.
 
 ## 20.3 Net book value
 
@@ -1779,6 +1900,15 @@ Employee Deductions Payable  Dr   50,000
 
 Employer-side payroll costs may require separate expense and payable entries.
 
+For example, if the employer owes an additional ₹25,000 contribution that is not deducted from employees:
+
+```text
+Employer Payroll Cost     Dr   25,000
+    Employer Contribution Payable  Cr   25,000
+```
+
+This amount increases the employer's expense in addition to gross salary. It should not be subtracted from employee net pay unless local rules specifically make it an employee deduction. Payroll controls should reconcile the employee master, attendance or approved inputs, gross-to-net calculation, bank payment file, tax filings, and all payroll payable accounts.
+
 ---
 
 # 24. Taxes, GST/VAT, Withholding, and Tax Payables
@@ -1879,6 +2009,26 @@ The bank ledger in accounting records may differ temporarily from the bank state
 - timing differences;
 - recording errors.
 
+The first task is to distinguish **timing differences** from items missing or wrong in the books:
+
+| Item | Book Entry Needed Now? | Treatment |
+|---|---|---|
+| Unpresented check already recorded | No | Keep as reconciling timing item until the bank processes it |
+| Deposit in transit already recorded | No | Keep as timing item until credited by the bank |
+| Bank fee absent from ledger | Yes | Record expense and reduce bank ledger |
+| Customer direct deposit absent from ledger | Yes | Record receipt and clear the correct receivable or other balance |
+| Book error | Yes | Post an approved correction |
+| Bank error | Usually no book correction | Raise it with the bank and retain evidence |
+
+Practical reconciliation steps:
+
+1. compare the statement opening balance with the prior reconciled closing balance;
+2. match receipts and payments by amount, date, and reference;
+3. list unmatched items and investigate them;
+4. post valid book-side adjustments;
+5. confirm that the adjusted book balance equals the adjusted bank balance;
+6. review old outstanding items and obtain approval.
+
 ## 25.4 Example
 
 Ledger balance = ₹105,000  
@@ -1906,11 +2056,30 @@ Petty Cash                Dr   10,000
     Bank                           Cr   10,000
 ```
 
+Under an **imprest** system, petty cash is restored to a fixed authorized amount. If the float is ₹10,000 and approved receipts total ₹7,500, replenishment is normally ₹7,500:
+
+```text
+Office / Travel / Other Expenses  Dr    7,500
+    Bank                                  Cr    7,500
+```
+
+The cash remaining of ₹2,500 plus receipts of ₹7,500 equals the ₹10,000 float. Count the cash, number the vouchers, restrict access, and investigate shortages or unsupported receipts.
+
 ---
 
 # 26. Debit Notes and Credit Notes
 
 Terminology can vary between buyer and seller perspectives, so always examine the commercial substance.
+
+The same adjustment looks different in each party's books:
+
+| Commercial Event | Seller's Typical Document/Effect | Buyer's Typical Effect |
+|---|---|---|
+| Customer returns goods | Seller issues credit note; receivable and revenue reduce | Payable and inventory/purchase cost reduce |
+| Seller undercharged | Seller issues debit adjustment or additional invoice; receivable increases | Payable and related cost increase |
+| Buyer reports shortage or overcharge | Buyer may issue debit note/claim | Supplier investigates and may issue a credit note |
+
+Document names are not universal. Use the original invoice, issuer, reason code, quantity/value change, tax effect, and approval to determine the entry.
 
 ## 26.1 Seller issues credit note to customer
 
@@ -1938,9 +2107,14 @@ Depending on inventory status and accounting policy, the credit may reduce inven
 
 ## 26.3 Debit note scenario
 
-A buyer may issue a debit note to a vendor for returned goods, shortage, or price difference.
+A buyer may issue a debit note to a vendor for returned goods, shortage, or price difference. Assume goods of ₹12,000 are returned before the supplier is paid:
 
-The accounting result often reduces the amount payable to the vendor.
+```text
+Accounts Payable          Dr   12,000
+    Inventory / Purchase Returns   Cr   12,000
+```
+
+The accounting result reduces the amount payable to the vendor. If those goods were already sold or consumed, the credit may reduce COGS or expense rather than inventory. Any associated GST/VAT adjustment must follow local documentation and timing rules.
 
 ---
 
@@ -1970,9 +2144,23 @@ A payable usually has a more certain amount and counterparty.
 
 A provision involves estimation or uncertainty in timing/amount.
 
+Example: an accepted vendor invoice for ₹40,000 is normally an account payable. A probable warranty obligation estimated from past claims may be a provision because the exact customers, settlement dates, and final cost are uncertain.
+
 ## 27.3 Contingent liability
 
-A possible obligation may require disclosure rather than recognition, depending on probability and applicable accounting standards.
+A contingent liability is commonly a possible obligation whose existence depends on uncertain future events, or a present obligation that does not meet the applicable recognition criteria. Depending on probability, measurability, and materiality, it may require note disclosure rather than a journal entry.
+
+A practical decision sequence is:
+
+```text
+Is there a present obligation from a past event?
+  ├─ No or uncertain → assess contingent-liability disclosure
+  └─ Yes
+      ├─ Recognition criteria met and amount can be estimated → record provision
+      └─ Recognition criteria not met → consider disclosure
+```
+
+Do not record an arbitrary reserve merely because an outcome is possible, and do not omit a required disclosure merely because no entry was posted. Reassess the facts at every reporting date.
 
 ## 27.4 Write-off
 
@@ -2017,7 +2205,16 @@ Foreign Exchange Loss     Dr    1,000
 
 If the rate moved in the opposite direction, the company could recognize a foreign-exchange gain.
 
-Actual foreign-currency accounting can involve remeasurement, translation, and specific standards beyond this simplified example.
+If a monetary receivable or payable remains open at the reporting date, it is commonly remeasured using the applicable closing rate. For example, the USD 1,000 payable initially recorded at ₹83,000 would become ₹84,000 at a ₹84/USD closing rate:
+
+```text
+Foreign Exchange Loss     Dr    1,000
+    Accounts Payable              Cr    1,000
+```
+
+The payable then carries at ₹84,000. When it is paid, compare the settlement amount with this remeasured balance, not automatically with the original ₹83,000.
+
+Foreign-currency accounting distinguishes the transaction currency, the entity's functional currency, and any presentation currency. Monetary and non-monetary items can be treated differently, and group reporting may require translation of foreign operations. Follow the applicable standard and policy rather than applying this short monetary-payable example to every foreign-currency balance.
 
 ---
 
@@ -2068,6 +2265,14 @@ Typical activities include:
 - provision reviews;
 - financial statement disclosures;
 - retained earnings closing.
+
+## 29.3 Soft close, hard close, and closing entries
+
+A **soft close** restricts normal posting but permits controlled adjustments while review continues. A **hard close** prevents further posting except through an authorized reopen process. The terminology varies by system, but the control objective is the same: approved reports should not change silently.
+
+Revenue and expense accounts are **temporary accounts** because they measure one period. Many systems transfer their net balance into retained earnings through automated year-end processing. Assets, liabilities, and equity are **permanent accounts** and carry forward.
+
+Conceptually, if revenue is ₹500,000 and total expenses are ₹350,000, the ₹150,000 profit moves into equity. The software may use an income-summary account or generate no visible manual journal, so understand the system's design before entering a closing journal yourself. Never close customer, vendor, bank, asset, liability, or other permanent balances merely to make a new year start at zero.
 
 ---
 
@@ -2127,6 +2332,8 @@ After a month is finalized, unrestricted backdated posting can corrupt previousl
 
 Financial statements become more useful when interpreted.
 
+Ratios are comparisons, not automatic conclusions. Use consistent definitions and periods; use average Balance Sheet balances when a flow such as annual revenue is divided by a stock such as receivables; compare with prior periods, budgets, and suitable peers; and investigate the transactions behind unusual movements. A good ratio can still mislead when balances are seasonal, one-off items are large, accounting policies differ, or data quality is weak.
+
 ## 31.1 Gross profit margin
 
 ```text
@@ -2146,6 +2353,8 @@ Margin = 40%
 ```text
 Net Profit Margin = Net Profit / Revenue × 100
 ```
+
+If net profit is ₹300,000 and revenue is ₹5,000,000, the margin is 6%. It shows how much profit remains from each rupee of revenue after all recognized expenses. A rising margin may reflect better pricing or cost control, but it may also result from non-recurring income or unusually low provisions.
 
 ## 31.3 Current ratio
 
@@ -2183,11 +2392,15 @@ Some analysts instead use broader liability definitions, so always check the for
 ROA = Net Profit / Average Total Assets × 100
 ```
 
+Average assets are commonly calculated as `(opening assets + closing assets) / 2`. Use a more frequent average when balances change substantially during the period.
+
 ## 31.7 Return on equity
 
 ```text
 ROE = Net Profit / Average Equity × 100
 ```
+
+High ROE can indicate strong returns, but it can also be amplified by heavy borrowing or unusually low equity. Review leverage and one-off gains before interpreting it as operational strength.
 
 ## 31.8 Receivable days
 
@@ -2614,6 +2827,10 @@ This case study captures the central relationship between the three financial st
 # 34. ERP / Accounting Software Workflow
 
 Modern systems may use separate operational modules but eventually generate general-ledger entries.
+
+An operational document and an accounting posting are not always the same event. A purchase order records an approved commitment but commonly creates no general-ledger entry. A goods receipt may update inventory and a receipt/accrual account. A vendor invoice creates or confirms the payable. Payment clears that payable. The exact timing depends on system configuration and accounting policy.
+
+Useful system statuses include `Draft`, `Submitted`, `Approved`, `Posted`, `Paid`, `Reversed`, and `Cancelled`. Only a posted document should update the general ledger. Reversal should create traceable opposite entries; cancellation should not erase a transaction that has already affected reported balances.
 
 ## 34.1 Order-to-cash
 
@@ -3484,6 +3701,8 @@ Always follow the reporting framework and company policy for items whose classif
 
 **COGS** — Cost of Goods Sold.
 
+**Contra-Asset** — Account with a normal credit balance that reduces a related asset, such as accumulated depreciation reducing fixed-asset cost.
+
 **Credit** — Right-hand side of a journal entry; increases liabilities, equity, and revenue, and decreases assets/expenses.
 
 **Credit Note** — Document reducing or adjusting an amount previously invoiced, depending on perspective and business context.
@@ -3646,7 +3865,7 @@ If you can do this confidently, you understand the full accounting lifecycle rat
 
 ---
 
-# Final Mental Model
+# 41. Final Mental Model
 
 The simplest way to remember the entire subject is:
 
@@ -3683,7 +3902,7 @@ Every correct double-entry transaction ultimately respects this equation.
 
 ---
 
-## One-Page Practical Example
+# 42. One-Page Practical Example
 
 Suppose a company:
 

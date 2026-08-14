@@ -5,6 +5,10 @@
 >
 > You can read this file from top to bottom as a course, or use the Table of Contents as a reference.
 
+**Version note:** Reviewed on **2026-08-13** with **MySQL 8.4 LTS** as the production-oriented baseline. Oracle ended MySQL 8.0 support in April 2026 and recommends moving to 8.4 LTS or a current Innovation release. The handbook avoids relying on Innovation-only syntax unless a section says so; always check the exact server, connector, and platform documentation before production use.
+
+Unless stated otherwise, SQL examples run in the classic `mysql` command-line client, MySQL Shell's SQL mode, MySQL Workbench, or another SQL editor connected to a disposable practice database. Outputs, generated IDs, execution plans, and timings are shortened and will vary.
+
 ---
 
 # Table of Contents
@@ -85,6 +89,37 @@
 74. [Cheat Sheet](#74-cheat-sheet)
 75. [Learning Roadmap](#75-learning-roadmap)
 76. [Final Checklist](#76-final-checklist)
+
+## Appendix Index
+
+| Code | Appendix | Code | Appendix |
+|---|---|---|---|
+| A | [Complete Practice Schema](#appendix-a--a-complete-practice-schema) | B | [Practice Queries](#appendix-b--practice-queries-against-the-master-schema) |
+| C | [Query Review Checklist](#appendix-c--query-review-checklist) | D | [Database Design Review](#appendix-d--database-design-review-checklist) |
+| E | [Production Incident Checklist](#appendix-e--production-incident-checklist) | F | [Important Principles](#appendix-f--important-principles-to-remember) |
+| G | [Advanced DML Patterns](#appendix-g--advanced-insert-update-and-delete-patterns) | H | [Foreign Key Actions](#appendix-h--foreign-key-actions) |
+| I | [Prepared Statements](#appendix-i--prepared-statements-inside-mysql) | J | [Procedure Control Flow](#appendix-j--stored-procedure-control-flow) |
+| K | [Cursors](#appendix-k--cursors) | L | [InnoDB Internals](#appendix-l--innodb-internals-for-developers) |
+| M | [Record and Gap Locks](#appendix-m--record-locks-gap-locks-and-range-locking) | N | [Autocommit](#appendix-n--autocommit) |
+| O | [Optimizer Concepts](#appendix-o--optimizer-concepts) | P | [EXPLAIN ANALYZE](#appendix-p--explain-analyze-mindset) |
+| Q | [Index Design Deep Dive](#appendix-q--index-design-deep-dive) | R | [FULLTEXT Search](#appendix-r--fulltext-search) |
+| S | [Spatial Data](#appendix-s--spatial-data-concepts) | T | [UUID Keys](#appendix-t--uuid-keys) |
+| U | [Identifier Design](#appendix-u--sequence-and-identifier-design) | V | [Binary Log Concepts](#appendix-v--binary-log-concepts) |
+| W | [Slow Query Investigation](#appendix-w--slow-query-investigation) | X | [Large DELETE and Archival](#appendix-x--large-delete-and-archival-strategy) |
+| Y | [Online Schema Change](#appendix-y--online-schema-change-mindset) | Z | [Application Integration](#appendix-z--common-application-integration-rules) |
+| AA | [Data Integrity Patterns](#appendix-aa--data-integrity-patterns) | AB | [Idempotency](#appendix-ab--idempotency-pattern) |
+| AC | [Status Machine Design](#appendix-ac--status-machine-design) | AD | [Snapshot vs Live Data](#appendix-ad--snapshot-vs-live-master-data) |
+| AE | [Money and Currency](#appendix-ae--money-and-currency-design) | AF | [Timezone Design](#appendix-af--timezone-design) |
+| AG | [NULL Design](#appendix-ag--null-design-decisions) | AH | [Naming Conventions](#appendix-ah--naming-conventions) |
+| AI | [Column Type Checklist](#appendix-ai--column-type-selection-checklist) | AJ | [Read/Write Separation](#appendix-aj--readwrite-separation-considerations) |
+| AK | [Caching and MySQL](#appendix-ak--caching-and-mysql) | AL | [Warehouse vs Transaction DB](#appendix-al--data-warehouse-vs-transaction-database) |
+| AM | [Data Retention](#appendix-am--data-retention) | AN | [Personal Data and Privacy](#appendix-an--personal-data-and-privacy-design) |
+| AO | [Administration Commands](#appendix-ao--mysql-administration-starter-commands) | AP | [Environment Strategy](#appendix-ap--database-environment-strategy) |
+| AQ | [Migration File Discipline](#appendix-aq--migration-file-discipline) | AR | [SQL Formatting Standard](#appendix-ar--sql-formatting-standard) |
+| AS | [Reading an Unknown Database](#appendix-as--how-to-read-an-unknown-database) | AT | [Code Review Questions](#appendix-at--sql-code-review-questions) |
+| AU | [Advanced Practice Challenges](#appendix-au--advanced-practice-challenges) | AV | [Daily SQL Practice](#appendix-av--recommended-daily-sql-practice) |
+| AW | [Mastery Test](#appendix-aw--mastery-test) | AX | [Glossary](#appendix-ax--glossary) |
+| AY | [What to Learn Next](#appendix-ay--what-to-learn-after-this-handbook) |  |  |
 
 ---
 
@@ -349,6 +384,8 @@ Typical tools include:
 - DataGrip
 - application database drivers
 
+The commands `mysql` and `mysqlsh` name different clients. `mysql` is the classic SQL command-line client used in the examples below. `mysqlsh` is MySQL Shell, which supports SQL plus JavaScript/Python modes and administration workflows. Confirm which client a tutorial expects before copying meta-commands.
+
 ## 4.1 Command-Line Login
 
 ```bash
@@ -481,7 +518,7 @@ DELETE
 
 ## 6.3 DQL — Data Query Language
 
-Reads data.
+Reads data. `DQL` is a common teaching label; some references classify `SELECT` under DML instead. The label does not change how MySQL executes the statement.
 
 ```sql
 SELECT
@@ -598,13 +635,13 @@ WHERE employee_id = 10;
 
 ### TRUNCATE
 
-Removes all rows from the table.
+Removes all rows and resets the table's `AUTO_INCREMENT` counter. In MySQL, `TRUNCATE TABLE` is DDL: it causes an implicit commit, cannot normally be rolled back like an InnoDB `DELETE`, does not accept `WHERE`, and does not fire `DELETE` triggers. Foreign-key relationships can prevent it.
 
 ```sql
 TRUNCATE TABLE employees;
 ```
 
-Use it when you intentionally want to clear the entire table.
+Use it only when you intentionally want to clear the entire table and those semantics are acceptable.
 
 ### DROP
 
@@ -723,6 +760,8 @@ Do not default to them for financial amounts.
 
 ## 8.4 CHAR vs VARCHAR
 
+Both types store strings in the column character set and are limited by characters declared, while storage is also constrained by bytes and row limits. `CHAR(n)` is fixed-length and comparisons may involve trailing-space rules; `VARCHAR(n)` stores variable-length content plus length information.
+
 ### CHAR
 
 Fixed-length string.
@@ -809,7 +848,7 @@ Example:
 
 ## 8.8 DATETIME
 
-Stores date and time.
+Stores a date and time without automatic session-time-zone conversion. Use it for a wall-clock value whose meaning is defined separately, such as “store opens at 09:00 local time,” or for UTC only when the application consistently converts to and from UTC.
 
 ```sql
 approved_at DATETIME
@@ -819,13 +858,13 @@ approved_at DATETIME
 
 ## 8.9 TIMESTAMP
 
-Also stores date/time and is commonly used for audit timestamps.
+Stores an instant and converts between the session time zone and UTC during writes/reads. It has a narrower supported range than `DATETIME` and is commonly used for audit timestamps.
 
 ```sql
 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ```
 
-Be deliberate about timezone behavior in your application architecture.
+Be deliberate about timezone behavior: set/verify session time zones in pooled connections, store an IANA zone identifier separately when future civil-time rules matter, and do not assume an offset such as `+05:30` contains full timezone history.
 
 ---
 
@@ -924,6 +963,8 @@ Use `NOT NULL` when the value is required.
 status VARCHAR(20) NOT NULL DEFAULT 'PENDING'
 ```
 
+The default is used when an `INSERT` omits the column or explicitly requests `DEFAULT`; it does not replace an explicit `NULL`. Adding a default also does not backfill old rows unless a separate migration changes them.
+
 ## 9.4 AUTO_INCREMENT
 
 ```sql
@@ -931,6 +972,8 @@ id BIGINT PRIMARY KEY AUTO_INCREMENT
 ```
 
 The database automatically generates an increasing identifier.
+
+Generated values are unique for the key but are not guaranteed to be gap-free: failed or rolled-back inserts, deletes, restarts, and allocation behavior can leave gaps. Retrieve the current connection's generated value with `LAST_INSERT_ID()` or the equivalent connector API; do not calculate it with `MAX(id) + 1`.
 
 ## 9.5 Generated Columns
 
@@ -973,6 +1016,8 @@ email VARCHAR(255) UNIQUE
 
 Prevents duplicate values according to the constraint semantics.
 
+In MySQL, a unique index permits multiple `NULL` values because `NULL` is not equal to another `NULL`. If a business field must be both present and unique, declare it `NOT NULL UNIQUE`.
+
 ## 10.3 NOT NULL
 
 ```sql
@@ -1004,6 +1049,8 @@ Example:
 ```sql
 salary DECIMAL(12,2) CHECK (salary >= 0)
 ```
+
+Current MySQL versions enforce check constraints. Older releases before MySQL 8.0.16 parsed but ignored them, which is another reason not to treat an unsupported 8.0 installation as a current baseline. A check evaluates to true or unknown for accepted rows, so use `NOT NULL` as well when `NULL` must be rejected.
 
 ## 10.6 Why Database Constraints Matter
 
@@ -1037,6 +1084,8 @@ Delete
 
 ## 11.1 INSERT
 
+`INSERT` adds rows and returns an affected-row count through the client/connector. Always name columns so a schema change does not silently change the value mapping.
+
 ```sql
 INSERT INTO employees (
     employee_code,
@@ -1053,6 +1102,8 @@ VALUES (
     '2026-01-10'
 );
 ```
+
+For the `AUTO_INCREMENT` table in this handbook, `SELECT LAST_INSERT_ID();` returns the identifier generated by the most recent successful insert on **this connection**. Connection pools must read it through the same checked-out connection, although most driver APIs return it directly.
 
 ### Insert Multiple Rows
 
@@ -1338,7 +1389,17 @@ Equivalent MySQL syntax often seen:
 LIMIT 40, 20;
 ```
 
-For very large datasets, keyset pagination is often more efficient; it is covered later.
+For very large datasets, keyset pagination is often more efficient. Instead of skipping rows, remember the last ordered key and request the next range:
+
+```sql
+SELECT invoice_id, invoice_no
+FROM invoices
+WHERE invoice_id < ?
+ORDER BY invoice_id DESC
+LIMIT 20;
+```
+
+Bind `?` to the previous page's last `invoice_id`. This works because the unique key creates a stable order; for a non-unique sort such as `created_at`, include a unique tie-breaker in both the predicate and `ORDER BY`.
 
 ---
 
@@ -1366,23 +1427,24 @@ Operators:
 
 ## 14.2 Logical
 
-```text
-AND
-OR
-NOT
+`AND` requires both predicates, `OR` requires at least one, and `NOT` negates a predicate. `AND` binds more tightly than `OR`, so use parentheses whenever mixed logic could be read two ways:
+
+```sql
+WHERE is_active = TRUE
+  AND (department_id = 2 OR department_id = 5)
 ```
 
 ## 14.3 Comparison
 
-```text
-=
-!=
-<>
->
-<
->=
-<=
-```
+| Operator | Meaning |
+|---|---|
+| `=` | equal |
+| `!=` or `<>` | not equal |
+| `>` / `>=` | greater than / greater than or equal |
+| `<` / `<=` | less than / less than or equal |
+| `<=>` | MySQL null-safe equality |
+
+Ordinary comparisons with `NULL` evaluate to unknown. Use `IS NULL`, `IS NOT NULL`, or `<=>` when nulls are part of the intended logic.
 
 ## 14.4 Aliases
 
@@ -1815,6 +1877,18 @@ LEFT JOIN departments d
 
 Employees without a department are still returned.
 
+Place a filter on the right table in the `ON` clause when unmatched employees must remain:
+
+```sql
+SELECT e.employee_name, d.department_name
+FROM employees AS e
+LEFT JOIN departments AS d
+    ON d.department_id = e.department_id
+   AND d.is_active = TRUE;
+```
+
+Putting `d.is_active = TRUE` in `WHERE` rejects the `NULL`-extended rows and effectively turns that part of the query into an inner join.
+
 ## 21.3 Find Missing Relationships
 
 ```sql
@@ -1868,6 +1942,8 @@ result:
 ```
 
 Use carefully because row counts can grow quickly.
+
+MySQL has no direct `FULL OUTER JOIN` keyword. A reconciliation that needs unmatched rows from both sides can combine a left-side result with the right-only rows using `UNION ALL`; ensure both branches return compatible columns and exclude the already-matched right rows to avoid duplicates.
 
 ---
 
@@ -1950,6 +2026,8 @@ Always ask:
 A subquery is a query inside another query.
 
 ## 23.1 Scalar Subquery
+
+A scalar subquery must return at most one row: zero rows becomes `NULL`, one row supplies its value, and multiple rows raise an error. An aggregate such as `AVG()` guarantees one summary row.
 
 ```sql
 SELECT
@@ -2132,6 +2210,8 @@ Use cases:
 ---
 
 # 26. Set Operations — UNION and UNION ALL
+
+Each query must return the same number of columns in the same positions, and corresponding types must be compatible. Result column names come from the first query. `UNION` compares complete rows when removing duplicates.
 
 ## 26.1 UNION ALL
 
@@ -2333,6 +2413,8 @@ WHERE vendor_id = 100;
 
 Depending on version and need, other EXPLAIN forms may provide more detail.
 
+In MySQL 8.4, `EXPLAIN ANALYZE SELECT ...` executes the statement and reports actual timing, row counts, and loops in a tree plan. Use it carefully: because the statement really runs, test expensive reads on production-like data and do not prefix a write statement merely out of curiosity.
+
 ## 29.1 Important Things to Observe
 
 Look for concepts such as:
@@ -2440,43 +2522,78 @@ Both should succeed together.
 
 ## 30.1 Transaction Example
 
-```sql
-START TRANSACTION;
-
-UPDATE accounts
-SET balance = balance - 1000
-WHERE account_id = 1;
-
-UPDATE accounts
-SET balance = balance + 1000
-WHERE account_id = 2;
-
-COMMIT;
-```
-
-If something fails:
+The procedure below transfers money safely. Its three inputs are the source account, destination account, and positive transfer amount. `ROW_COUNT()` verifies that each account update changed exactly one row; `SIGNAL` raises a business error; and the exit handler rolls back any partial work and rethrows the error to the caller.
 
 ```sql
-ROLLBACK;
+DELIMITER //
+
+CREATE PROCEDURE transfer_funds (
+    IN p_from_account BIGINT,
+    IN p_to_account BIGINT,
+    IN p_amount DECIMAL(19,2)
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    IF p_amount <= 0 OR p_from_account = p_to_account THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Invalid transfer request';
+    END IF;
+
+    START TRANSACTION;
+
+    UPDATE accounts
+    SET balance = balance - p_amount
+    WHERE account_id = p_from_account
+      AND balance >= p_amount;
+
+    IF ROW_COUNT() <> 1 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Source missing or funds insufficient';
+    END IF;
+
+    UPDATE accounts
+    SET balance = balance + p_amount
+    WHERE account_id = p_to_account;
+
+    IF ROW_COUNT() <> 1 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Destination account missing';
+    END IF;
+
+    COMMIT;
+END //
+
+DELIMITER ;
+
+CALL transfer_funds(1, 2, 1000.00);
 ```
+
+On success the procedure returns no business result set and commits both balances. On validation failure it returns an error to the caller and commits neither change. Production code should also define authorization, account/currency rules, an idempotency key, audit/ledger entries, and a bounded retry policy for transient deadlocks.
+
+`COMMIT` and `ROLLBACK` end the current transaction. A SQL error does not guarantee that MySQL automatically rolls back every earlier successful statement, so application code must catch the error and roll back before returning the pooled connection. Also remember that many DDL statements cause an implicit commit and cannot be treated like ordinary transactional DML.
 
 ## 30.2 ACID
 
 ### Atomicity
 
-All operations happen or none happen.
+All operations commit as one unit or are rolled back. Correct error handling is still required; atomicity does not make an application that forgets to roll back safe.
 
 ### Consistency
 
-Data rules remain valid.
+Each committed transaction should move the database between valid states. MySQL enforces declared constraints, while application or stored-program logic must correctly implement invariants not expressed in the schema.
 
 ### Isolation
 
-Concurrent transactions should not interfere in unsafe ways.
+Concurrent transactions see and block one another according to the selected isolation level. Stronger isolation can prevent more anomalies but may increase locking, waiting, retries, or version-retention work.
 
 ### Durability
 
-Committed data should survive expected failures according to the database's durability configuration.
+Committed changes survive expected crashes through InnoDB redo logging and recovery, subject to durability configuration and storage guarantees. Durability does not replace backups, replication, or disaster-recovery testing.
 
 ---
 
@@ -2518,6 +2635,21 @@ READ COMMITTED
 REPEATABLE READ
 SERIALIZABLE
 ```
+
+InnoDB's default isolation level is normally `REPEATABLE READ`, but applications, managed services, or session setup may change it. Check rather than assume:
+
+```sql
+SELECT @@transaction_isolation;
+```
+
+| Level | Dirty reads | Same-row changes during transaction | Range/phantom handling |
+|---|---:|---:|---|
+| `READ UNCOMMITTED` | possible | possible | possible |
+| `READ COMMITTED` | prevented | possible between statements | new committed matches can appear |
+| `REPEATABLE READ` | prevented | consistent snapshot for ordinary reads | InnoDB MVCC and locking-read rules apply |
+| `SERIALIZABLE` | prevented | prevented through stronger locking semantics | strongest isolation, least concurrency |
+
+Ordinary consistent reads and locking reads (`FOR UPDATE` / `FOR SHARE`) behave differently. Predicate shape and index choice also affect which records or gaps a locking statement protects.
 
 ## 31.1 Dirty Read
 
@@ -2588,6 +2720,8 @@ COMMIT;
 ```
 
 Use only inside an intentional transaction.
+
+`FOR UPDATE` locks matching index records for a later write; it is not a general-purpose “make this SELECT faster” clause. A missing/selectively poor index can make the locking scan touch a much wider range than intended. Keep the transaction short and re-check the business condition in the protected transaction.
 
 ## 32.3 Deadlock
 
@@ -3034,7 +3168,7 @@ CREATE TRIGGER trg_invoice_after_update
 AFTER UPDATE ON invoices
 FOR EACH ROW
 BEGIN
-    IF OLD.status <> NEW.status THEN
+    IF NOT (OLD.status <=> NEW.status) THEN
         INSERT INTO invoice_status_history (
             invoice_id,
             old_status,
@@ -3052,6 +3186,8 @@ END //
 
 DELIMITER ;
 ```
+
+`OLD` contains the row before the update and `NEW` contains it afterward. MySQL triggers run `FOR EACH ROW`, so a statement updating 1,000 invoices executes the trigger body 1,000 times. The null-safe `<=>` comparison is used because ordinary `<>` would not detect every transition to or from `NULL`.
 
 ## Trigger Events
 
@@ -3116,7 +3252,7 @@ SELECT
     salary,
     ROW_NUMBER() OVER (
         PARTITION BY department_id
-        ORDER BY salary DESC
+        ORDER BY salary DESC, employee_id ASC
     ) AS salary_rank
 FROM employees;
 ```
@@ -3163,10 +3299,13 @@ SELECT
     transaction_date,
     amount,
     SUM(amount) OVER (
-        ORDER BY transaction_date
+        ORDER BY transaction_date, transaction_id
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
     ) AS running_total
 FROM transactions;
 ```
+
+The unique `transaction_id` tie-breaker makes the row order deterministic. The explicit `ROWS` frame means “sum every physical row from the partition start through this row”; relying on the default frame can group peers with the same ordering value in ways beginners do not expect.
 
 ## 42.6 Previous Row — LAG
 
@@ -3243,6 +3382,8 @@ For unquoted scalar text in supported contexts:
 SELECT extracted_data->>'$.invoice_no'
 FROM ocr_results;
 ```
+
+`JSON_EXTRACT()` and `->` return a JSON value, so a JSON string remains quoted. `->>` returns unquoted scalar text, which is usually more convenient for display or string comparison. Frequently filtered JSON properties may justify a generated column and an index; do not expect a B-tree index on the whole JSON document to accelerate arbitrary paths.
 
 ## 43.4 When JSON Is Appropriate
 
@@ -3341,6 +3482,8 @@ CREATE USER 'app_user'@'10.%'
 IDENTIFIED BY 'strong-password-here';
 ```
 
+A MySQL account is the pair `user` + `host`; `'app_user'@'10.%'` is different from `'app_user'@'localhost'`. Make the host pattern as narrow as the deployment permits and supply the real secret through an approved provisioning/secret workflow rather than committing it to a migration file.
+
 ## 46.2 Grant Privileges
 
 ```sql
@@ -3377,7 +3520,19 @@ CREATE USER
 
 ## 46.5 Roles
 
-Where roles are used in your MySQL environment, group privileges into roles rather than repeating every grant per user.
+Roles group privileges so they can be granted consistently:
+
+```sql
+CREATE ROLE 'app_reader';
+
+GRANT SELECT ON app_db.* TO 'app_reader';
+GRANT 'app_reader' TO 'report_user'@'10.%';
+
+SET DEFAULT ROLE 'app_reader'
+TO 'report_user'@'10.%';
+```
+
+`CREATE ROLE` creates the role account, the first `GRANT` gives it privileges, the second assigns it to a user, and `SET DEFAULT ROLE` activates it automatically at login. Role activation and availability can be inspected per session; test the final effective privileges using the same account/host path as the application.
 
 ---
 
@@ -3454,23 +3609,34 @@ Do not "fix" SQL injection by manually adding quotes or replacing a few characte
 
 Use the database driver's parameter mechanism.
 
+Placeholders represent **data values**, not SQL grammar. A parameter cannot safely stand for a table name, column name, sort direction, or arbitrary `WHERE` fragment. For those choices, map a small allowlist of API values to hard-coded SQL identifiers and continue binding all user data as parameters.
+
 ---
 
 # 49. Import, Export, Backup, and Restore
 
 ## 49.1 Export with mysqldump
 
-Typical logical backup:
+Typical logical backup for transactional InnoDB tables:
 
 ```bash
-mysqldump -u root -p app_db > app_db.sql
+mysqldump \
+  --single-transaction \
+  --routines \
+  --events \
+  --triggers \
+  -u backup_user -p app_db > app_db.sql
 ```
+
+`--single-transaction` obtains a consistent snapshot for InnoDB without holding a global read lock for the whole dump; it does not make concurrent DDL safe and does not provide the same guarantee for nontransactional tables. `--routines`, `--events`, and `--triggers` ensure those objects are considered. Use a least-privilege backup identity and never put the password directly in the command where process listings or shell history may expose it.
 
 ## 49.2 Restore
 
 ```bash
 mysql -u root -p app_db < app_db.sql
 ```
+
+Restore into an empty test database first, capture errors, validate schema/object counts and application checks, and measure elapsed time. A logical dump alone may not satisfy a large database's RPO/RTO; production strategies can combine physical backups, binary logs for point-in-time recovery, encryption, off-site copies, retention, and automated restore drills.
 
 ## 49.3 Export Selected Tables
 
@@ -3537,6 +3703,8 @@ Important:
 
 If someone deletes important rows on the primary, that deletion may replicate too.
 
+Traditional replication is usually asynchronous: a replica can lag, so an immediate read routed there may not see a write that just committed on the primary. Define read-after-write behavior, monitor lag and errors, use unique server identities/GTID settings appropriate to the topology, and plan failover/failback rather than assuming “promote replica” is the whole HA procedure.
+
 ---
 
 # 51. High Availability and Scaling Concepts
@@ -3556,6 +3724,8 @@ faster storage
 ## 51.2 Read Scaling
 
 Send read-only traffic to replicas.
+
+Only send queries whose freshness requirements tolerate replica lag. Transactions and workflows that must read their own writes should remain on the primary or use an explicitly designed consistency mechanism.
 
 ## 51.3 Caching
 
@@ -3637,6 +3807,8 @@ CREATE TABLE customers (
     customer_name VARCHAR(200) NOT NULL
 ) CHARACTER SET utf8mb4;
 ```
+
+`utf8mb4` represents the full Unicode range; MySQL's historical `utf8mb3` does not. Choose an explicit modern `utf8mb4` collation at the database/table level, keep related join columns compatible, and test case/accent behavior with real multilingual examples. Changing a character set can rebuild data/indexes and can fail if converted values exceed column or index limits.
 
 Collation affects things like:
 
@@ -3746,6 +3918,22 @@ Useful operational signals include:
 Do not optimize from guesswork.
 
 Measure first.
+
+For a quick view of statement digests when the relevant consumers are enabled:
+
+```sql
+SELECT
+    digest_text,
+    count_star,
+    ROUND(sum_timer_wait / 1000000000000, 3) AS total_seconds,
+    sum_rows_examined,
+    sum_rows_sent
+FROM performance_schema.events_statements_summary_by_digest
+ORDER BY sum_timer_wait DESC
+LIMIT 10;
+```
+
+This groups normalized statement shapes. `count_star` is executions, timers are stored in picoseconds (the division converts to seconds), and examined-versus-sent rows can reveal inefficient access. Data availability depends on Performance Schema configuration and resets; protect statement text because it may contain sensitive context.
 
 ---
 
@@ -3975,6 +4163,8 @@ WHERE deleted_at IS NULL
 - accidental inclusion of deleted rows
 
 Use only when the business requires it.
+
+MySQL does not provide PostgreSQL-style partial unique indexes. If active rows need conditional uniqueness such as “email unique only while not deleted,” use a carefully tested design such as an additional generated key, a separate active-key table, or a business rule that never reuses the value. A naïve unique index on `(email, deleted_at)` does not enforce the intended active-row rule because multiple `NULL` values are allowed.
 
 ---
 
@@ -4739,11 +4929,13 @@ invoice_date DATE
 
 ## 69.4 Using FLOAT for Exact Money
 
-Prefer:
+`FLOAT`/`DOUBLE` are approximate binary floating-point types, so equality and repeated arithmetic may contain rounding surprises. Prefer an exact fixed-point type with deliberate precision and scale:
 
 ```sql
-DECIMAL
+DECIMAL(19,4)
 ```
+
+The correct scale depends on currencies, tax/rate calculations, and rounding policy; format currency symbols and locale separators outside the stored numeric value.
 
 ## 69.5 No Foreign Keys Anywhere
 
@@ -6143,30 +6335,6 @@ When "data is wrong":
 ### Principle 15
 
 **Database mastery comes from debugging real data problems, not memorizing syntax alone.**
-
----
-
-# End of MySQL Mastery Handbook
-
-Use this file as a living document.
-
-As you learn more, add:
-
-- real queries you solved
-- EXPLAIN examples
-- bugs you fixed
-- index experiments
-- deadlock examples
-- migration lessons
-- production incident notes
-- project schemas
-- interview questions
-- company-specific patterns
-
-The strongest database handbook is not only a syntax guide.
-
-It becomes a record of **how to think about data correctly, safely, and efficiently**.
-
 
 ---
 
@@ -8454,3 +8622,31 @@ architecture
 ```
 
 That progression turns "I know SQL" into "I can design and operate reliable data-backed systems."
+
+---
+
+# Official Learning References
+
+Use Oracle's MySQL documentation as the source of truth for version-sensitive syntax, limits, defaults, deprecations, and upgrade behavior:
+
+- [MySQL 8.4 Reference Manual](https://dev.mysql.com/doc/refman/8.4/en/)
+- [MySQL Innovation and LTS release model](https://dev.mysql.com/doc/refman/8.4/en/mysql-releases.html)
+- [MySQL 8.4 Release Notes](https://dev.mysql.com/doc/relnotes/mysql/8.4/en/)
+- [Installing MySQL](https://dev.mysql.com/doc/refman/8.4/en/installing.html)
+- [SQL statement reference](https://dev.mysql.com/doc/refman/8.4/en/sql-statements.html)
+- [InnoDB storage engine](https://dev.mysql.com/doc/refman/8.4/en/innodb-storage-engine.html)
+- [Optimization](https://dev.mysql.com/doc/refman/8.4/en/optimization.html)
+- [Security](https://dev.mysql.com/doc/refman/8.4/en/security.html)
+- [Backup and recovery](https://dev.mysql.com/doc/refman/8.4/en/backup-and-recovery.html)
+- [Replication](https://dev.mysql.com/doc/refman/8.4/en/replication.html)
+- [Performance Schema](https://dev.mysql.com/doc/refman/8.4/en/performance-schema.html)
+
+Confirm that a page documents the exact MySQL series you deploy. MySQL-compatible products and MariaDB can differ in syntax, optimizer behavior, replication, JSON, defaults, and operational tooling; “works on MySQL” does not automatically mean “works identically everywhere.”
+
+---
+
+# End of MySQL Mastery Handbook
+
+Use this file as a living document. Add real queries, execution plans, bugs, index experiments, deadlock examples, migration lessons, incident notes, project schemas, interview questions, and organization-specific standards as you gain experience.
+
+The strongest database handbook is not only a syntax guide. It becomes a record of **how to think about data correctly, safely, and efficiently**.

@@ -1,4 +1,5 @@
 # CodeIgniter 3 Master Handbook
+
 ## Beginner-to-Advanced Learning Guide with Real-World Scenarios, Patterns, Examples, Security, APIs, Database Work, Deployment, and Legacy Modernization
 
 > **Purpose:** This is a single-file learning and reference handbook for CodeIgniter 3 (CI3).  
@@ -216,11 +217,15 @@ The important advantage is **application organization**.
 
 # 3. CI3 Status and PHP Compatibility
 
-CodeIgniter 3 is the legacy branch of CodeIgniter.
+CodeIgniter 3 is the legacy, maintenance branch of CodeIgniter. CodeIgniter 4 is the current major version. The latest published CI3 release is 3.1.13, released in March 2022; the CI3 repository describes the branch as receiving mostly security maintenance.
 
 For existing CI3 applications, it remains important to understand the framework because many production systems still use it.
 
 For brand-new applications, evaluate whether a newer supported framework is more appropriate.
+
+The official 3.1.13 requirements page recommends PHP 5.6 or newer and notes that older PHP versions should not be used. That statement is a minimum requirement, not a promise that stock CI3 works unchanged on every future PHP release. CI3 3.1.12 and 3.1.13 contain important PHP 8.0 and PHP 8.1 compatibility work. Stock 3.1.13 should not be treated as officially compatible with PHP 8.2 or later without your own compatibility fixes and regression testing.
+
+> **Security note:** PHP 5.6 and many later PHP releases are themselves end-of-life. A framework may technically run on a PHP version that is no longer safe to operate. Check both the framework and PHP support status when choosing a production runtime.
 
 ## Important practical rule
 
@@ -242,13 +247,13 @@ A safer process is:
 7. Upgrade in stages
 ```
 
-CI3 3.1.13 added compatibility work for PHP 8.0 and PHP 8.1. Stock CI3 should not automatically be assumed to support every newer PHP release without compatibility testing or patches.
+Useful primary sources are the [CI3 server requirements](https://codeigniter.com/userguide3/general/requirements.html), [CI3 changelog](https://codeigniter.com/userguide3/changelog.html), and the [official CI3 repository](https://github.com/bcit-ci/CodeIgniter).
 
 ---
 
 # 4. Prerequisites
 
-Before learning CI3, understand these PHP concepts.
+Before learning CI3, be comfortable with basic PHP, HTML forms, HTTP and SQL. You do not need to be an expert, but you should understand what the following examples receive and return.
 
 ## PHP basics
 
@@ -264,6 +269,12 @@ if ($amount > 500) {
 }
 ```
 
+`$company` and `$amount` are variables. The `if` statement evaluates a Boolean condition. Because `1000 > 500` is true, the expected output is:
+
+```text
+Approval required
+```
+
 ## Arrays
 
 ```php
@@ -276,6 +287,8 @@ $user = [
 echo $user['name'];
 ```
 
+This is an associative array: each value is addressed by a named key. The expression `$user['name']` returns `John`.
+
 ## Functions
 
 ```php
@@ -283,7 +296,12 @@ function calculate_tax($amount, $rate)
 {
     return $amount * $rate;
 }
+
+$tax = calculate_tax(1000, 0.18);
+echo $tax;
 ```
+
+`calculate_tax()` accepts an amount and a decimal rate, multiplies them, and returns the result to the caller. It does not print by itself. The example stores the returned value in `$tax` and prints `180`.
 
 ## Classes
 
@@ -297,7 +315,13 @@ class Invoice
         return $this->amount;
     }
 }
+
+$invoice = new Invoice();
+$invoice->amount = 1250;
+echo $invoice->getAmount();
 ```
+
+`new Invoice()` creates an object. `->` accesses an object's property or method. `getAmount()` returns the current `$amount`, so the output is `1250`.
 
 Also learn:
 
@@ -311,6 +335,8 @@ Also learn:
 - JSON;
 - HTTP status codes;
 - object-oriented PHP.
+
+You should also be able to create a database and run a simple parameterized query. CI3 organizes and assists with these concepts; it does not remove the need to understand them.
 
 ---
 
@@ -471,17 +497,19 @@ redirect loop             → authentication/session/routing issue
 
 # 7. Installing CodeIgniter 3
 
+Use the latest stable CI3 package rather than copying an old tutorial's framework files. A basic installation does not require Composer.
+
 Typical installation process:
 
 ```text
-1. Download CI3
-2. Extract application
-3. Configure base URL
-4. Configure encryption key
-5. Configure database
-6. Configure routes
-7. Configure rewrite rules
-8. Test welcome page
+1. Confirm the intended PHP runtime and required extensions
+2. Download and extract the stable CI3 package
+3. Point the web server document root at the project directory containing index.php
+4. Configure the application base URL and encryption key
+5. Configure a least-privilege database account, if the application uses a database
+6. Configure routes and optional URL rewriting
+7. Make only required runtime directories writable
+8. Open the welcome page and inspect the CI/PHP logs for errors
 ```
 
 Typical project:
@@ -504,6 +532,19 @@ Your application code belongs primarily inside:
 ```text
 application/
 ```
+
+The important files and directories are:
+
+| Path | Purpose | Editing rule |
+| --- | --- | --- |
+| `index.php` | Front controller that starts CI3 | Adjust environment/system paths only when needed |
+| `application/` | Your controllers, models, views and configuration | Normal application work happens here |
+| `system/` | Framework source | Replace during framework upgrades; do not add business code |
+| `user_guide/` | Offline documentation | Optional in production |
+
+For local development, start with error display and logging appropriate to a development environment. In production, set the environment to `production`, disable public diagnostic output, keep logs outside public reach, and verify that `application/logs/`, the configured session path, cache directories and upload directories have only the permissions they need.
+
+> **Do not use `chmod 777` as a general installation fix.** It grants unnecessary write access and can hide an ownership/configuration problem.
 
 ---
 
@@ -631,11 +672,24 @@ Do not commit production secrets into a public repository.
 
 ## `routes.php`
 
-Controls URL mapping.
+Controls URL mapping from incoming URI patterns to controller methods. Route order matters, and routes do not replace authorization.
+
+```php
+$route['employees/(:num)'] = 'employees/show/$1';
+```
+
+This maps `/employees/25` to `Employees::show(25)`.
 
 ## `autoload.php`
 
-Controls automatically loaded libraries, helpers, models, etc.
+Controls components loaded on every request.
+
+```php
+$autoload['libraries'] = ['database', 'session'];
+$autoload['helper'] = ['url'];
+```
+
+Autoload only widely used dependencies. A component used by one controller should usually be loaded by that controller so the dependency and initialization cost remain visible.
 
 ---
 
@@ -718,6 +772,8 @@ Common placeholders:
 (:any)
 ```
 
+`(:num)` matches digits. `(:any)` matches a non-empty URI segment, not an arbitrary multi-segment path. Captures are passed into the destination as `$1`, `$2`, and so on.
+
 Example:
 
 ```php
@@ -743,6 +799,22 @@ Use:
 ```php
 $route['products/(:num)'] = 'products/show/$1';
 ```
+
+Routes are evaluated from top to bottom. Put a specific route before a broad wildcard when both could match.
+
+```php
+$route['reports/monthly'] = 'reports/monthly';
+$route['reports/(:any)'] = 'reports/show/$1';
+```
+
+CI3 also supports HTTP-verb-specific routes. This is useful when the same resource URL performs different actions for `GET` and `POST`:
+
+```php
+$route['employees']['get']  = 'employees/index';
+$route['employees']['post'] = 'employees/store';
+```
+
+The first route handles `GET /employees`; the second handles `POST /employees`. Routing selects a controller method, but that method must still validate input, authenticate the caller and enforce authorization.
 
 ## Reserved routes
 
@@ -785,6 +857,19 @@ class Products extends CI_Controller
     }
 }
 ```
+
+Public controller methods can be routed from a URL. Protected/private methods are for internal controller logic and cannot be normal route targets. In `show($id)`, `$id` comes from the URI or a route capture; casting to `(int)` affects how it is printed but is not a complete existence or authorization check.
+
+For each controller action, define a small request contract:
+
+| Concern | Example for `Products::show($id)` |
+| --- | --- |
+| HTTP method | `GET` |
+| Input | Numeric product ID |
+| Success | HTML response with status `200` |
+| Missing record | `show_404()` / status `404` |
+| Permission failure | Status `403` |
+| Side effects | None |
 
 ## Constructor
 
@@ -1142,13 +1227,29 @@ For those, prefer libraries/services/models.
 
 # 18. Libraries
 
-Libraries are classes.
+Libraries are classes that group related behavior and may hold configuration or state. They differ from helpers, which are primarily collections of standalone functions.
 
 Load:
 
 ```php
 $this->load->library('session');
 ```
+
+Load with configuration and an alias:
+
+```php
+$config = ['mailtype' => 'html'];
+
+$this->load->library(
+    'email',
+    $config,
+    'mailer'
+);
+
+$this->mailer->from('noreply@example.com');
+```
+
+`library($name, $params, $alias)` loads/initializes the class and attaches it to the CI super-object. In this example, the Email library is available as `$this->mailer` because of the alias. The loader returns itself for chaining; the useful result is the attached class instance.
 
 Examples of CI3 libraries:
 
@@ -1227,11 +1328,17 @@ class Audit_service
 }
 ```
 
+`get_instance()` returns the main CodeIgniter application object. The `=&` assignment keeps a reference to that object, so the library can use components loaded by CI. This is a CI3-specific service-locator pattern; `$this->CI->load->database()` loads the database and `$this->CI->db` then refers to the active database connection.
+
 Then:
 
 ```php
-$this->CI->db->insert(...);
+$saved = $this->CI->db->insert('audit_log', [
+    'event' => 'invoice.created'
+]);
 ```
+
+`insert()` accepts a table name and an associative array of column values. It returns `TRUE` on success and `FALSE` on failure. Keep the super-object dependency localized; passing simple values into a library method is easier to test than reading request/session data from everywhere.
 
 ---
 
@@ -1242,6 +1349,8 @@ One of the most useful CI3 patterns is:
 ```text
 application/core/MY_Controller.php
 ```
+
+`MY_` is the default subclass prefix from `$config['subclass_prefix']`. The filename and class name must use the configured prefix. Extend a core class to add framework-wide behavior without editing `system/`; use an ordinary library/service instead when the behavior is not truly a core concern.
 
 Example:
 
@@ -1319,11 +1428,15 @@ CI3 provides the Input class.
 $name = $this->input->post('name');
 ```
 
+The first argument is the input key. If the key is absent, the usual result is `NULL`. Calling `post()` with no key returns the available POST array, but explicitly selecting expected keys makes the request contract clearer.
+
 ## GET
 
 ```php
 $page = $this->input->get('page');
 ```
+
+Values from `post()` and `get()` are still untrusted strings/arrays supplied by the client. Convert and validate them for the expected type before using them.
 
 ## Request headers
 
@@ -1381,6 +1494,16 @@ Read:
 $order_id = $this->uri->segment(3);
 ```
 
+`segment($number, $default = NULL)` uses one-based segment numbering and returns the segment string or the supplied default when missing. Cast and validate numeric identifiers before use:
+
+```php
+$order_id = (int) $this->uri->segment(3, 0);
+
+if ($order_id < 1) {
+    show_404();
+}
+```
+
 However, when possible, controller method parameters are often easier to understand:
 
 ```php
@@ -1429,6 +1552,10 @@ Typical HTTP status codes:
 
 Be consistent across APIs.
 
+`set_status_header($code)` selects the HTTP status. `set_content_type($mime)` sets the response `Content-Type`, and `set_output($body)` stores the final response body. These methods return the Output object, which is why the calls can be chained. A `204 No Content` response must not include a body.
+
+For JSON, also handle encoding failure in reusable infrastructure instead of assuming `json_encode()` always succeeds. Invalid byte sequences, unsupported values or recursion can cause failure. On PHP 7.3+, `JSON_THROW_ON_ERROR` provides a catchable `JsonException`; older supported runtimes can check `json_last_error()`.
+
 ---
 
 # 24. Forms
@@ -1443,6 +1570,8 @@ Example HTML:
 </form>
 ```
 
+`site_url()` builds an application URL using the configured base URL and index-page setting. The browser sends the named fields to `Employees::store()` as POST data. The controller must still load dependencies, enforce authorization, validate the fields and handle failures.
+
 Using Form Helper:
 
 ```php
@@ -1450,6 +1579,8 @@ $this->load->helper('form');
 
 echo form_open('employees/store');
 ```
+
+When CI3 CSRF protection is enabled, `form_open()` adds the hidden CSRF field for a normal internal form. Use `set_value('name')` to repopulate a rejected form and `validation_errors()` to show server-side validation messages; escape any output that is not already escaped by the helper.
 
 Do not trust browser-side validation alone.
 
@@ -1484,6 +1615,8 @@ $this->form_validation->set_rules(
     'required|min_length[2]|max_length[100]'
 );
 ```
+
+`set_rules($field, $label, $rules)` receives the submitted field name, a human-readable label for error messages, and either a pipe-separated rule string or a rule array. It registers rules and returns the Form Validation object for optional chaining. `run()` executes all registered rules and returns `TRUE` only when validation passes.
 
 Run:
 
@@ -1561,6 +1694,8 @@ public function invoice_unique($invoice_no)
 
 For complicated domain validation, a service is often cleaner than putting many rules into controller callbacks.
 
+`is_unique[table.field]` is useful for friendly feedback, but it cannot by itself prevent two simultaneous requests from inserting the same value. Add a database `UNIQUE` constraint and handle the possible insert failure as the final guarantee.
+
 ---
 
 # 26. Sessions
@@ -1570,6 +1705,25 @@ Load:
 ```php
 $this->load->library('session');
 ```
+
+CI3 sessions store user state across requests. The browser normally holds only a session identifier cookie; the session data is kept by the configured driver. CI3 provides files, database, Redis and Memcached drivers. Choose the driver for your deployment topology and test its locking, permissions, expiry and cleanup behavior.
+
+Example `application/config/config.php` settings for a single-server file-based deployment:
+
+```php
+$config['sess_driver'] = 'files';
+$config['sess_cookie_name'] = 'ci_session';
+$config['sess_samesite'] = 'Lax';
+$config['sess_expiration'] = 7200;
+$config['sess_save_path'] = '/var/lib/myapp/sessions';
+$config['sess_match_ip'] = FALSE;
+$config['sess_time_to_update'] = 300;
+$config['sess_regenerate_destroy'] = FALSE;
+
+$config['cookie_secure'] = TRUE; // production HTTPS only
+```
+
+The save path must exist, be writable by the PHP/web-server user and not be publicly downloadable. A local file driver is usually unsuitable for load-balanced servers unless all requests for a session reach the same storage; database, Redis or Memcached may be more appropriate there.
 
 ## Store
 
@@ -1607,9 +1761,13 @@ $this->session->unset_userdata('role');
 $this->session->sess_destroy();
 ```
 
+`set_userdata()` stores one key or an array of keys. `userdata($key)` returns the stored value or `NULL` when absent. `unset_userdata()` removes selected data. `sess_destroy()` destroys the whole session and should normally be used during logout, followed by a redirect so the next request starts cleanly.
+
 Use session regeneration/security settings appropriately for authentication systems.
 
 Never store plain-text passwords in session data.
+
+After successful authentication, call `sess_regenerate(TRUE)` before storing the authenticated identity to reduce session-fixation risk. Keep only the minimum identity/state required, and re-check important permissions against authoritative data when stale session values could be dangerous.
 
 ---
 
@@ -1646,6 +1804,24 @@ Typical use cases:
 
 Useful for temporary data with an expiry window.
 
+```php
+$this->session->set_tempdata(
+    'password_reset_user_id',
+    25,
+    300
+);
+
+$user_id = $this->session->tempdata(
+    'password_reset_user_id'
+);
+
+$this->session->unset_tempdata(
+    'password_reset_user_id'
+);
+```
+
+The third argument to `set_tempdata()` is the time to live in seconds, so `300` means five minutes. `tempdata()` returns the current value or `NULL` if it is missing/expired. Tempdata is convenient state, not a substitute for a securely generated, single-use reset token stored and validated server-side.
+
 Use cases:
 
 - temporary verification state;
@@ -1656,7 +1832,35 @@ Use cases:
 
 # 28. Cookies
 
-CI3 can work with cookies through its input/output facilities and cookie helper.
+Cookies are small name/value values sent by a browser with matching requests. They are useful for low-risk client preferences and for session identifiers, but the client can read, modify, replay or delete ordinary cookies.
+
+Load the Cookie Helper and set a one-month preference cookie:
+
+```php
+$this->load->helper('cookie');
+
+set_cookie([
+    'name' => 'theme',
+    'value' => 'dark',
+    'expire' => 30 * 24 * 60 * 60,
+    'path' => '/',
+    'secure' => TRUE,
+    'httponly' => TRUE,
+    'samesite' => 'Lax'
+]);
+```
+
+`expire` is a lifetime in seconds for this helper call. `Secure` limits transmission to HTTPS. `HttpOnly` prevents normal JavaScript access. `SameSite` controls when a browser sends the cookie in cross-site contexts. These attributes reduce risk; they do not make an untrusted cookie authoritative.
+
+Read and delete it:
+
+```php
+$theme = get_cookie('theme');
+
+delete_cookie('theme', '', '/');
+```
+
+`get_cookie()` returns the cookie value or `NULL` when it is absent. When deleting, use the same path/domain/prefix that were used to create the cookie; otherwise the browser may retain a differently scoped cookie.
 
 Use cookies for appropriate client-side state.
 
@@ -1671,6 +1875,8 @@ Secure
 HttpOnly
 SameSite
 ```
+
+Use server-side session/authentication state for identity and authorization. If a cookie value affects application behavior, validate it against an allowlist such as `['light', 'dark']`.
 
 ---
 
@@ -1716,6 +1922,18 @@ Do not run a normal application with unnecessary administrative privileges.
 # 30. Query Builder
 
 Query Builder is one of the most important CI3 features.
+
+It builds SQL through PHP method calls and automatically escapes ordinary values in supported operations. It improves consistency and reduces injection risk, but it does not validate business input or safely choose arbitrary table/column names for you.
+
+| Call | Main input | Output |
+| --- | --- | --- |
+| `select($columns)` | Column expression/string | Database builder for chaining |
+| `where($key, $value)` | Column/condition and value | Database builder for chaining |
+| `get($table)` | Table name | Query result object, or `FALSE` on failure depending on DB debug/error handling |
+| `insert($table, $data)` | Table and column/value array | Boolean success result |
+| `update($table, $data)` | Table and changed values | Boolean success result |
+| `delete($table)` | Table; usually after `where()` | Boolean success result |
+| `count_all_results($table)` | Table plus accumulated conditions | Integer count |
 
 ## Select
 
@@ -1814,6 +2032,8 @@ $data = [
 $this->db->insert('employees', $data);
 ```
 
+Check the Boolean return before treating the operation as successful. `insert_id()` returns the generated identity for drivers/tables that provide one; it is meaningful only after a successful insert on the same connection.
+
 Get insert ID:
 
 ```php
@@ -1839,6 +2059,8 @@ $this->db
     ]);
 ```
 
+An update can return `TRUE` even when the submitted value is identical and no row changes. Use `affected_rows()` carefully and perform a separate existence check when you must distinguish “not found” from “no change.”
+
 ## Delete
 
 ```php
@@ -1846,6 +2068,8 @@ $this->db
     ->where('id', $id)
     ->delete('employees');
 ```
+
+Never call an unqualified delete from request code. Validate the identifier, authorize access to that specific row and consider a soft-delete/status change when audit or recovery requirements prohibit permanent removal.
 
 ## Recommended model
 
@@ -1981,6 +2205,8 @@ String-building SQL from untrusted values creates injection risk.
 
 # 34. Query Results
 
+Execution methods such as `get()` return a database result object for a successful read query. Result conversion does not load the whole application model—it only transforms rows returned by that query.
+
 ## Multiple rows as objects
 
 ```php
@@ -2016,6 +2242,8 @@ $row = $query->row_array();
 ```php
 $count = $query->num_rows();
 ```
+
+`result()` and `result_array()` return empty arrays when the query has no rows. `row()` and `row_array()` return `NULL` when the requested row does not exist. Check for those empty results before dereferencing properties or array keys.
 
 ---
 
@@ -2230,6 +2458,32 @@ class Migration_Add_status_to_users extends CI_Migration
 
 A good migration strategy makes deployments repeatable.
 
+Enable and configure the migration library in `application/config/migration.php`. CI3 supports sequential filenames such as `001_create_users.php` and timestamp filenames such as `20260813090000_create_users.php`; use the configured type consistently. Sequential migrations require three-digit numbers with no gaps.
+
+```php
+$config['migration_enabled'] = TRUE;
+$config['migration_type'] = 'timestamp';
+$config['migration_table'] = 'migrations';
+$config['migration_auto_latest'] = FALSE;
+$config['migration_path'] = APPPATH . 'migrations/';
+```
+
+Run migrations from a protected deployment or CLI-only action:
+
+```php
+$this->load->library('migration');
+
+if (!$this->migration->latest()) {
+    $message = $this->migration->error_string();
+    log_message('error', 'Migration failed: ' . $message);
+    return FALSE;
+}
+
+return TRUE;
+```
+
+`latest()` applies all outstanding migrations up to the newest version and returns `TRUE` on success. `error_string()` provides a failure message. Do not expose an unauthenticated web URL that can migrate production. Back up important data, review destructive `down()` operations, and understand that a schema rollback cannot necessarily reconstruct deleted production data.
+
 ---
 
 # 40. Pagination
@@ -2246,9 +2500,12 @@ Example configuration:
 $config['base_url'] = site_url('employees/index');
 $config['total_rows'] = 500;
 $config['per_page'] = 20;
+$config['uri_segment'] = 3;
 
 $this->pagination->initialize($config);
 ```
+
+`total_rows` should normally come from a count query using the same filters as the list query. `per_page` is the page size. By default, CI3 treats the URI value as a row offset, so an offset of `40` with `20` rows per page selects the third page.
 
 Query:
 
@@ -2258,6 +2515,9 @@ $offset = (int) $this->uri->segment(3, 0);
 
 $data['employees'] = $this->Employee_model
     ->get_page($limit, $offset);
+
+$data['pagination_links'] =
+    $this->pagination->create_links();
 ```
 
 Model:
@@ -2271,6 +2531,8 @@ public function get_page($limit, $offset)
         ->result();
 }
 ```
+
+`create_links()` returns the pagination HTML as a string; render it in the view where the navigation belongs. Validate/cast the offset and use the configured `uri_segment` consistently. If `use_page_numbers` is enabled, convert the page number to an offset before applying `limit()`.
 
 For very large tables, investigate keyset/cursor pagination instead of always relying on huge offsets.
 
@@ -2291,6 +2553,17 @@ $config = [
 $this->load->library('upload', $config);
 ```
 
+`upload_path` must exist and be writable. `allowed_types` is a pipe-separated allowlist understood by the Upload library. `max_size` is measured in kilobytes by CI3, so `5120` represents about 5 MiB. `encrypt_name` generates a server-side name instead of trusting the client filename.
+
+The HTML form must use `multipart/form-data`, and the input name must match the argument passed to `do_upload()`:
+
+```html
+<form method="post" enctype="multipart/form-data">
+    <input type="file" name="document" required>
+    <button type="submit">Upload</button>
+</form>
+```
+
 Upload:
 
 ```php
@@ -2300,6 +2573,8 @@ if (!$this->upload->do_upload('document')) {
     $file = $this->upload->data();
 }
 ```
+
+`do_upload('document')` validates and moves the uploaded file, returning `TRUE` or `FALSE`. On success, `data()` returns metadata such as `file_name`, `full_path`, `file_size` and detected `file_type`. Store only the fields your application needs, and do not return `full_path` to an untrusted client.
 
 ## Security rules
 
@@ -2389,6 +2664,25 @@ $this->load->library('email');
 
 Configure SMTP appropriately.
 
+Example configuration can be passed when loading or placed in `application/config/email.php`:
+
+```php
+$config = [
+    'protocol' => 'smtp',
+    'smtp_host' => 'smtp.example.com',
+    'smtp_port' => 587,
+    'smtp_user' => 'smtp-user',
+    'smtp_pass' => 'load-from-protected-config',
+    'smtp_crypto' => 'tls',
+    'mailtype' => 'text',
+    'charset' => 'utf-8'
+];
+
+$this->load->library('email', $config);
+```
+
+The correct port/crypto combination depends on the mail provider. Keep credentials out of source control and verify certificate/TLS behavior in the deployed environment.
+
 Example:
 
 ```php
@@ -2405,6 +2699,8 @@ if (!$this->email->send()) {
     log_message('error', $this->email->print_debugger());
 }
 ```
+
+`send()` returns a Boolean. `print_debugger()` can contain server conversation details, so write a suitably redacted diagnostic to protected logs and never show it to normal users.
 
 ## Real-world advice
 
@@ -2439,6 +2735,8 @@ $data = file_get_contents('/safe/path/report.pdf');
 
 force_download('report.pdf', $data);
 ```
+
+`file_get_contents()` reads the complete file into memory; it returns a string or `FALSE`. `force_download($filename, $data)` sends download headers and the supplied bytes. Check the read result, use an application-controlled path, and consider a streaming response for very large files.
 
 Before downloading a private document, authorize the user.
 
@@ -2495,6 +2793,10 @@ Use only when the page can safely be cached.
 
 Do not accidentally cache private, user-specific or authorization-sensitive output.
 
+Every cache needs an invalidation rule. A five-minute expiry may be acceptable for public reference data, while a changed product price might need explicit invalidation immediately after an update. Include tenant, language, permission scope and relevant filters in application-cache keys so data cannot leak between contexts.
+
+Database query caching stores query results on disk but does not automatically understand your business changes. Use it only when you can safely delete/refresh affected cache segments; many applications prefer an explicit application or external cache with clearer keys and lifetimes.
+
 ## Cache candidate
 
 Good:
@@ -2543,6 +2845,8 @@ log_message('info', 'Invoice submitted');
 ```
 
 Log configuration is controlled through application config.
+
+Typical CI3 log levels are `error`, `debug` and `info`. `$config['log_threshold']` controls what is written: `0` disables logging, `1` records errors, `2` adds debug messages, `3` adds informational messages, and `4` records all levels. CI3 also supports an array of selected thresholds. Confirm the exact setting in the version you deploy and protect log files from web access.
 
 ## Good logging
 
@@ -2684,6 +2988,34 @@ $config['csrf_protection'] = TRUE;
 Use framework-generated form helpers/tokens correctly.
 
 For AJAX requests, include the current CSRF token according to your chosen CI3 setup.
+
+CI3 exposes the configured token field name and current hash:
+
+```php
+$token_name = $this->security->get_csrf_token_name();
+$token_hash = $this->security->get_csrf_hash();
+```
+
+Send both with a state-changing AJAX request:
+
+```javascript
+const csrfName = <?= json_encode($token_name); ?>;
+const csrfHash = <?= json_encode($token_hash); ?>;
+
+const body = new URLSearchParams();
+body.set(csrfName, csrfHash);
+body.set('status', 'APPROVED');
+
+fetch('/invoices/25/approve', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body
+});
+```
+
+The JavaScript uses `json_encode()` so the PHP strings become correctly quoted JavaScript string literals. If `$config['csrf_regenerate']` is enabled, a successful request can rotate the hash; return/render the new hash before the next AJAX mutation. Never place a CSRF token in a public log or third-party URL.
 
 Do not disable CSRF globally simply because one AJAX endpoint fails.
 
@@ -2844,6 +3176,19 @@ $this->session->set_userdata([
 redirect('dashboard');
 ```
 
+This example assumes the database, session library, URL helper and `User_model` are loaded. `$email` and `$password` must come from a validated POST request. `find_by_email()` should return one user object or `NULL`; `password_verify()` accepts the submitted plain-text password and stored password hash and returns a Boolean.
+
+A production login also needs:
+
+- rate limiting or progressive delay by account and source;
+- account status/lock checks;
+- HTTPS and secure cookie settings;
+- session regeneration after success;
+- safe audit events that never contain the password;
+- a logout action that destroys the session;
+- a secure reset/recovery flow;
+- multi-factor authentication when the risk warrants it.
+
 Use generic login errors rather than telling an attacker exactly which part was wrong.
 
 ---
@@ -2952,6 +3297,31 @@ if (password_verify($password, $hash)) {
     // valid
 }
 ```
+
+`password_hash()` creates a salted one-way hash and returns a string containing the algorithm and work parameters. `password_verify()` reads that metadata from the hash, verifies the supplied password, and returns `TRUE` or `FALSE`. Do not supply your own salt.
+
+When the configured default algorithm changes, upgrade a valid hash during login:
+
+```php
+if (password_verify($password, $user->password_hash)) {
+    if (password_needs_rehash(
+        $user->password_hash,
+        PASSWORD_DEFAULT
+    )) {
+        $new_hash = password_hash(
+            $password,
+            PASSWORD_DEFAULT
+        );
+
+        $this->User_model->update_password_hash(
+            $user->id,
+            $new_hash
+        );
+    }
+}
+```
+
+`password_needs_rehash()` returns `TRUE` when the stored hash no longer matches the requested algorithm/options. Size the database column generously (commonly `VARCHAR(255)`) because `PASSWORD_DEFAULT` output can change over time.
 
 Password reset should use:
 
@@ -3112,10 +3482,18 @@ $data = json_decode($raw, TRUE);
 Always detect malformed JSON.
 
 ```php
-if (!is_array($data)) {
-    // reject invalid JSON
+if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
+    return $this->json([
+        'success' => FALSE,
+        'error' => [
+            'code' => 'INVALID_JSON',
+            'message' => 'Request body must be a JSON object.'
+        ]
+    ], 400);
 }
 ```
+
+`raw_input_stream` is the unparsed request body. `json_decode($raw, TRUE)` converts a JSON object into an associative PHP array, or returns `NULL` for malformed JSON and for the valid JSON literal `null`. `json_last_error()` distinguishes decoding errors. After decoding, validate allowed keys and value types; JSON parsing is not business validation.
 
 ---
 
@@ -3185,6 +3563,30 @@ https://random-site.example
 
 Remember: CORS is a browser policy, not a replacement for authentication or authorization.
 
+For an allowed origin, a credentialed API generally returns that exact origin rather than `*`, adds `Vary: Origin`, and handles the browser's `OPTIONS` preflight. Conceptual CI3 code:
+
+```php
+$origin = $this->input->get_request_header('Origin');
+$allowed = ['https://portal.example.com'];
+
+if (in_array($origin, $allowed, TRUE)) {
+    $this->output
+        ->set_header('Access-Control-Allow-Origin: ' . $origin)
+        ->set_header('Vary: Origin')
+        ->set_header('Access-Control-Allow-Credentials: true');
+}
+
+if ($this->input->method(TRUE) === 'OPTIONS') {
+    return $this->output
+        ->set_header('Access-Control-Allow-Methods: GET, POST')
+        ->set_header('Access-Control-Allow-Headers: Content-Type, Authorization')
+        ->set_status_header(204)
+        ->set_output('');
+}
+```
+
+Only return allow headers to a trusted origin. Define the smallest required methods/headers, and ensure caches respect `Vary: Origin`. Cookie-based cross-origin requests also require a deliberate SameSite/CSRF design.
+
 ---
 
 # 62. Hooks
@@ -3202,6 +3604,19 @@ Configuration lives in:
 ```text
 application/config/hooks.php
 ```
+
+Example hook registration:
+
+```php
+$hook['post_controller_constructor'][] = [
+    'class' => 'Request_context',
+    'function' => 'start',
+    'filename' => 'Request_context.php',
+    'filepath' => 'hooks'
+];
+```
+
+CI3 loads `application/hooks/Request_context.php` and calls `Request_context::start()` after the routed controller has been constructed. The exact hook point determines which framework objects are available. Keep hook code fast and failure-aware because it may execute on many requests.
 
 Useful scenarios:
 
@@ -3299,6 +3714,27 @@ production
 ```
 
 The front controller can define environment behavior.
+
+The stock `index.php` derives `ENVIRONMENT` from the `CI_ENV` server variable and otherwise defaults to `development`:
+
+```php
+define(
+    'ENVIRONMENT',
+    isset($_SERVER['CI_ENV'])
+        ? $_SERVER['CI_ENV']
+        : 'development'
+);
+```
+
+Set `CI_ENV` in the web-server/process configuration, not from untrusted request input. Environment overrides can live in directories such as:
+
+```text
+application/config/development/config.php
+application/config/testing/config.php
+application/config/production/config.php
+```
+
+Keep common settings in `application/config/config.php` and override only differences. Database configuration can likewise use an environment-specific `database.php`.
 
 Environment-specific config can help separate:
 
@@ -3589,6 +4025,14 @@ This distinction matters when upgrading.
 
 CI3 projects can use Composer packages.
 
+Install Composer dependencies in the project and enable the generated autoloader explicitly. CI3's `composer_autoload` setting may be `TRUE` (for the expected default path) or an absolute path to `vendor/autoload.php`, depending on the project layout:
+
+```php
+$config['composer_autoload'] = FCPATH . 'vendor/autoload.php';
+```
+
+`FCPATH` is the directory containing the front controller. Confirm that the chosen path exists in every environment; a missing autoloader will break package class loading.
+
 Typical package categories:
 
 ```text
@@ -3702,7 +4146,8 @@ public function calculate()
 {
     $amount = $this->input->post('amount');
     $role = $this->session->userdata('role');
-    // ...
+
+    return $role === 'MANAGER' && $amount <= 50000;
 }
 ```
 
@@ -3711,11 +4156,39 @@ Easier:
 ```php
 public function calculate($amount, $role)
 {
-    // pure business calculation
+    return $role === 'MANAGER' && $amount <= 50000;
 }
 ```
 
-Pure functions/services are much easier to verify.
+Both methods return a Boolean indicating whether the role/amount combination is allowed. The second is easier to test because all inputs are explicit; a test does not have to construct a POST request and session.
+
+For example, extract an approval rule into a plain PHP class:
+
+```php
+class Approval_policy
+{
+    public function level_for($amount)
+    {
+        return $amount >= 100000 ? 'MANAGER' : 'AUTO';
+    }
+}
+```
+
+A PHPUnit-style test can exercise it without booting a web request:
+
+```php
+public function test_large_amount_requires_manager()
+{
+    $policy = new Approval_policy();
+
+    $this->assertSame(
+        'MANAGER',
+        $policy->level_for(150000)
+    );
+}
+```
+
+The test supplies `150000`, calls the public method and asserts the exact returned string. Choose a PHPUnit version compatible with the PHP runtime used by the legacy project. For controllers and framework-integrated models, use a maintained CI3 testing harness or higher-level HTTP/integration tests; do not pretend that CI3 has the same built-in testing architecture as CI4.
 
 ## Regression tests
 
@@ -4240,9 +4713,12 @@ CREATE TABLE employees (
     email VARCHAR(150) NOT NULL UNIQUE,
     department_id INT NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-    created_at DATETIME NOT NULL
+    created_at DATETIME NOT NULL,
+    deleted_at DATETIME NULL
 );
 ```
+
+`deleted_at` supports a simple soft-delete approach: removing an employee sets the timestamp instead of erasing the row. Normal list queries must add `WHERE deleted_at IS NULL`; audit reports can deliberately include archived rows. In a real schema, also add foreign keys and indexes based on query patterns.
 
 ## Model
 
@@ -4269,6 +4745,7 @@ class Employee_model extends CI_Model
         return $this->db
             ->where('department_id', $department_id)
             ->where('status', 'ACTIVE')
+            ->where('deleted_at', NULL)
             ->get('employees')
             ->result();
     }
@@ -4414,9 +4891,24 @@ public function submit(array $input, $user_id)
 
     $this->CI->db->trans_begin();
 
-    // 1. create invoice
-    // 2. create workflow
-    // 3. audit action
+    $invoice_id = $this->Invoice_model->create([
+        'vendor_id' => $input['vendor_id'],
+        'invoice_no' => $input['invoice_no'],
+        'amount' => $input['amount'],
+        'status' => 'PENDING',
+        'created_by' => $user_id
+    ]);
+
+    if (!$invoice_id) {
+        $this->CI->db->trans_rollback();
+
+        return [
+            'success' => FALSE,
+            'message' => 'Could not save invoice.'
+        ];
+    }
+
+    // Create approval rows and an audit row using $invoice_id.
 
     if ($this->CI->db->trans_status() === FALSE) {
         $this->CI->db->trans_rollback();
@@ -4435,6 +4927,8 @@ public function submit(array $input, $user_id)
     ];
 }
 ```
+
+`Invoice_model::create()` is expected to return the new insert ID or a false-like value on failure. The approval and audit writes are omitted because their schemas are project-specific, but they must occur before `trans_status()` is checked. File storage and notification delivery are external side effects: plan cleanup/retry behavior because rolling back the database does not remove an already moved file or unsend a message.
 
 ## Approval authorization
 
@@ -4643,13 +5137,23 @@ audit
 
 ## 6. Use transactions for related DB writes
 
+Define exactly which writes must commit together and check `trans_status()`. Do not include a slow external API call inside a database transaction without understanding lock duration and recovery behavior.
+
 ## 7. Escape output
+
+Use `html_escape()` for untrusted HTML text/quoted attributes and context-appropriate handling for URLs, JavaScript, JSON and CSS. Escaping for one context is not automatically safe for another.
 
 ## 8. Validate business state on the server
 
+Re-read authoritative state before a transition such as approve, cancel or pay. Hidden inputs and disabled buttons are user-interface hints, not enforcement.
+
 ## 9. Log failures with context
 
+Include a request/reference ID and safe identifiers, but exclude secrets and unnecessary personal data. Make logs useful for diagnosing what failed and where.
+
 ## 10. Never expose internal exceptions to users
+
+Return a stable, helpful public error and record the technical detail privately. API clients should receive a deliberate status/code rather than a database stack trace.
 
 ---
 
@@ -4724,104 +5228,73 @@ Failure must remain failure.
 
 # 91. Useful CI3 Functions Cheat Sheet
 
-## URLs
+This is a memory aid, not a substitute for checking the official signature for your installed version. `$this` below means a CI controller/model/library with access to the CI super-object. URL and escaping functions require the relevant helper/core setup; session and database methods require those components to be loaded.
 
-```php
-base_url()
-site_url()
-redirect()
-```
+## Loading, URLs and views
 
-## Views
+| Call | Important inputs | Return/output | Typical use |
+| --- | --- | --- | --- |
+| `base_url($uri = '')` | Optional relative asset/path | Absolute URL based on `base_url` | Link to assets or known paths |
+| `site_url($uri = '')` | URI string or segment array | Application URL including configured `index_page` | Link to a controller route |
+| `redirect($uri, $method = 'auto', $code = NULL)` | Destination, redirect method, optional status | Sends redirect headers; terminates execution | Post/Redirect/Get or navigation |
+| `$this->load->view($view, $vars = [], $return = FALSE)` | View name, data, return flag | Sends rendered output, or returns HTML when third argument is `TRUE` | Render a page, fragment or email body |
+| `$this->load->model($model, $name = '', $db_conn = FALSE)` | Model name, optional alias/DB config | Loader object; model becomes a controller property | Make a model available |
+| `$this->load->library($library, $params = NULL, $name = NULL)` | Class name, constructor/config values, optional alias | Loader object; library becomes a property | Load session, email or custom class |
+| `$this->load->helper($helpers)` | Helper name or array of names | Loader object; functions become available | Load `url`, `form`, `cookie`, etc. |
 
-```php
-$this->load->view()
-```
+## Request and session
 
-## Models
+| Call | Important inputs | Return/output | Typical use |
+| --- | --- | --- | --- |
+| `$this->input->post($key = NULL)` | Optional POST key | One value, POST array, or `NULL` | Read submitted form data before validation |
+| `$this->input->get($key = NULL)` | Optional query key | One value, query array, or `NULL` | Read search/filter/page input |
+| `$this->input->method($upper = FALSE)` | Whether to uppercase result | HTTP method string | Enforce POST/GET/DELETE behavior |
+| `$this->session->userdata($key = NULL)` | Optional session key | One value, session array, or `NULL` | Read authenticated/session state |
+| `$this->session->set_userdata($key, $value = NULL)` | Key/value or associative array | No business result; mutates session | Store session state |
+| `$this->session->flashdata($key = NULL)` | Optional flash key | Flash value/array or `NULL` | Read a next-request message |
+| `$this->session->set_flashdata($key, $value = NULL)` | Key/value or array | No business result; marks flashdata | Store a message before redirect |
 
-```php
-$this->load->model()
-```
+Input access does not perform domain validation. Session access does not prove that the user still has a permission stored there.
 
-## Libraries
+## Database builder and writes
 
-```php
-$this->load->library()
-```
+| Call | Important inputs | Return/output | Typical use |
+| --- | --- | --- | --- |
+| `$this->db->select($select)` | Column list/expression | DB builder | Choose result columns |
+| `$this->db->from($table)` | Table name | DB builder | Choose source table |
+| `$this->db->where($key, $value = NULL)` | Condition and value | DB builder | Add an AND condition |
+| `$this->db->join($table, $condition, $type = '')` | Table, ON condition, join type | DB builder | Combine related tables |
+| `$this->db->order_by($column, $direction = '')` | Whitelisted column/direction | DB builder | Sort results |
+| `$this->db->limit($value, $offset = 0)` | Row limit and offset | DB builder | Paginate/bound a query |
+| `$this->db->get($table = '')` | Optional table | Query result object or failure | Execute a SELECT |
+| `$this->db->insert($table, $data)` | Table and column/value array | Boolean | Insert one row |
+| `$this->db->update($table, $data)` | Table and changes, usually after `where()` | Boolean | Update matching rows |
+| `$this->db->delete($table)` | Table, normally after `where()` | Boolean | Delete matching rows |
+| `$this->db->query($sql, $binds = FALSE)` | SQL and optional bound values | Query object for reads; Boolean for writes | Execute SQL not clearly expressed by Query Builder |
+| `$this->db->insert_id()` | None | Last generated identity for the connection/driver | Read ID after a successful insert |
+| `$this->db->affected_rows()` | None | Integer affected-row count | Inspect the previous write |
+| `$this->db->last_query()` | None | Last SQL string | Development/debug logging; never expose publicly |
 
-## Helpers
+Builder calls accumulate state until an execution call such as `get()`, `insert()`, `update()` or `delete()`. Whitelist dynamic identifiers such as sort columns; bindings protect values, not arbitrary SQL syntax.
 
-```php
-$this->load->helper()
-```
+## Query results, errors and output
 
-## POST/GET
+| Call | Important inputs | Return/output | Typical use |
+| --- | --- | --- | --- |
+| `$query->result()` | Optional custom class name | Array of row objects | Iterate multiple rows |
+| `$query->result_array()` | None | Array of associative arrays | Array-oriented processing/JSON mapping |
+| `$query->row()` | Optional row index/class | One row object or `NULL` | Fetch one record |
+| `$query->row_array()` | Optional row index | One associative array or `NULL` | Fetch one record as an array |
+| `$query->num_rows()` | None | Integer | Count returned rows |
+| `show_404($page = '', $log_error = TRUE)` | Optional page label/log flag | Sends the framework 404 response and exits | Missing route/resource |
+| `show_error($message, $status = 500, $heading = 'An Error Was Encountered')` | Safe message/status/heading | Sends an error page and exits | Deliberate HTTP failure |
+| `log_message($level, $message)` | `error`, `debug` or `info`; safe text | No application result to depend on | Record diagnostics |
+| `$this->output->set_status_header($code, $text = '')` | Status code/optional reason | Output object | Select HTTP status |
+| `$this->output->set_content_type($mime, $charset = NULL)` | MIME type/charset | Output object | Declare HTML, JSON, PDF, etc. |
+| `$this->output->set_output($body)` | Final response string | Output object | Set response body |
+| `html_escape($value)` | String or array | HTML-escaped value | Encode untrusted text for HTML output |
 
-```php
-$this->input->post()
-$this->input->get()
-```
-
-## Session
-
-```php
-$this->session->userdata()
-$this->session->set_userdata()
-$this->session->flashdata()
-$this->session->set_flashdata()
-```
-
-## Database
-
-```php
-$this->db->select()
-$this->db->from()
-$this->db->where()
-$this->db->join()
-$this->db->order_by()
-$this->db->limit()
-$this->db->get()
-$this->db->insert()
-$this->db->update()
-$this->db->delete()
-$this->db->query()
-$this->db->insert_id()
-$this->db->affected_rows()
-$this->db->last_query()
-```
-
-## Query results
-
-```php
-$query->result()
-$query->result_array()
-$query->row()
-$query->row_array()
-$query->num_rows()
-```
-
-## Errors/logs
-
-```php
-show_404()
-show_error()
-log_message()
-```
-
-## Output
-
-```php
-$this->output->set_status_header()
-$this->output->set_content_type()
-$this->output->set_output()
-```
-
-## Escaping
-
-```php
-html_escape()
-```
+`html_escape()` is for HTML contexts. It is not a general SQL, URL, JavaScript or shell escaping function.
 
 ---
 
@@ -5354,17 +5827,9 @@ Performance problem where one query loads a list and then another query is execu
 
 Use the official CI3 documentation as the source of truth when a framework behavior is unclear.
 
-Official documentation:
+Official documentation: [CodeIgniter 3.1.13 User Guide](https://codeigniter.com/userguide3/)
 
-```text
-https://codeigniter.com/userguide3/
-```
-
-Official legacy repository:
-
-```text
-https://github.com/bcit-ci/CodeIgniter
-```
+Official legacy repository: [bcit-ci/CodeIgniter](https://github.com/bcit-ci/CodeIgniter)
 
 Especially useful documentation sections:
 
@@ -5410,20 +5875,51 @@ Changelog
 
 # Appendix A — Complete CRUD Mini Project
 
-This small example connects the main concepts.
-
-## Route
+This example implements all four CRUD operations: create, read, update and soft delete. It assumes a login action has already stored `user_id` and `role` in the session. Any write requires the `ADMIN` role. Enable CI3 CSRF protection so `form_open()` adds and validates a token for POST forms:
 
 ```php
-$route['employees'] = 'employees/index';
-$route['employees/create'] = 'employees/create';
-$route['employees/(:num)'] = 'employees/show/$1';
+$config['csrf_protection'] = TRUE;
 ```
+
+## Database table
+
+```sql
+CREATE TABLE employees (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) NOT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NULL,
+    deleted_at DATETIME NULL,
+    UNIQUE KEY uq_employees_email (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+The unique index is the final protection against duplicate emails, including concurrent requests. `deleted_at` implements soft deletion: active queries exclude rows whose timestamp is set.
+
+## Routes
+
+Put specific routes before the general numeric detail route:
+
+```php
+$route['employees']['get'] = 'employees/index';
+$route['employees/create']['get'] = 'employees/create';
+$route['employees/create']['post'] = 'employees/create';
+$route['employees/(:num)/edit']['get'] = 'employees/edit/$1';
+$route['employees/(:num)/edit']['post'] = 'employees/edit/$1';
+$route['employees/(:num)/delete']['post'] = 'employees/delete/$1';
+$route['employees/(:num)']['get'] = 'employees/show/$1';
+```
+
+The nested `get`/`post` keys restrict each route by HTTP method. The numeric capture becomes `$1`, which CI3 passes to the controller as `$id`.
 
 ## Model
 
+`application/models/Employee_model.php` contains database operations and returns predictable results:
+
 ```php
 <?php
+defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Employee_model extends CI_Model
 {
@@ -5432,6 +5928,7 @@ class Employee_model extends CI_Model
     public function all()
     {
         return $this->db
+            ->where('deleted_at', NULL)
             ->order_by('id', 'DESC')
             ->get($this->table)
             ->result();
@@ -5441,96 +5938,155 @@ class Employee_model extends CI_Model
     {
         return $this->db
             ->where('id', (int) $id)
+            ->where('deleted_at', NULL)
             ->get($this->table)
             ->row();
     }
 
+    public function email_exists_except($email, $except_id = NULL)
+    {
+        $this->db->where('email', $email);
+
+        if ($except_id !== NULL) {
+            $this->db->where('id !=', (int) $except_id);
+        }
+
+        return $this->db
+            ->count_all_results($this->table) > 0;
+    }
+
     public function create(array $data)
     {
-        $this->db->insert($this->table, $data);
+        if (!$this->db->insert($this->table, $data)) {
+            return FALSE;
+        }
 
         return $this->db->insert_id();
+    }
+
+    public function update_by_id($id, array $data)
+    {
+        return $this->db
+            ->where('id', (int) $id)
+            ->where('deleted_at', NULL)
+            ->update($this->table, $data);
+    }
+
+    public function soft_delete($id)
+    {
+        return $this->update_by_id($id, [
+            'deleted_at' => date('Y-m-d H:i:s')
+        ]);
     }
 }
 ```
 
+`all()` returns an array of row objects; `find()` returns one object or `NULL`; `email_exists_except()` returns a Boolean; `create()` returns the insert ID or `FALSE`; and update/delete methods return a Boolean database result.
+
 ## Controller
+
+`application/controllers/Employees.php` coordinates HTTP input, validation, authorization, the model and redirects:
 
 ```php
 <?php
+defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Employees extends CI_Controller
 {
+    protected $editing_id = NULL;
+
     public function __construct()
     {
         parent::__construct();
 
         $this->load->model('Employee_model');
-        $this->load->library([
-            'form_validation',
-            'session'
-        ]);
-        $this->load->helper([
-            'url',
-            'form'
-        ]);
-    }
+        $this->load->library(['form_validation', 'session']);
+        $this->load->helper(['url', 'form']);
 
-    public function index()
-    {
-        $data['employees'] =
-            $this->Employee_model->all();
-
-        $this->load->view(
-            'employees/index',
-            $data
-        );
-    }
-
-    public function show($id)
-    {
-        $data['employee'] =
-            $this->Employee_model->find($id);
-
-        if (!$data['employee']) {
-            show_404();
+        if (!$this->session->userdata('user_id')) {
+            redirect('login');
         }
-
-        $this->load->view(
-            'employees/show',
-            $data
-        );
     }
 
-    public function create()
+    protected function require_admin()
+    {
+        if ($this->session->userdata('role') !== 'ADMIN') {
+            show_error('Forbidden', 403);
+        }
+    }
+
+    protected function set_rules()
     {
         $this->form_validation->set_rules(
             'name',
             'Name',
-            'required|min_length[2]|max_length[100]'
+            'required|trim|min_length[2]|max_length[100]'
         );
 
         $this->form_validation->set_rules(
             'email',
             'Email',
-            'required|valid_email'
+            'required|trim|valid_email|max_length[150]'
+                . '|callback_email_available'
         );
+    }
+
+    public function email_available($email)
+    {
+        if ($this->Employee_model->email_exists_except(
+            $email,
+            $this->editing_id
+        )) {
+            $this->form_validation->set_message(
+                'email_available',
+                'The Email field must contain a unique value.'
+            );
+
+            return FALSE;
+        }
+
+        return TRUE;
+    }
+
+    public function index()
+    {
+        $this->load->view('employees/index', [
+            'employees' => $this->Employee_model->all()
+        ]);
+    }
+
+    public function show($id)
+    {
+        $employee = $this->Employee_model->find($id);
+
+        if (!$employee) {
+            show_404();
+        }
+
+        $this->load->view('employees/show', [
+            'employee' => $employee
+        ]);
+    }
+
+    public function create()
+    {
+        $this->require_admin();
+        $this->set_rules();
 
         if ($this->form_validation->run() === FALSE) {
-            return $this->load->view(
-                'employees/create'
-            );
+            return $this->load->view('employees/create');
         }
 
         $id = $this->Employee_model->create([
-            'name' => trim(
-                $this->input->post('name')
-            ),
-            'email' => trim(
-                $this->input->post('email')
-            ),
+            'name' => $this->input->post('name'),
+            'email' => $this->input->post('email'),
             'created_at' => date('Y-m-d H:i:s')
         ]);
+
+        if ($id === FALSE) {
+            log_message('error', 'Employee insert failed.');
+            show_error('Could not create employee.', 500);
+        }
 
         $this->session->set_flashdata(
             'success',
@@ -5539,28 +6095,137 @@ class Employees extends CI_Controller
 
         redirect('employees/' . $id);
     }
+
+    public function edit($id)
+    {
+        $this->require_admin();
+
+        $employee = $this->Employee_model->find($id);
+
+        if (!$employee) {
+            show_404();
+        }
+
+        $this->editing_id = (int) $id;
+        $this->set_rules();
+
+        if ($this->form_validation->run() === FALSE) {
+            return $this->load->view('employees/edit', [
+                'employee' => $employee
+            ]);
+        }
+
+        $saved = $this->Employee_model->update_by_id($id, [
+            'name' => $this->input->post('name'),
+            'email' => $this->input->post('email'),
+            'updated_at' => date('Y-m-d H:i:s')
+        ]);
+
+        if (!$saved) {
+            log_message(
+                'error',
+                'Employee update failed. id=' . (int) $id
+            );
+            show_error('Could not update employee.', 500);
+        }
+
+        $this->session->set_flashdata(
+            'success',
+            'Employee updated.'
+        );
+
+        redirect('employees/' . (int) $id);
+    }
+
+    public function delete($id)
+    {
+        $this->require_admin();
+
+        if ($this->input->method(TRUE) !== 'POST') {
+            show_error('Method Not Allowed', 405);
+        }
+
+        if (!$this->Employee_model->find($id)) {
+            show_404();
+        }
+
+        if (!$this->Employee_model->soft_delete($id)) {
+            log_message(
+                'error',
+                'Employee delete failed. id=' . (int) $id
+            );
+            show_error('Could not delete employee.', 500);
+        }
+
+        $this->session->set_flashdata(
+            'success',
+            'Employee deleted.'
+        );
+
+        redirect('employees');
+    }
 }
 ```
 
+The validation callback receives the submitted email and returns `TRUE` when available. During editing, `$editing_id` lets the existing employee keep their own address. The database unique index remains essential because validation and insert/update are separate operations.
+
 ## List view
+
+`application/views/employees/index.php` escapes each database value before placing it in HTML:
 
 ```php
 <h1>Employees</h1>
 
-<?php foreach ($employees as $employee): ?>
+<?php if ($message = $this->session->flashdata('success')): ?>
+    <p><?= html_escape($message); ?></p>
+<?php endif; ?>
 
+<p><a href="<?= site_url('employees/create'); ?>">Create employee</a></p>
+
+<?php if (!$employees): ?>
+    <p>No employees found.</p>
+<?php endif; ?>
+
+<?php foreach ($employees as $employee): ?>
     <p>
-        <a href="<?= site_url(
-            'employees/' . $employee->id
-        ); ?>">
+        <a href="<?= site_url('employees/' . (int) $employee->id); ?>">
             <?= html_escape($employee->name); ?>
         </a>
     </p>
-
 <?php endforeach; ?>
 ```
 
+## Detail view
+
+`application/views/employees/show.php` provides read, edit and delete actions. Deletion uses a POST form rather than a state-changing link:
+
+```php
+<h1><?= html_escape($employee->name); ?></h1>
+
+<?php if ($message = $this->session->flashdata('success')): ?>
+    <p><?= html_escape($message); ?></p>
+<?php endif; ?>
+
+<p>Email: <?= html_escape($employee->email); ?></p>
+
+<p>
+    <a href="<?= site_url(
+        'employees/' . (int) $employee->id . '/edit'
+    ); ?>">Edit</a>
+</p>
+
+<?= form_open(
+    'employees/' . (int) $employee->id . '/delete'
+); ?>
+    <button type="submit">Delete</button>
+<?= form_close(); ?>
+```
+
+The controller, not the visibility of these buttons, enforces the `ADMIN` permission.
+
 ## Create view
+
+`application/views/employees/create.php` displays validation errors and repopulates rejected fields:
 
 ```php
 <h1>Create Employee</h1>
@@ -5568,39 +6233,65 @@ class Employees extends CI_Controller
 <?= validation_errors(); ?>
 
 <?= form_open('employees/create'); ?>
+    <label for="name">Name</label>
+    <input id="name" name="name" value="<?= set_value('name'); ?>">
 
-<label>Name</label>
-<input
-    type="text"
-    name="name"
-    value="<?= set_value('name'); ?>"
->
+    <label for="email">Email</label>
+    <input
+        id="email"
+        type="email"
+        name="email"
+        value="<?= set_value('email'); ?>"
+    >
 
-<label>Email</label>
-<input
-    type="email"
-    name="email"
-    value="<?= set_value('email'); ?>"
->
-
-<button type="submit">
-    Save
-</button>
-
+    <button type="submit">Save</button>
 <?= form_close(); ?>
 ```
 
-Study this until you can explain exactly:
+`set_value()` uses the submitted value after failure and escapes HTML by default in current CI3, making it suitable for these quoted attributes.
 
-```text
-why route exists
-why controller exists
-why model exists
-why validation occurs before insert
-why output is escaped
-why redirect is used after POST
-why flashdata is useful
+## Edit view
+
+`application/views/employees/edit.php` uses the stored value as the default and a rejected submitted value when validation fails:
+
+```php
+<h1>Edit Employee</h1>
+
+<?= validation_errors(); ?>
+
+<?= form_open(
+    'employees/' . (int) $employee->id . '/edit'
+); ?>
+    <label for="name">Name</label>
+    <input
+        id="name"
+        name="name"
+        value="<?= set_value('name', $employee->name); ?>"
+    >
+
+    <label for="email">Email</label>
+    <input
+        id="email"
+        type="email"
+        name="email"
+        value="<?= set_value('email', $employee->email); ?>"
+    >
+
+    <button type="submit">Update</button>
+<?= form_close(); ?>
 ```
+
+## Expected behavior
+
+| Request | Operation | Expected result |
+| --- | --- | --- |
+| `GET /employees` | Read list | Active employees are rendered |
+| `GET /employees/5` | Read one | Employee 5 or a 404 response |
+| `GET/POST /employees/create` | Create | Form, then insert and redirect |
+| `GET/POST /employees/5/edit` | Update | Form, then update and redirect |
+| `POST /employees/5/delete` | Soft delete | Timestamp set and redirect to list |
+
+The redirect after each successful POST implements Post/Redirect/Get: refreshing the destination does not resubmit the write. Flashdata carries a one-request success message across that redirect. A production application should additionally add pagination, audit rows, centralized authorization, friendly duplicate-key handling and automated tests.
 
 ---
 

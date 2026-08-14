@@ -73,7 +73,19 @@
 52. Command Cheat Sheet
 53. Learning Roadmap
 54. Glossary
-55. Official References
+55. Same Task, Different Distro Reference
+56. Administration Checklists
+57. Common Dangerous Commands and Safer Habits
+58. Linux Mental Models That Make You Better
+59. Suggested 12-Week Study Plan
+60. Capstone Projects
+61. Final Advice
+62. Official References
+63. Appendix A — Quick Diagnostic Bundles
+64. Appendix B — Command Discovery
+65. Appendix C — Distro Detection in Bash
+66. Appendix D — Package Installation Function Example
+67. Appendix E — What to Learn Next
 
 ---
 
@@ -887,6 +899,17 @@ find target -maxdepth 2 -print
 
 Do not use destructive wildcard commands until you know exactly what expands.
 
+The preview and deletion must use the same exact target. Prefer an explicit variable and an interactive first run:
+
+```bash
+target="/path/to/lab-directory"
+printf 'Target: <%s>\n' "$target"
+find -- "$target" -maxdepth 2 -print
+rm -ri -- "$target"
+```
+
+Never use an empty variable, unresolved wildcard, `/`, or a home directory as a recursive deletion target.
+
 ## 7.9 File
 
 Identify file type:
@@ -1510,6 +1533,8 @@ files: 666 - 022 = 644
 dirs:  777 - 022 = 755
 ```
 
+This is a convenient result illustration, not ordinary decimal subtraction. A umask clears permission bits from the application's requested mode. Applications may request more restrictive modes, and ACLs or mount/security policy can further affect access.
+
 ## 13.3 sudo
 
 Run privileged command:
@@ -1557,6 +1582,8 @@ Current user's login shell as another account:
 ```bash
 sudo -u appuser -i
 ```
+
+This requests `appuser`'s login environment and configured shell; it can intentionally fail for a service account that uses `nologin` or `false`. To run one non-interactive command as that account, use `sudo -u appuser -- COMMAND`.
 
 ---
 
@@ -1774,9 +1801,10 @@ kill -9 PID
 ```bash
 pkill nginx
 pkill -HUP nginx
+killall nginx
 ```
 
-Be careful matching process names.
+Both tools match by process name, but their exact matching and platform behavior differ. Preview with `pgrep -a nginx`, prefer a specific PID when precision matters, and do not assume `SIGHUP` means reload unless that application documents it.
 
 ## 15.8 nice and renice
 
@@ -2045,7 +2073,7 @@ sudo logrotate -f /etc/logrotate.conf
 
 # 18. Package Management
 
-# 18.1 RHEL: DNF
+## 18.1 RHEL: DNF
 
 Refresh metadata:
 
@@ -2086,7 +2114,7 @@ sudo dnf upgrade
 List installed:
 
 ```bash
-dnf list installed
+dnf list --installed
 ```
 
 Find package providing a file:
@@ -2275,8 +2303,10 @@ Mint also has GUI tools for Software Sources.
 List configured entries:
 
 ```bash
-grep -RhvE '^\s*(#|$)' /etc/apt/sources.list /etc/apt/sources.list.d/ 2>/dev/null
+grep -RhvE '^[[:space:]]*(#|$)' /etc/apt/sources.list /etc/apt/sources.list.d/ 2>/dev/null
 ```
+
+This prints nonblank, noncomment lines from traditional source-list files. Modern APT can also use deb822 `.sources` files, whose entries span multiple lines; inspect those files directly rather than assuming every repository fits the one-line format.
 
 ## 19.4 PPAs
 
@@ -2445,6 +2475,8 @@ UUIDs provide more stable identification.
 # 21. LVM
 
 LVM = Logical Volume Manager.
+
+The creation commands in this chapter write storage metadata or filesystems. Use only an empty, verified lab device, record `lsblk -f` output first, and keep backups. LVM improves allocation flexibility but is not a backup.
 
 Concept:
 
@@ -3038,15 +3070,21 @@ rsync -avz source/ user@server:/backup/source/
 Delete target files not in source:
 
 ```bash
+rsync -av --delete --dry-run source/ destination/
+```
+
+Review the preview, including the source/destination and trailing slashes. Then run:
+
+```bash
 rsync -av --delete source/ destination/
 ```
 
-**Use `--delete` carefully.**
+**Use `--delete` carefully.** It removes destination entries missing from the source, and reversing the paths can destroy the good copy.
 
-Dry run:
+Without deletion, a normal archive-style sync is:
 
 ```bash
-rsync -av --delete --dry-run source/ destination/
+rsync -av source/ destination/
 ```
 
 ## Scenario: deploy static website
@@ -3112,7 +3150,7 @@ sudo firewall-cmd --reload
 
 ## 28.2 Runtime vs permanent
 
-A runtime rule can disappear after reload/reboot.
+A runtime rule changes the active firewall immediately and is normally lost after reload/reboot. A permanent rule is saved for future reloads but does not change the active rules until you reload or add the matching runtime rule.
 
 Check both:
 
@@ -3134,6 +3172,8 @@ Enable:
 ```bash
 sudo ufw enable
 ```
+
+If the Mint system is administered remotely, allow the **actual** SSH port/source first, keep the current session open, and test a second session after enabling. `OpenSSH` refers to an application profile and is appropriate only when that profile exists and matches the configured port.
 
 Allow SSH:
 
@@ -3241,6 +3281,8 @@ If web content lives in a custom directory:
 sudo semanage fcontext -a -t httpd_sys_content_t "/srv/web(/.*)?"
 sudo restorecon -Rv /srv/web
 ```
+
+`semanage` may come from an additional SELinux policy-management package. The `-a` action adds a persistent file-context rule; if an equivalent rule already exists, inspect with `semanage fcontext -l` and modify the correct entry rather than stacking conflicting rules.
 
 ## 29.6 SELinux booleans
 
@@ -3613,6 +3655,17 @@ List timers:
 systemctl list-timers
 ```
 
+Validate and test the service independently before trusting the schedule:
+
+```bash
+sudo systemd-analyze verify /etc/systemd/system/mybackup.service /etc/systemd/system/mybackup.timer
+sudo systemctl start mybackup.service
+journalctl -u mybackup.service --no-pager
+systemctl list-timers mybackup.timer
+```
+
+The service's `ExecStart` path must exist and be executable. `Persistent=true` catches up a missed calendar run after downtime; it does not retry every failed execution.
+
 Why timers are useful:
 
 - integrated logs
@@ -3728,9 +3781,11 @@ count=1
 
 while (( count <= 5 )); do
     echo "$count"
-    ((count++))
+    ((++count))
 done
 ```
+
+The prefix increment is friendly to `set -e`: `((count++))` evaluates to the old value and can return status 1 when that value is zero, which may terminate a strict-mode script unexpectedly.
 
 ## 33.10 Functions
 
@@ -3783,11 +3838,14 @@ non-zero = failure
 
 ```bash
 cleanup() {
-    rm -f /tmp/myapp.lock
+    rm -f -- "$lockfile"
 }
 
+lockfile=$(mktemp /tmp/myapp.lock.XXXXXX)
 trap cleanup EXIT
 ```
+
+`mktemp` creates a unique file securely and returns its path. A fixed predictable path in a world-writable directory can collide with another process or enable unsafe link attacks.
 
 ## 33.15 Logging function
 
@@ -3848,7 +3906,7 @@ grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' file
 Configuration lines excluding comments:
 
 ```bash
-grep -Ev '^\s*(#|$)' file.conf
+grep -Ev '^[[:space:]]*(#|$)' file.conf
 ```
 
 ## 34.3 sed
@@ -7398,10 +7456,8 @@ Use these as primary references for version-specific behavior.
 
 ## Red Hat Enterprise Linux
 
-- Red Hat Enterprise Linux documentation:
-  - https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/
-- RHEL 10 documentation:
-  - https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/10
+- [Red Hat Enterprise Linux documentation](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/)
+- [RHEL 10 documentation](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/10)
 - Red Hat product documentation includes dedicated guides for:
   - system administration
   - DNF
@@ -7416,14 +7472,10 @@ Use these as primary references for version-specific behavior.
 
 ## Linux Mint
 
-- Linux Mint:
-  - https://linuxmint.com/
-- Linux Mint Installation Guide:
-  - https://linuxmint-installation-guide.readthedocs.io/
-- Linux Mint User Guide:
-  - https://linuxmint-user-guide.readthedocs.io/
-- Update Manager guide:
-  - https://linuxmint-user-guide.readthedocs.io/en/latest/mintupdate.html
+- [Linux Mint](https://linuxmint.com/)
+- [Linux Mint Installation Guide](https://linuxmint-installation-guide.readthedocs.io/)
+- [Linux Mint User Guide](https://linuxmint-user-guide.readthedocs.io/)
+- [Update Manager guide](https://linuxmint-user-guide.readthedocs.io/en/latest/mintupdate.html)
 
 ## Built-in Linux documentation
 
@@ -7475,6 +7527,8 @@ man firewall-cmd
 
 # Appendix A — Quick Diagnostic Bundles
 
+These bundles collect read-only state; they do not diagnose the cause automatically. Run only the commands relevant to the incident and review output before sharing it because it can contain hostnames, IP addresses, usernames, mount paths, repository details, and application configuration clues.
+
 ## General
 
 ```bash
@@ -7517,16 +7571,16 @@ curl -v http://127.0.0.1/
 RHEL extras:
 
 ```bash
-firewall-cmd --list-all
+sudo firewall-cmd --list-all
 getenforce
-ausearch -m AVC -ts recent
+sudo ausearch -m AVC -ts recent
 ```
 
 Mint extras:
 
 ```bash
-ufw status verbose
-aa-status
+sudo ufw status verbose
+sudo aa-status
 ```
 
 ## Disk
@@ -7641,6 +7695,11 @@ set -Eeuo pipefail
 source /etc/os-release
 
 install_package() {
+    if (( $# != 1 )); then
+        echo "Usage: install_package PACKAGE" >&2
+        return 2
+    fi
+
     local package="$1"
 
     case "$ID" in
@@ -7662,6 +7721,8 @@ install_package git
 ```
 
 Production automation should avoid unnecessary `apt update` on every function call and should follow your configuration-management standards.
+
+This function returns the selected package manager's exit status. It does not make installation idempotent across repositories, pin a version, verify an allowed package name, or roll back a partial transaction; production automation needs policy for those concerns.
 
 ---
 

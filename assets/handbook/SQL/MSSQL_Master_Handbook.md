@@ -4,6 +4,8 @@
 >
 > **Goal:** Learn not only *what* a SQL Server feature is, but *why it exists, when to use it, when not to use it, and how it behaves in real business scenarios*.
 
+**Version note:** Reviewed on **2026-08-13** against Microsoft documentation for **SQL Server 2025 (17.x)**, the current major release at that time. Most core T-SQL examples also apply to earlier supported versions, but edition, compatibility-level, cloud-platform, and preview-feature differences are called out where they matter. Run write examples only in a disposable practice database.
+
 ---
 
 # How to Use This Handbook
@@ -395,8 +397,10 @@ Typical SQL Server learning tools:
 - SQL Server Developer Edition
 - SQL Server Express
 - SQL Server Management Studio
-- Azure Data Studio or newer Microsoft data tooling where applicable
+- Visual Studio Code with the MSSQL extension
 - `sqlcmd`
+
+Azure Data Studio retired on **2026-02-28** and no longer receives support or security fixes. Existing users should migrate queries, connections, and database-project work to supported tooling such as the MSSQL extension for Visual Studio Code.
 
 For learning, **Developer Edition** is commonly suitable because it exposes enterprise-level functionality for non-production development/testing.
 
@@ -781,11 +785,13 @@ SQL Server has a native `XML` data type.
 
 ## 7.11 JSON
 
-SQL Server commonly stores JSON in string types such as `NVARCHAR(MAX)` and provides JSON functions to query or transform it.
+SQL Server 2016 and later can store JSON text in types such as `NVARCHAR(MAX)` and use functions including `ISJSON`, `JSON_VALUE`, `JSON_QUERY`, and `OPENJSON`. SQL Server 2025 also provides a native binary `JSON` data type. Choose based on the deployed version and compatibility requirements; JSON is useful for document-shaped payloads, but stable relational attributes still belong in typed columns when they need constraints, joins, or ordinary indexing.
 
 ---
 
 # 8. DDL, DML, DQL, DCL and TCL
+
+These labels are teaching categories rather than separate SQL Server execution modes. Some references classify `SELECT` as DML instead of using the informal `DQL` label; the command's behavior does not change.
 
 ## DDL — Data Definition Language
 
@@ -815,7 +821,7 @@ MERGE
 
 ## DQL — Data Query Language
 
-Main command:
+Used to retrieve rows without modifying them. The main command is `SELECT`; it returns a result set to the client:
 
 ```sql
 SELECT
@@ -889,13 +895,13 @@ DROP TABLE dbo.Test;
 
 ## TRUNCATE
 
-Removes all rows quickly while keeping the table.
+Removes all rows while keeping the table definition. SQL Server deallocates data pages rather than logging a separate delete for every row, resets an identity seed, does not accept `WHERE`, and does not fire `DELETE` triggers. It can be rolled back when run inside an explicit transaction, but restrictions apply when another table references the target with a foreign key.
 
 ```sql
 TRUNCATE TABLE dbo.StageImport;
 ```
 
-Important differences between `DELETE` and `TRUNCATE` are covered later.
+Use `DELETE` when you need selected rows, delete-trigger behavior, or fewer foreign-key restrictions. Use `TRUNCATE` only when the business operation truly means “empty this entire table.” Both operations are destructive and require appropriate permission.
 
 ---
 
@@ -959,6 +965,8 @@ CHECK (InvoiceAmount > 0)
 IsActive BIT NOT NULL DEFAULT 1
 ```
 
+A default supplies a value only when an `INSERT` omits the column or explicitly uses the `DEFAULT` keyword. It does not replace an explicitly supplied `NULL`, and adding a default does not automatically update existing rows unless the `ALTER TABLE` statement requests that behavior.
+
 ## 10.6 NOT NULL
 
 ```sql
@@ -970,6 +978,8 @@ Means the value is mandatory.
 ---
 
 # 11. INSERT
+
+`INSERT` adds rows and reports the affected-row count to the client unless `SET NOCOUNT ON` suppresses that message. Always name target columns so a later schema change does not silently change value-to-column mapping.
 
 Single row:
 
@@ -1009,6 +1019,14 @@ Return inserted values:
 INSERT INTO dbo.Customers (CustomerName, City)
 OUTPUT inserted.CustomerId, inserted.CustomerName
 VALUES ('Demo Customer', 'Mumbai');
+```
+
+`OUTPUT inserted...` returns values from the row as stored, including generated identity values and defaults. For example, the result might be:
+
+```text
+CustomerId  CustomerName
+----------  -------------
+42          Demo Customer
 ```
 
 ---
@@ -1182,6 +1200,14 @@ ORDER BY Salary DESC;
 
 Use deterministic ordering when result order matters.
 
+If salaries can tie, add a unique tie-breaker:
+
+```sql
+ORDER BY Salary DESC, EmployeeId ASC;
+```
+
+Without `ORDER BY`, SQL Server does not promise which rows qualify as the “top” rows or what order a result set uses.
+
 ---
 
 # 15. UPDATE
@@ -1193,6 +1219,8 @@ UPDATE dbo.Employees
 SET Salary = 70000
 WHERE EmployeeId = 1;
 ```
+
+Immediately after the statement, `@@ROWCOUNT` reports how many rows SQL Server affected. Applications should also validate expected row counts—for example, zero rows may mean the employee does not exist, while more than one row may expose an unsafe filter.
 
 Multiple columns:
 
@@ -1299,22 +1327,22 @@ SELECT 10 % 3;
 
 ## Comparison
 
-```text
-=
-<>
-!=
->
-<
->=
-<=
-```
+| Operator | Meaning |
+|---|---|
+| `=` | equal |
+| `<>` or `!=` | not equal |
+| `>` / `>=` | greater than / greater than or equal |
+| `<` / `<=` | less than / less than or equal |
+
+A comparison involving `NULL` normally evaluates to unknown rather than true. Use `IS NULL` or `IS NOT NULL` for null tests.
 
 ## Logical
 
-```text
-AND
-OR
-NOT
+`AND` requires both predicates to be true, `OR` requires at least one, and `NOT` negates a predicate. Because `AND` has higher precedence than `OR`, use parentheses whenever mixed conditions could be misunderstood:
+
+```sql
+WHERE IsActive = 1
+  AND (DepartmentId = 2 OR DepartmentId = 5);
 ```
 
 ## Assignment
@@ -1364,6 +1392,8 @@ FROM dbo.People;
 ```
 
 `COALESCE` returns the first non-null expression.
+
+`ISNULL(expression, replacement)` is a two-argument SQL Server function; `COALESCE(a, b, c, ...)` is a standard SQL expression that can test several alternatives. They can infer result types and nullability differently, so check the returned data type when mixing lengths or numeric types rather than treating them as interchangeable syntax.
 
 ## NULL arithmetic
 
@@ -1441,6 +1471,8 @@ SELECT TRY_CONVERT(DATE, 'invalid');
 ```
 
 Instead of failing, `TRY_CAST` and `TRY_CONVERT` return `NULL`.
+
+That makes them useful for validation and staged imports, but it can also hide bad input if `NULL` is accepted silently. Count or quarantine failed conversions before loading production tables.
 
 ---
 
@@ -1609,6 +1641,18 @@ LEFT JOIN dbo.Departments d
 
 Employees without departments still appear.
 
+Predicates on the right table usually belong in `ON` when unmatched left rows must remain. This query preserves every employee but matches only active departments:
+
+```sql
+SELECT e.FullName, d.DepartmentName
+FROM dbo.Employees AS e
+LEFT JOIN dbo.Departments AS d
+    ON d.DepartmentId = e.DepartmentId
+   AND d.IsActive = 1;
+```
+
+Moving `d.IsActive = 1` to `WHERE` would reject rows where `d` is `NULL`, effectively changing this part of the query to inner-join behavior.
+
 ## 23.3 RIGHT JOIN
 
 Returns all rows from the right table.
@@ -1701,6 +1745,8 @@ Fix by:
 
 # 24. UNION, INTERSECT and EXCEPT
 
+Each input query must return the same number of columns in the same positions, with compatible data types. Output column names come from the first query. These operators compare complete result rows, not just the first column.
+
 ## UNION
 
 Combines result sets and removes duplicates.
@@ -1752,6 +1798,8 @@ Useful for reconciliation.
 A subquery is a query inside another query.
 
 ## Scalar Subquery
+
+A scalar subquery must return at most one value: zero rows becomes `NULL`, one row supplies the value, and more than one row raises an error. Use an aggregate or a predicate that guarantees uniqueness when the outer query requires one value.
 
 ```sql
 SELECT
@@ -1870,7 +1918,7 @@ CROSS APPLY
 
 ## OUTER APPLY
 
-Keeps left-side rows even when no match exists.
+Keeps left-side rows even when the dependent right-side query returns no row. In the “latest order per customer” example, replacing `CROSS APPLY` with `OUTER APPLY` returns customers without orders and supplies `NULL` for their order columns. Use `APPLY` for table-valued functions or correlated top-N logic; use an ordinary join when the right side does not depend on each left row.
 
 ---
 
@@ -2049,7 +2097,17 @@ FROM dbo.Orders;
 
 ## LEAD
 
-Next row value.
+`LEAD(expression, offset?, default?)` returns a value from a later row in the window order. The default offset is one, and the optional default is returned when no later row exists:
+
+```sql
+SELECT
+    OrderDate,
+    TotalAmount,
+    LEAD(TotalAmount, 1, 0) OVER (ORDER BY OrderDate, OrderId) AS NextAmount
+FROM dbo.Orders;
+```
+
+The unique `OrderId` tie-breaker makes the order deterministic when two orders share a date.
 
 ## Running Total
 
@@ -2217,7 +2275,7 @@ Good for:
 - smaller temporary structures
 - procedural logic
 
-Modern SQL Server versions have improved table-variable optimization, but workload characteristics still matter.
+Table variables are scoped to the batch/procedure/function, support limited indexing through declared constraints/index syntax, and participate in `tempdb` storage. They are not “memory-only.” Modern SQL Server versions have improved table-variable cardinality estimation, but statistics and recompilation behavior still differ from temporary tables; workload characteristics matter.
 
 Always measure instead of following simplistic rules such as:
 
@@ -2371,7 +2429,7 @@ Be aware of parameter-sensitive execution plans.
 
 ## Scalar Function
 
-Returns one value.
+Returns one scalar value for the supplied inputs. In the example, `@MonthlySalary` is a `DECIMAL(12,2)` parameter and the function returns a `DECIMAL(14,2)` annual amount:
 
 ```sql
 CREATE OR ALTER FUNCTION dbo.CalculateAnnualSalary
@@ -2390,6 +2448,8 @@ Use:
 ```sql
 SELECT dbo.CalculateAnnualSalary(50000);
 ```
+
+Expected result: `600000.00`. Scalar UDFs can be convenient for reusable calculations, but invoking one row by row may inhibit optimization or add CPU overhead. Newer versions can inline eligible scalar UDFs; verify the actual execution plan instead of assuming inlining.
 
 ## Inline Table-Valued Function
 
@@ -2516,19 +2576,19 @@ Transactions prevent that.
 
 ### Atomicity
 
-All or nothing.
+All statements in the transaction commit as a unit or are rolled back. Atomicity does not mean errors automatically roll back every open transaction; application code still needs correct `TRY/CATCH`, `XACT_STATE()`, `XACT_ABORT`, and rollback handling.
 
 ### Consistency
 
-Data remains valid according to rules.
+Each committed transaction should move the database from one valid state to another, respecting constraints and business invariants. SQL Server enforces declared constraints, while the application or stored procedure must correctly implement rules that are not represented in the schema.
 
 ### Isolation
 
-Concurrent transactions do not improperly interfere.
+Concurrent work is separated according to the selected isolation level. Stronger isolation prevents more anomalies but may use more locks, row versions, waiting, or conflict handling.
 
 ### Durability
 
-Committed data survives expected failures through database recovery mechanisms.
+Once commit succeeds, transaction-log and recovery mechanisms preserve the change across expected process or server failures. Durability is not a substitute for tested backups, high availability, and disaster recovery.
 
 ---
 
@@ -2600,6 +2660,16 @@ SNAPSHOT
 SERIALIZABLE
 ```
 
+| Level | Prevents dirty reads | Repeated-row stability | Phantom/range protection | Main mechanism |
+|---|---:|---:|---:|---|
+| `READ UNCOMMITTED` | No | No | No | minimal read locking |
+| `READ COMMITTED` | Yes | No | No | shared locks, or row versions with RCSI |
+| `REPEATABLE READ` | Yes | Yes | No | holds qualifying row locks longer |
+| `SNAPSHOT` | Yes | Yes | Yes for the transaction snapshot | row versions; update conflicts possible |
+| `SERIALIZABLE` | Yes | Yes | Yes | key-range locking |
+
+This table is a learning model; exact blocking and version-store behavior depends on database options, predicates, access paths, and concurrent writes.
+
 ## READ UNCOMMITTED
 
 Allows dirty reads.
@@ -2664,6 +2734,14 @@ Update (U)
 Intent locks
 Schema locks
 ```
+
+- Shared (`S`) locks protect reads in lock-based isolation.
+- Exclusive (`X`) locks protect changed data and conflict with other access.
+- Update (`U`) locks help coordinate a read that may become a write.
+- Intent locks summarize lower-level locks so SQL Server can check compatibility efficiently.
+- Schema locks protect metadata stability or schema modification.
+
+Locks can exist at key, row, page, object, database, or metadata resources, and SQL Server may escalate many fine-grained locks. Do not force lock hints without evidence; an appropriate index and short transaction often reduce the lock footprint more safely.
 
 ## Blocking
 
@@ -2895,6 +2973,8 @@ SET STATISTICS IO ON;
 
 Shows logical reads.
 
+Turn it off after measurement with `SET STATISTICS IO OFF;`. Compare logical reads for the same representative parameters and cache conditions; a lower duration from one run may simply reflect caching or concurrent server load.
+
 ## SET STATISTICS TIME
 
 ```sql
@@ -2902,6 +2982,8 @@ SET STATISTICS TIME ON;
 ```
 
 Shows CPU and elapsed timing.
+
+Turn it off with `SET STATISTICS TIME OFF;`. CPU time measures processor work used by the request, while elapsed time also includes waits such as I/O, blocking, scheduling, and network-related delays.
 
 ## SARGability
 
@@ -3216,7 +3298,7 @@ WHEN NOT MATCHED BY TARGET THEN
     );
 ```
 
-However, `MERGE` has historically required careful handling because of concurrency and edge-case behavior.
+The terminating semicolon is required for `MERGE`. The source must not contain multiple rows that attempt to update the same target row. `MERGE` has historically required careful handling because of concurrency and edge-case behavior; review current product fixes, test every action branch, add an appropriate unique constraint, and validate concurrency behavior before production use.
 
 A simpler and frequently easier-to-reason-about upsert pattern is:
 
@@ -3307,6 +3389,8 @@ When dynamically injecting identifiers, validate them and use:
 ```sql
 QUOTENAME()
 ```
+
+`QUOTENAME()` safely delimits one identifier; it does not prove that the identifier is authorized or turn arbitrary SQL fragments into safe input. Choose table/column/direction values from a server-side allowlist, use `QUOTENAME()` for the selected identifier, and keep data values parameterized.
 
 ---
 
@@ -3467,6 +3551,18 @@ CREATE TABLE dbo.ApiMessages
     Payload NVARCHAR(MAX)
 );
 ```
+
+For SQL Server 2025, a native binary `JSON` column is also available:
+
+```sql
+CREATE TABLE dbo.ApiMessages2025
+(
+    MessageId BIGINT IDENTITY PRIMARY KEY,
+    Payload JSON NOT NULL
+);
+```
+
+Use `NVARCHAR(MAX)` when compatibility with earlier versions is required. A check constraint such as `CHECK (ISJSON(Payload) = 1)` validates text storage; the native type validates JSON by type and avoids reparsing the text representation for supported operations. Version-specific features such as `CREATE JSON INDEX` must be checked for preview/availability status before production adoption.
 
 Validate:
 
@@ -4018,6 +4114,8 @@ WHERE session_id <> @@SPID;
 
 Dynamic Management Views expose server/database runtime information.
 
+DMV data is often transient and may reset after restart, failover, cache eviction, or other events. Results are a snapshot, not a permanent audit trail. Required permissions vary by DMV and SQL Server version; grant diagnostic access deliberately rather than giving broad administrator roles.
+
 ## Active Sessions
 
 ```sql
@@ -4085,15 +4183,18 @@ Configuration and capabilities vary by SQL Server version and deployment platfor
 
 These features answer different questions.
 
+| Feature | Main question | Captures intermediate values? | Typical consumer |
+|---|---|---:|---|
+| Change Tracking | Which primary keys changed since a version? | No | occasionally connected synchronization client |
+| CDC | What insert/update/delete changes occurred, with captured columns? | Yes, subject to configuration/retention | ETL, downstream data pipeline |
+
 ## Change Tracking
 
-Helps identify which rows changed.
-
-Useful for synchronization.
+Change Tracking is lightweight and records that a row changed, plus key/version information. A consumer uses the key to read the current row from the base table. It does not preserve every intermediate value, and clients must synchronize before cleanup retention makes an old version invalid.
 
 ## Change Data Capture (CDC)
 
-Captures row-level insert/update/delete change information for downstream processing.
+CDC reads the transaction log and exposes captured changes through change tables/functions. It can retain before/after information for updates, but cleanup retention, capture jobs/processes, schema changes, permissions, and downstream checkpoints must be operated deliberately.
 
 Common use cases:
 
@@ -4321,6 +4422,8 @@ Synchronous / Asynchronous Commit
 Automatic / Manual Failover
 ```
 
+Synchronous commit can reduce potential data loss but adds commit latency; asynchronous commit usually fits distant disaster-recovery replicas but can lose recent transactions after a forced failover. A listener gives clients a stable connection name. Availability Groups do not replace backups, and server-level objects such as logins or jobs may need separate synchronization.
+
 ## Failover Cluster Instance
 
 Protects the SQL Server instance through Windows clustering and shared-storage style architecture.
@@ -4367,6 +4470,8 @@ Architecture should be chosen based on business requirements, not feature popula
 
 ## 74.1 Always Use Schema Names
 
+Schema qualification avoids ambiguous name resolution, communicates ownership, and can improve plan reuse by ensuring every caller resolves the same object.
+
 Good:
 
 ```sql
@@ -4396,6 +4501,8 @@ FROM dbo.Employees;
 
 Application code should avoid concatenating untrusted input into SQL text.
 
+Parameters separate code from data, reduce SQL-injection risk, and encourage plan reuse. They do not validate business rules: still constrain allowed sort columns, operators, page sizes, and object names in application logic.
+
 ## 74.4 Use Correct Data Types
 
 Bad:
@@ -4422,6 +4529,8 @@ Define the rule explicitly.
 
 Do only the transactional work inside a transaction.
 
+Validate non-database input and call external services before opening it where possible. Inside the transaction, touch rows in a consistent order, avoid user interaction, commit or roll back on every path, and return promptly so locks and row versions are not retained unnecessarily.
+
 ## 74.7 Enforce Important Rules in the Database
 
 Examples:
@@ -4438,6 +4547,8 @@ Application validation is valuable, but important data-integrity rules should no
 Do not build indexes from theory alone.
 
 Observe real queries.
+
+Record the filters, joins, sort, selected columns, frequency, and expected row count. Test a proposed index with the actual plan and logical reads, then account for insert/update/delete cost and overlap with existing indexes.
 
 ## 74.9 Avoid Unbounded Result Sets
 
@@ -4523,11 +4634,15 @@ Format for display in the application.
 
 Every important business table should normally have a clear unique identifier.
 
+Without one, updates, deletes, foreign keys, replication/change-processing tools, and duplicate detection become harder or ambiguous. If no stable natural key exists, add a surrogate key and separately enforce the real business uniqueness that must not be duplicated.
+
 ## Anti-Pattern 5: `NOLOCK` Everywhere
 
 It can return inconsistent data.
 
 Use only when business semantics tolerate it and you understand the consequences.
+
+`NOLOCK` does not mean “no locks at all,” does not prevent every kind of blocking, and can observe data that later rolls back. For a system-wide read/write blocking problem, investigate indexes, transaction scope, batching, and row-versioning options instead of scattering hints through queries.
 
 ## Anti-Pattern 6: Cursor for Simple Set Logic
 
@@ -5949,6 +6064,64 @@ After mastering this file, move deeper into:
 23. security hardening
 24. encryption
 25. auditing and compliance
+
+---
+
+# Bonus: SQL Server 2025 Vector Essentials
+
+SQL Server 2025 adds a native `VECTOR(n)` type for storing fixed-length numeric vectors. An **embedding** is a vector produced by a model to represent features or semantic meaning. Keeping an embedding beside its relational row can support “find similar items” queries while ordinary columns still enforce tenant, security, date, category, or status filters.
+
+This example stores three-dimensional learning vectors; production embedding models commonly use many more dimensions, and every value inserted into a column must match its declared dimension count:
+
+```sql
+CREATE TABLE dbo.ArticleEmbeddings
+(
+    ArticleId BIGINT PRIMARY KEY,
+    Title NVARCHAR(200) NOT NULL,
+    Embedding VECTOR(3) NOT NULL
+);
+
+INSERT INTO dbo.ArticleEmbeddings (ArticleId, Title, Embedding)
+VALUES
+    (1, N'Index design',  '[0.10, 0.20, 0.30]'),
+    (2, N'Query tuning',  '[0.11, 0.19, 0.31]'),
+    (3, N'Backup basics', '[0.90, 0.10, 0.05]');
+```
+
+`VECTOR_DISTANCE(metric, vector1, vector2)` returns a scalar `FLOAT` distance. Supported metrics include `'cosine'`, `'euclidean'`, and `'dot'`; for the first two, smaller distance means greater similarity.
+
+```sql
+DECLARE @QueryVector VECTOR(3) = '[0.10, 0.20, 0.29]';
+
+SELECT TOP (2)
+    ArticleId,
+    Title,
+    VECTOR_DISTANCE('cosine', @QueryVector, Embedding) AS Distance
+FROM dbo.ArticleEmbeddings
+ORDER BY Distance ASC, ArticleId ASC;
+```
+
+This is an **exact** nearest-neighbor query: it calculates distance for every row that survives earlier filters and does not use a vector index. It is simple and exact but becomes CPU-intensive over large candidate sets. Approximate vector indexes/search can trade some recall for speed, but their availability or preview status is version/platform-specific and must be verified before production use. The database also does not create embeddings automatically unless a separately configured model/integration is used; applications can generate embeddings and pass them as parameters.
+
+---
+
+# Official Learning References
+
+Use Microsoft Learn as the source of truth for edition-, version-, and platform-sensitive behavior:
+
+- [SQL Server technical documentation](https://learn.microsoft.com/en-us/sql/sql-server/)
+- [SQL Server 2025 release notes](https://learn.microsoft.com/en-us/sql/sql-server/sql-server-2025-release-notes)
+- [Transact-SQL reference](https://learn.microsoft.com/en-us/sql/t-sql/language-reference)
+- [Database Engine documentation](https://learn.microsoft.com/en-us/sql/database-engine/sql-database-engine)
+- [Indexes and performance](https://learn.microsoft.com/en-us/sql/relational-databases/indexes/indexes)
+- [Transactions and locking](https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide)
+- [Backup and restore](https://learn.microsoft.com/en-us/sql/relational-databases/backup-restore/)
+- [Security](https://learn.microsoft.com/en-us/sql/relational-databases/security/)
+- [JSON data type](https://learn.microsoft.com/en-us/sql/t-sql/data-types/json-data-type)
+- [Vector data type](https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type)
+- [Visual Studio Code MSSQL extension](https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/mssql/mssql-extension-visual-studio-code)
+
+Check each article's **Applies to** list before copying syntax between SQL Server, Azure SQL Database, Azure SQL Managed Instance, and Microsoft Fabric.
 
 ---
 

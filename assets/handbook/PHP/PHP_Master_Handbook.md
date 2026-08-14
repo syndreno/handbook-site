@@ -1,9 +1,28 @@
 # PHP Master Handbook
+
 ## Beginner to Advanced — A Single-File Learning Guide with Explanations, Scenarios, Examples, Best Practices, Security, Databases, APIs, Testing, Architecture, and Interview Preparation
 
 > **Goal of this handbook:** A new learner should be able to open this file, choose any PHP topic, understand what it means, see why it is useful, learn the syntax, and study a realistic use case.
 >
-> This guide focuses on **modern PHP 8.x** practices. Some features depend on the exact PHP 8.x version installed on your system.
+> This guide focuses on **modern PHP 8.x** practices. Its current baseline is
+> **PHP 8.5.9**, verified on August 13, 2026. Every version-specific example is
+> labelled; PHP 8.5 syntax will not parse on an older runtime.
+
+## Supported PHP branches
+
+PHP branches receive two years of active support followed by two years of
+critical security fixes. As of August 13, 2026:
+
+| Branch | Initial release | Active support until | Security support until | Current state |
+| --- | --- | --- | --- | --- |
+| 8.2 | Dec. 8, 2022 | Dec. 31, 2024 | Dec. 31, 2026 | Security fixes only |
+| 8.3 | Nov. 23, 2023 | Dec. 31, 2025 | Dec. 31, 2027 | Security fixes only |
+| 8.4 | Nov. 21, 2024 | Dec. 31, 2026 | Dec. 31, 2028 | Active support |
+| 8.5 | Nov. 20, 2025 | Dec. 31, 2027 | Dec. 31, 2029 | Active support; current branch |
+
+Use a branch supported by your framework and dependencies. Running an
+end-of-life PHP version is security and maintenance debt even if the application
+still appears to work.
 
 ---
 
@@ -140,6 +159,16 @@
 129. [PHP Roadmap](#129-php-roadmap)
 130. [Final Mastery Checklist](#130-final-mastery-checklist)
 
+Extended reference:
+
+- [Language and runtime (131–151)](#advanced-master-reference)
+- [Database, API, and architecture (152–171)](#152-database-isolation-levels)
+- [Security and operations (172–200)](#172-path-traversal)
+- [Exercises and decision guide (201–204)](#201-practice-exercises)
+- [PHP 8.4 features (205)](#205-php-84-features-you-should-recognize)
+- [PHP 8.5 features (206)](#206-php-85-features-you-should-recognize)
+- [Source and verification notes (207)](#207-source-and-verification-notes)
+
 ---
 
 # 1. How to Use This Handbook
@@ -263,11 +292,34 @@ Frontend → POST /api/login → PHP → Database → JSON response
 
 # 4. Installing and Running PHP
 
-Check installation:
+Install a supported PHP branch using the official instructions or a maintained
+package source for your operating system. A useful development environment has:
+
+```text
+PHP CLI
+Composer
+mbstring, openssl, PDO and the PDO driver for your database
+curl, fileinfo and intl when your application uses them
+A database and web server when the project needs them
+```
+
+The exact extensions are application-specific. Check the installed runtime:
 
 ```bash
 php -v
+php --ini
+php -m
 ```
+
+Expected version output begins with a supported branch, for example:
+
+```text
+PHP 8.5.9 (cli) ...
+```
+
+`php --ini` identifies the configuration loaded by the CLI. PHP-FPM or an
+Apache module may load a different `php.ini`, so also inspect the web runtime
+when diagnosing environment differences.
 
 Run a PHP file:
 
@@ -275,10 +327,10 @@ Run a PHP file:
 php app.php
 ```
 
-Start PHP's development server:
+Start PHP's development server with an explicit document root:
 
 ```bash
-php -S localhost:8000
+php -S 127.0.0.1:8000 -t public
 ```
 
 Then visit:
@@ -286,6 +338,8 @@ Then visit:
 ```text
 http://localhost:8000
 ```
+
+The built-in server is for local development and testing, not production.
 
 Common local development options:
 
@@ -307,6 +361,17 @@ Database
 Environment variables
 Git
 ```
+
+Before opening an inherited project, install its locked dependencies and check
+its declared runtime requirement:
+
+```bash
+composer install
+composer check-platform-reqs
+```
+
+`composer check-platform-reqs` reports missing or incompatible PHP extensions
+and runtime versions. It does not replace the application's test suite.
 
 ---
 
@@ -571,7 +636,10 @@ $result = "10" + 5;
 echo $result;
 ```
 
-Depending on the value and PHP version, automatic numeric conversion may occur.
+On PHP 8.x this prints `15` because the first operand is a numeric string. A
+non-numeric string such as `"ten" + 5` throws `TypeError`. Numeric-string rules
+have changed across PHP generations, so validate input and convert deliberately
+instead of depending on coercion.
 
 Do not rely unnecessarily on implicit conversion.
 
@@ -623,7 +691,14 @@ function add(int $a, int $b): int
 add("10", 5);
 ```
 
-With strict type handling, passing an incompatible scalar value can result in a `TypeError`.
+With strict types, this call throws `TypeError` instead of coercing `"10"` to
+an integer.
+
+The declaration is per file. For scalar parameter coercion, the important file
+is the **caller** containing the function call—not merely the file where a
+function or class was declared. Strict types do not validate array shapes or
+make untyped variables statically typed; use explicit validation and static
+analysis for those contracts.
 
 Professional projects often use:
 
@@ -993,6 +1068,12 @@ $vendorName = strtolower($vendorName);
 
 echo $vendorName;
 ```
+
+Most classic string functions operate on bytes. For UTF-8 text, `strlen('नमस्ते')`
+does not mean “visible character count.” Use the `mbstring` extension for
+encoding-aware operations such as `mb_strlen()` and `mb_strtolower()`, and the
+`intl` extension when you need grapheme- or locale-aware behavior. Always know
+which encoding enters, is stored by, and leaves the application.
 
 ---
 
@@ -1877,11 +1958,26 @@ Do not store sensitive plain-text information such as passwords inside cookies.
 
 # 40. Sessions
 
-Start:
+Configure the session cookie **before** starting the session:
 
 ```php
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path' => '/',
+    'secure' => true,
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
+
+ini_set('session.use_strict_mode', '1');
+
 session_start();
 ```
+
+`secure` requires HTTPS. `HttpOnly` prevents JavaScript from reading the cookie,
+while `SameSite` helps constrain cross-site sending; neither replaces CSRF
+protection or server-side authorization. Configure these centrally in
+production rather than repeating them in every script.
 
 Set:
 
@@ -1938,35 +2034,50 @@ HTML:
 PHP:
 
 ```php
-$file = $_FILES['invoice'] ?? null;
+$file = $_FILES['invoice'] ?? [];
 
-if (!$file) {
+if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
     die('No file received');
+}
+
+if (($file['size'] ?? 0) > 5 * 1024 * 1024) {
+    die('File exceeds the 5 MiB limit');
+}
+
+$finfo = new finfo(FILEINFO_MIME_TYPE);
+$mime = $finfo->file($file['tmp_name']);
+
+$extensions = [
+    'application/pdf' => 'pdf',
+];
+
+if (!isset($extensions[$mime])) {
+    die('Only a valid PDF is accepted');
+}
+
+$storage = dirname(__DIR__) . '/storage/private/invoices';
+
+if (!is_dir($storage) && !mkdir($storage, 0750, true)) {
+    throw new RuntimeException('Upload storage is unavailable');
+}
+
+$filename = bin2hex(random_bytes(16)) . '.' . $extensions[$mime];
+$destination = $storage . DIRECTORY_SEPARATOR . $filename;
+
+if (!move_uploaded_file($file['tmp_name'], $destination)) {
+    throw new RuntimeException('Unable to store upload');
 }
 ```
 
-Never trust:
+The success path stores a randomly named PDF outside the public document root.
+Save the generated name and authorized owner/record ID in the database; retain
+the original name only as escaped metadata if the product needs it. Never trust
+the browser-supplied `name` or `type` fields.
 
-```php
-$file['name']
-$file['type']
-```
-
-Validate:
-
-- upload error
-- actual MIME type
-- size
-- extension policy
-- destination
-- generated filename
-- malware controls when needed
-
-Generate your own filename:
-
-```php
-$filename = bin2hex(random_bytes(16)) . '.pdf';
-```
+Real systems may also need content validation, malware scanning, image
+re-encoding, quotas, retention rules, and a download controller that authorizes
+every request. PHP's `upload_max_filesize` and `post_max_size` can reject a body
+before application validation runs, so align runtime and application limits.
 
 ---
 
@@ -3077,9 +3188,14 @@ $pdo = new PDO(
     [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false,
     ]
 );
 ```
+
+The connection throws on database errors, returns associative rows by default,
+and asks the driver to use native prepares where supported. Credentials should
+come from validated environment configuration, never a committed literal.
 
 Query:
 
@@ -3370,8 +3486,22 @@ if (password_needs_rehash($hash, PASSWORD_DEFAULT)) {
         $password,
         PASSWORD_DEFAULT
     );
+
+    $stmt = $pdo->prepare(
+        'UPDATE users SET password_hash = :hash WHERE id = :id'
+    );
+    $stmt->execute([
+        'hash' => $newHash,
+        'id' => $userId,
+    ]);
 }
 ```
+
+Run the rehash only after `password_verify()` succeeds. `PASSWORD_DEFAULT` may
+change over time; the rehash check lets stored hashes adopt newer parameters or
+algorithms gradually as users sign in. Rate-limit login attempts and return a
+generic failure message so the endpoint does not reveal whether an account
+exists.
 
 Do not invent your own password hashing algorithm.
 
@@ -3881,19 +4011,33 @@ $ch = curl_init(
 
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_CONNECTTIMEOUT => 3,
     CURLOPT_TIMEOUT => 10,
+    CURLOPT_HTTPHEADER => ['Accept: application/json'],
 ]);
 
 $response = curl_exec($ch);
 
 if ($response === false) {
-    throw new RuntimeException(
-        curl_error($ch)
-    );
+    $message = curl_error($ch);
+    curl_close($ch);
+
+    throw new RuntimeException("Transport failure: $message");
 }
 
+$status = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
 curl_close($ch);
+
+if ($status < 200 || $status >= 300) {
+    throw new RuntimeException("Upstream returned HTTP $status");
+}
+
+$data = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
 ```
+
+`curl_exec()` can succeed at the transport layer even when the server returns
+HTTP 404 or 500, so inspect the response status separately. The final value is
+an associative array, or JSON decoding throws `JsonException`.
 
 POST JSON:
 
@@ -3911,12 +4055,18 @@ curl_setopt_array($ch, [
     CURLOPT_POST => true,
     CURLOPT_POSTFIELDS => $payload,
     CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_CONNECTTIMEOUT => 3,
+    CURLOPT_TIMEOUT => 10,
     CURLOPT_HTTPHEADER => [
         'Content-Type: application/json',
         'Accept: application/json',
     ],
 ]);
 ```
+
+The POST fragment only configures the request; execute it and handle transport,
+HTTP status, and JSON errors using the same checks as the GET example. Do not
+disable TLS peer/host verification to “fix” certificate problems.
 
 Production clients should consider:
 
@@ -4469,9 +4619,29 @@ Validate required configuration at startup.
 
 A test verifies expected behavior automatically.
 
-Example idea:
+One common setup uses PHPUnit:
+
+```bash
+composer require --dev phpunit/phpunit
+vendor/bin/phpunit --version
+```
+
+Project-specific version constraints may select a different supported PHPUnit
+major. Put tests under `tests/`, autoload application code with Composer, and
+commit the PHPUnit configuration used by local development and CI.
+
+Example:
 
 ```php
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Unit;
+
+use App\TaxCalculator;
+use PHPUnit\Framework\TestCase;
+
 final class TaxCalculatorTest extends TestCase
 {
     public function testCalculatesTax(): void
@@ -4487,6 +4657,15 @@ final class TaxCalculatorTest extends TestCase
     }
 }
 ```
+
+Run the suite:
+
+```bash
+vendor/bin/phpunit
+```
+
+Expected result includes one passing test. A failing assertion exits non-zero,
+which lets a CI job block a regression.
 
 Why testing matters:
 
@@ -6161,7 +6340,6 @@ Documentation
 > Mastery means understanding data flow, HTTP, types, OOP, databases, security, testing, architecture, failure handling, and maintainability well enough to build reliable systems.
 
 Keep building projects, read framework/source code, debug real problems, and revisit this handbook whenever a concept becomes unclear.
-
 
 ---
 
@@ -8800,6 +8978,260 @@ Explain it without notes
 ```
 
 If you can explain a concept simply, implement it correctly, secure it, test it, and identify when **not** to use it, you understand it at a professional level.
+
+---
+
+# 205. PHP 8.4 Features You Should Recognize
+
+This chapter uses PHP 8.4+ syntax. It is especially relevant when modernizing
+framework applications or reading current library code.
+
+## Property hooks
+
+A hook can define controlled read/write behavior at the property boundary:
+
+```php
+final class User
+{
+    public function __construct(
+        private string $firstName,
+        private string $lastName,
+    ) {
+    }
+
+    public string $fullName {
+        get => "$this->firstName $this->lastName";
+    }
+}
+
+$user = new User('Ada', 'Lovelace');
+
+echo $user->fullName; // Ada Lovelace
+```
+
+`fullName` is a virtual, read-only view of two private properties; no duplicate
+full-name state is stored. Hooks can reduce repetitive getters/setters, but
+domain operations such as `approveInvoice()` are still clearer as methods.
+
+## Asymmetric property visibility
+
+Read access and write access can have different visibility:
+
+```php
+final class Order
+{
+    public private(set) string $status = 'pending';
+
+    public function approve(): void
+    {
+        $this->status = 'approved';
+    }
+}
+
+$order = new Order();
+echo $order->status; // pending
+
+$order->approve();
+echo $order->status; // approved
+```
+
+Outside code may read `status` but only `Order` may assign it. This is useful
+for exposing state without allowing callers to bypass invariants.
+
+## `#[\Deprecated]`
+
+Libraries can mark a symbol as deprecated in machine-readable form:
+
+```php
+#[\Deprecated('Use calculateTotal() instead')]
+function oldTotal(array $lines): int
+{
+    return array_sum($lines);
+}
+```
+
+Calling it emits a deprecation diagnostic. A deprecation is an upgrade warning,
+not an instruction to hide errors; migrate callers and keep deprecations visible
+in development and CI.
+
+## New array predicates/search helpers
+
+PHP 8.4 added `array_find()`, `array_find_key()`, `array_any()`, and
+`array_all()`:
+
+```php
+$users = [
+    ['name' => 'Ali', 'active' => false],
+    ['name' => 'Sara', 'active' => true],
+];
+
+$firstActive = array_find(
+    $users,
+    fn (array $user): bool => $user['active'],
+);
+
+$hasActive = array_any(
+    $users,
+    fn (array $user): bool => $user['active'],
+);
+
+echo $firstActive['name']; // Sara
+var_dump($hasActive);      // bool(true)
+```
+
+`array_find()` returns the first matching value or `null`; be careful when
+`null` itself is a valid array value. The predicate helpers make intent clearer
+than hand-written loops for simple conditions.
+
+PHP 8.4 also introduced engine-level lazy-object APIs used primarily by ORMs,
+dependency-injection containers, and proxy libraries. Application code should
+normally use the framework/library abstraction instead of constructing lazy
+ghosts or proxies directly.
+
+---
+
+# 206. PHP 8.5 Features You Should Recognize
+
+PHP 8.5 was released on November 20, 2025. The current patch at this handbook's
+verification date is 8.5.9, released July 30, 2026.
+
+## Pipe operator
+
+The pipe operator passes a value through single-argument callables from left to
+right:
+
+```php
+$slug = ' PHP 8.5 Released '
+    |> trim(...)
+    |> (fn (string $value): string => str_replace(' ', '-', $value))
+    |> (fn (string $value): string => str_replace('.', '', $value))
+    |> strtolower(...);
+
+echo $slug; // php-85-released
+```
+
+Each right-hand stage must be callable. Use pipes for a readable transformation
+sequence; use named functions or objects when a pipeline contains branching,
+side effects, or business rules that deserve a name.
+
+## `array_first()` and `array_last()`
+
+```php
+$events = ['created', 'approved', 'posted'];
+
+echo array_first($events); // created
+echo array_last($events);  // posted
+```
+
+Both return `null` for an empty array. If `null` is a valid element, check
+whether the array is empty when the distinction matters.
+
+## Built-in URI extension
+
+PHP 8.5's always-available URI extension provides standards-aware URI/URL
+objects:
+
+```php
+use Uri\Rfc3986\Uri;
+
+$uri = new Uri('https://example.com/invoices/1001?format=json');
+
+echo $uri->getHost(); // example.com
+echo $uri->getPath(); // /invoices/1001
+```
+
+Choose RFC 3986 or WHATWG URL behavior based on the protocol and browser-facing
+requirements. Parsing a URL does not make it safe for server-side fetching;
+SSRF protection still needs scheme/host/port allowlists, redirect controls, DNS
+and network-level defenses.
+
+## Clone with changed properties
+
+Readonly objects can implement a concise “with” method:
+
+```php
+readonly class Color
+{
+    public function __construct(
+        public int $red,
+        public int $green,
+        public int $blue,
+        public int $alpha = 255,
+    ) {
+    }
+
+    public function withAlpha(int $alpha): self
+    {
+        return clone($this, ['alpha' => $alpha]);
+    }
+}
+
+$opaque = new Color(79, 91, 147);
+$transparent = $opaque->withAlpha(128);
+
+echo $opaque->alpha;      // 255
+echo $transparent->alpha; // 128
+```
+
+The original object is unchanged. Validate values in the object's design; clone
+with is not permission to bypass invariants.
+
+## `#[\NoDiscard]` and intentional discard
+
+```php
+#[\NoDiscard]
+function persistInvoice(): int
+{
+    return 1001;
+}
+
+$invoiceId = persistInvoice(); // consumed
+(void) persistInvoice();       // explicitly ignored
+```
+
+Calling `persistInvoice()` as a bare expression emits a warning because its
+return value was not consumed. `(void)` documents intentional discard; it does
+not change the function's side effects or result.
+
+## Upgrade cautions
+
+PHP 8.5 deprecates several old spellings and behaviors, including non-canonical
+casts such as `(integer)`/`(boolean)`, backticks as a `shell_exec()` alias, and
+the legacy `__sleep()`/`__wakeup()` serialization hooks. Prefer `(int)`/`(bool)`,
+structured process APIs, and `__serialize()`/`__unserialize()`. Before upgrading:
+
+```bash
+composer check-platform-reqs
+composer outdated --direct
+vendor/bin/phpunit
+```
+
+Also run the project's static analysis and inspect deprecation logs under a
+realistic test workload. Review the complete migration guide rather than
+assuming the headline features are the only changes.
+
+---
+
+# 207. Source and Verification Notes
+
+Use these primary references when exact behavior or compatibility matters:
+
+- [PHP downloads and installation instructions](https://www.php.net/downloads.php)
+- [Currently supported PHP versions](https://www.php.net/supported-versions.php)
+- [PHP 8 change log](https://www.php.net/ChangeLog-8.php)
+- [PHP 8.5 release overview](https://www.php.net/releases/8.5/en.php)
+- [PHP 8.5 migration guide](https://www.php.net/manual/en/migration85.php)
+- [PHP 8.4 migration guide](https://www.php.net/manual/en/migration84.php)
+- [PHP type declarations](https://www.php.net/manual/en/language.types.declarations.php)
+- [PHP password hashing API](https://www.php.net/manual/en/book.password.php)
+- [PHP session security](https://www.php.net/manual/en/session.security.php)
+- [PHP file-upload handling](https://www.php.net/manual/en/features.file-upload.php)
+- [PDO manual](https://www.php.net/manual/en/book.pdo.php)
+- [PHP security manual](https://www.php.net/manual/en/security.php)
+
+The manual may document several PHP branches at once. Check the “available as
+of” note for a function or syntax feature and keep production runtimes on a
+supported patch release.
 
 ---
 

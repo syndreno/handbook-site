@@ -58,6 +58,9 @@
 48. [Suggested System Architecture](#48-suggested-system-architecture)
 49. [Example Business Rules](#49-example-business-rules)
 50. [P2P Glossary](#50-p2p-glossary)
+51. [Recommended P2P Principle](#51-recommended-p2p-principle)
+52. [Quick P2P Interview / Revision Summary](#52-quick-p2p-interview--revision-summary)
+53. [Final End-to-End Reference Flow](#53-final-end-to-end-reference-flow)
 
 ---
 
@@ -79,6 +82,17 @@ It is the complete business cycle used by an organization to:
 10. Pay the supplier.
 11. Reconcile the transaction.
 12. Maintain audit evidence.
+
+P2P begins with an approved need and ends when the supplier balance and bank movement are reconciled. **Source-to-Pay (S2P)** is broader: it also emphasizes category strategy, supplier discovery, sourcing events, contracting, and supplier performance before a specific purchase. **Order-to-Cash (O2C)** is the opposite commercial cycle—the organization sells to customers and collects receivables.
+
+A purchase order, receipt, invoice, and payment are separate business events:
+
+| Event | What It Proves | Usual Financial Effect |
+|---|---|---|
+| PO approved | The organization authorized a commitment | Usually no GL entry unless commitment accounting is used |
+| Goods/service accepted | Delivery or performance occurred | May record inventory/expense and a receipt accrual such as GR/IR |
+| Invoice posted | A valid supplier claim was recognized | Creates or confirms accounts payable |
+| Payment settled | Cash left the bank and the supplier item was cleared | Reduces bank and accounts payable |
 
 A simplified representation is:
 
@@ -184,6 +198,8 @@ A common enterprise P2P lifecycle is:
 # 4. Core P2P Master Data
 
 P2P depends heavily on correct master data.
+
+Master data is reused across many transactions, so one bad change can affect hundreds of orders or payments. Each critical field should have an owner, validation rule, effective date, approval history, and change log. Sensitive vendor bank and tax changes should be treated as new high-risk events rather than routine edits.
 
 ## 4.1 Vendor Master
 
@@ -396,6 +412,8 @@ A **Purchase Requisition (PR)** is an internal request to purchase goods or serv
 
 It is not normally sent to the supplier.
 
+A PR expresses demand; it is not supplier authorization and does not normally create a payable. A PO is the external commercial instruction created after sourcing and approval. Treating a PR number as permission for a supplier to deliver bypasses procurement controls.
+
 ## 7.1 Typical PR fields
 
 ```text
@@ -581,6 +599,8 @@ It confirms:
 - Tax conditions.
 - Contractual terms.
 
+The PO should be created and approved **before** the supplier commits or delivers, except through a documented emergency process. An after-the-fact PO can make an unauthorized purchase look compliant without actually providing preventive control.
+
 ## 11.1 Typical PO structure
 
 ### Header
@@ -634,6 +654,12 @@ Qty: 10
 Rate: 1,500
 Total: 15,000
 ```
+
+PO net value = ₹615,000 before tax and any separately stated charges. Each line needs its own receipt and invoice history because the laptop and bag may be delivered or billed at different times.
+
+## 11.3 PO changes and closure
+
+Price, quantity, vendor, delivery date, account assignment, and payment-term changes should be versioned. Material changes should trigger reapproval and supplier communication. A PO should be closed only after outstanding deliveries, invoices, returns, and commitments are resolved; closing it merely to remove an exception can hide a genuine liability or operational problem.
 
 ---
 
@@ -731,6 +757,8 @@ Receipt posted for: 88
 Remaining open quantity: 12
 ```
 
+The two rejected units should be recorded with a rejection or return reason rather than included in accepted quantity. If accepted goods are later returned, damaged, or found incorrect, post a controlled receipt reversal/return referencing the original PO and receipt. Otherwise the system may allow an invoice to match against goods the organization no longer holds.
+
 ## 14.3 Service receipt
 
 For services there may be no physical GRN.
@@ -742,6 +770,8 @@ Instead the requester may create a **Service Entry Sheet** confirming:
 - Milestone.
 - Completion percentage.
 - Accepted amount.
+
+The approver should have direct knowledge of the service and evidence such as a timesheet, milestone sign-off, usage report, or completion certificate. Procurement or AP should not create a service receipt solely to clear an invoice exception without business confirmation.
 
 ---
 
@@ -788,6 +818,8 @@ Payment Terms
 
 Modern AP systems can use OCR or document AI to extract invoice data.
 
+OCR converts pixels into candidate text; document AI maps that text to fields. Neither output is automatically authoritative. Preserve the original document, extracted value, confidence, page/region evidence, model or rule version, and any human correction. The supplier invoice remains the source evidence, while the validated structured data drives matching and posting.
+
 ## 16.1 Typical OCR output
 
 ```json
@@ -831,6 +863,8 @@ Example:
 ```
 
 Low-confidence values can be routed for review.
+
+Confidence thresholds should vary by risk. A low-confidence description may only need review, while bank details, supplier identity, invoice number, total, currency, and tax identifiers should require stronger validation. Never treat bank details printed on an invoice as an approved vendor-master change.
 
 ## 16.3 Invoice extraction validations
 
@@ -879,6 +913,8 @@ Invoice Total = Taxable Total + Tax
 ```
 
 A small rounding tolerance may be allowed.
+
+Also distinguish document types. A credit note may contain negative amounts or a credit indicator; an invoice should not become a credit note merely because OCR read a minus sign. Validate currency precision, unit-of-measure conversions, price units such as "₹500 per 100 pieces," header charges, line taxes, and whether discounts apply before or after tax.
 
 ---
 
@@ -936,6 +972,22 @@ PO
 ```
 
 Often used for controlled manufacturing or high-quality-critical goods.
+
+## 18.4 Cumulative and partial matching
+
+Matching must consider document history, not only the current invoice. A safe line-level quantity is:
+
+```text
+Available to Invoice
+= Accepted Receipts
+- Receipt Returns/Reversals
+- Quantities Already Invoiced
++ Valid Invoice Reversals/Credits
+```
+
+Example: 100 units were accepted, 10 returned, and 60 already invoiced. Only 30 units remain available to invoice. A new invoice for 40 should fail even though 40 is below the original PO quantity.
+
+Price comparison must also normalize currency, unit of measure, price unit, discounts, freight, and tax basis. Comparing `₹1,000 per box` directly with `₹100 per item` is meaningless until the box-to-item conversion is known.
 
 ---
 
@@ -1004,6 +1056,8 @@ Examples:
 - GR quantity 90, invoice quantity 100.
 - Invoice exceeds approved amount.
 
+Queries request missing facts; deviations request authority to accept a known difference. Closing a query does not itself approve a financial deviation. Every exception should have an owner, reason code, due date, aging, supporting evidence, decision, and re-match result. If the underlying PO, receipt, or invoice changes materially, route the revised document through the required reapproval instead of relying on the old approval.
+
 ---
 
 # 20. Step 15 — Invoice Approval Workflow
@@ -1052,6 +1106,8 @@ Delegate
 Escalate
 ```
 
+Approval means accepting a specific document version and financial consequence. The workflow should display the invoice, PO/receipt comparison, coding, tax, prior approvals, and exception reason. A change to amount, vendor, bank destination, cost object, or other material field after approval should invalidate or repeat the relevant approval. Delegation must be time-bound and auditable; the requester should not approve their own purchase merely because the normal approver is absent.
+
 ---
 
 # 21. Step 16 — Invoice Posting
@@ -1077,6 +1133,10 @@ The vendor account now shows an outstanding payable.
 - **Invoice date** = date on supplier invoice.
 - **Posting date** = date transaction is recorded in accounting period.
 - **Due date** = calculated based on payment terms.
+
+These dates serve different purposes. The invoice date helps identify the supplier document and may affect tax or aging rules. The posting date determines the general-ledger period. The due date drives payment selection and is normally calculated from a policy-defined baseline date plus payment terms. Do not change the invoice date merely to force a desired due date or accounting period.
+
+Posting should be **idempotent** across integrations: retrying the same approved request must not create another ERP document. Store the source invoice ID, ERP document number, posting response, and reversal link. A timeout means "outcome unknown," not automatically "posting failed"; query the ERP before retrying.
 
 ---
 
@@ -1114,6 +1174,8 @@ Approve Proposal
 Generate Payment File
 ```
 
+Review should confirm beneficiary master data, company bank account, currency, value date, discounts, withholding, credit notes, duplicate payments, blocked or sanctioned suppliers where applicable, and sufficient authorization. The proposal is a selection list, not proof that the bank executed payment.
+
 ---
 
 # 23. Step 18 — Payment Execution
@@ -1147,6 +1209,8 @@ The same person should not ideally:
 - Approve payment.
 - Release bank payment.
 
+Protect the payment file from alteration between approval and bank submission. Useful controls include an approved beneficiary source, file totals and record counts, encryption/signing where supported, dual bank authorization, bank response validation, and alerts for rejected or changed beneficiaries. Urgent requests to bypass normal bank-change or callback controls are a fraud warning, not a reason to weaken them.
+
 ---
 
 # 24. Step 19 — Supplier Remittance and Reconciliation
@@ -1157,6 +1221,14 @@ After payment:
 - Supplier receives remittance advice.
 - Open invoice is cleared.
 - Bank statement is reconciled.
+
+Keep the stages distinct:
+
+```text
+Payment Proposed → Approved → Submitted → Bank Accepted → Settled → Reconciled
+```
+
+`Submitted` or `bank file generated` does not mean `paid`. A rejected, returned, or expired payment should reopen or retain the supplier item, record the failure reason, and enter a controlled retry process. Reconciliation matches the bank debit, payment batch, supplier clearing document, and remittance total; unexplained differences remain open for investigation.
 
 ## 24.1 Remittance advice may contain
 
@@ -1257,13 +1329,15 @@ Payment
 
 Non-PO invoices normally need stronger approval because there is no pre-approved PO control.
 
+Non-PO does not mean "no evidence." The invoice still needs a valid supplier, business purpose, proof of service or entitlement, correct coding, tax validation, duplicate check, and authorized approval. Monitor repeat non-PO spend by vendor and category: recurring items that could have been planned may indicate PO avoidance or split purchasing.
+
 ---
 
 # 27. GRN, GIR and Service Entry Concepts
 
 ## 27.1 GRN — Goods Receipt Note
 
-Confirms that physical goods were received.
+Confirms that physical goods were received and records accepted quantity, date, location, condition, and PO reference. It should not be posted before physical receipt merely to enable invoice payment.
 
 ## 27.2 GIR — Goods Inward Receipt
 
@@ -1271,7 +1345,7 @@ Some organizations use GIR for the inward-goods receipt process or document. Exa
 
 ## 27.3 SES — Service Entry Sheet
 
-Confirms that a service was performed.
+Confirms that a service was performed and accepted, usually by period, hours, quantity, milestone, or value. Evidence and an informed business approver replace the physical count used for goods.
 
 ### Why receipt is important
 
@@ -1353,11 +1427,18 @@ Organizations can maintain tolerances by:
 Example:
 
 ```text
-Accept if:
-Absolute Difference <= 100
-OR
-Percentage Difference <= 1%
+absolute_difference = abs(invoice_amount - reference_amount)
+percentage_difference = absolute_difference / abs(reference_amount) × 100
 ```
+
+The policy must define whether **both** limits must pass or whether either limit is sufficient. Requiring both is stricter:
+
+```text
+PASS only if absolute_difference <= ₹100
+         AND percentage_difference <= 1%
+```
+
+An either/or rule can be intentional—for example, to tolerate small rounding differences on low-value lines—but it must be explicit. Define behavior when the reference amount is zero, and aggregate repeated small variances so invoices are not split to remain individually below tolerance.
 
 ---
 
@@ -1448,13 +1529,14 @@ Common reasons:
 - Discount.
 - Tax correction.
 
-Example accounting effect:
+Example: a supplier grants a ₹10,000 credit against an unpaid expense invoice.
 
 ```text
-Vendor Payable / Expense Adjustment   Dr/Cr depending on configuration
+Vendor Payable                Dr   10,000
+    Expense / Inventory / COGS        Cr   10,000
 ```
 
-The practical result is reduced supplier liability.
+The practical result is reduced supplier liability. The credited account depends on whether the original item remains in inventory, has been consumed or sold, or related to an expense. Tax recoverable may also need reversal.
 
 ## 31.2 Debit Note
 
@@ -1468,6 +1550,8 @@ A buyer may raise a debit note against a supplier for:
 - Recovery.
 
 Organizations may use different terminology depending on legal and ERP design.
+
+From the buyer's perspective, an approved debit claim often has the same economic effect as a supplier credit: it reduces the amount payable or creates a receivable from the supplier. Do not post both the buyer's debit note and the supplier's corresponding credit note as separate reductions for the same claim.
 
 ---
 
@@ -1500,6 +1584,16 @@ Net Supplier Payment = 100,000 - X
 ```
 
 The withheld amount is paid/reported to the relevant authority according to applicable law.
+
+Accounting illustration when a ₹100,000 payable is settled with ₹10,000 withheld:
+
+```text
+Vendor Payable             Dr  100,000
+    Bank                           Cr   90,000
+    Withholding Tax Payable       Cr   10,000
+```
+
+When remitted to the authority, debit the withholding-tax payable and credit bank. Exact tax base, timing, certificates, and rates are jurisdiction-specific.
 
 ---
 
@@ -1545,6 +1639,33 @@ At payment:
 Vendor Payable         Dr
       Bank                  Cr
 ```
+
+GR/IR is a temporary clearing account. A credit balance often represents accepted goods not yet invoiced; a debit balance may indicate an invoice without the expected receipt, a reversal timing issue, or configuration difference. Reconcile by PO line and investigate aged items instead of clearing them to expense without evidence.
+
+## 33.5 Supplier advance
+
+At advance payment:
+
+```text
+Supplier Advance        Dr  200,000
+      Bank                   Cr  200,000
+```
+
+When the final ₹1,000,000 invoice is posted:
+
+```text
+Expense / Inventory     Dr  1,000,000
+      Vendor Payable        Cr  1,000,000
+```
+
+Apply the advance:
+
+```text
+Vendor Payable          Dr    200,000
+      Supplier Advance      Cr    200,000
+```
+
+The remaining payable is ₹800,000. The advance is an asset until goods/services are received or the amount becomes refundable or impaired; it is not an immediate expense merely because cash was paid.
 
 ## 33.4 Service expense
 
@@ -1594,6 +1715,8 @@ Use policy-defined thresholds rather than fixed values in application code.
 # 35. P2P Status Model
 
 A robust system should maintain clear document statuses.
+
+Do not force the entire lifecycle into one ambiguous status. Keep separate dimensions such as `capture_status`, `validation_status`, `match_status`, `approval_status`, `posting_status`, and `payment_status`. For example, an invoice can be `POSTED`, `PAYMENT_BLOCKED`, and `APPROVAL_COMPLETE` at the same time. Record allowed transitions and reject impossible moves such as `PAID → DRAFT`.
 
 ## 35.1 PR status
 
@@ -1697,6 +1820,8 @@ created_on
 posted_document_number
 payment_reference
 ```
+
+Also store source-channel ID, document hash, document type, legal-entity tax registration, supplier tax ID captured from the document, baseline date, payment block and reason, exchange rate, ERP document/fiscal year, reversal reference, original credit-note invoice reference, record version, and timestamps in a timezone-aware format. Keep master-data values used at posting as an immutable snapshot so later vendor changes do not rewrite historical evidence.
 
 ## 36.2 Invoice line fields
 
@@ -1803,6 +1928,8 @@ Create Vendor
 
 Duplicate invoice detection should not depend on invoice number alone.
 
+Detection normally produces a **suspected duplicate**, not an automatic accusation. The reviewer should compare supplier identity, legal entity, document type, original image, amounts, dates, PO/receipt consumption, prior reversals, and payment status. A legitimate recurring invoice can share the same amount every month; a cancelled invoice may validly be replaced.
+
 ## 39.1 Strong duplicate logic
 
 Compare combinations such as:
@@ -1835,6 +1962,10 @@ A normalized value can remove:
 
 Use caution: overly aggressive normalization can create false positives.
 
+Normalize Unicode, case, whitespace, punctuation, and common OCR confusions only through documented rules. Preserve both raw and normalized values. Never remove all leading zeros or letters without testing supplier-specific formats, because `INV-0012` and `INV-0120` are different invoices.
+
+Run duplicate checks at capture, before posting, and again before payment. Cross-channel idempotency is essential because the same invoice may arrive by email, portal, EDI, and manual upload.
+
 ---
 
 # 40. Vendor Master Controls
@@ -1853,6 +1984,8 @@ Recommended controls:
 8. Sensitive bank changes trigger alerts.
 9. Payment blocked temporarily after high-risk changes if policy requires.
 10. Vendor creation and payment approval segregated.
+
+For a bank-detail change, contact the supplier through a previously trusted channel—not the phone number or email contained only in the change request. Require evidence, independent review, effective dating, and an alert to relevant owners. A temporary payment hold after a high-risk change can provide time for verification. Access reviews should also identify dormant users who can still create vendors or alter bank data.
 
 ---
 
@@ -1921,6 +2054,8 @@ Cases:
 
 These items should be investigated.
 
+Review by PO line, receipt, invoice, age, quantity, and value. Typical resolutions include obtaining a missing invoice, correcting or reversing an incorrect receipt, posting a valid invoice, processing a return, or closing the PO after evidence-based review. Do not mass-clear old GR/IR items solely because they are old.
+
 ## 42.2 Accruals
 
 If service is received before invoice arrives:
@@ -1931,6 +2066,8 @@ Expense Accrual      Dr
 ```
 
 The accrual can be reversed when the actual invoice is posted.
+
+The accrual should represent goods/services received in the closing period, supported by receipts, contract progress, usage, or a documented estimate. Avoid duplicating an automatic goods-receipt accrual with a manual expense accrual for the same PO line. Compare the actual invoice with the estimate and explain material true-ups.
 
 ## 42.3 Vendor aging
 
@@ -2036,13 +2173,17 @@ Bank confirmation
 
 # 45. P2P KPIs and SLAs
 
+Define each metric's population, start/end timestamps, exclusions, timezone, treatment of weekends, and reporting grain before setting a target. Otherwise two dashboards can report different answers with the same label.
+
 ## 45.1 Common KPIs
 
 ### Invoice processing time
 
 ```text
-Invoice Receipt Time → Invoice Posting Time
+Invoice Processing Time = Posted Timestamp - Controlled Receipt Timestamp
 ```
+
+Report median and percentiles as well as the average; a few very old invoices can distort the average.
 
 ### Straight-through processing rate
 
@@ -2051,6 +2192,8 @@ Invoices automatically processed without manual intervention
 ----------------------------------------------------------- × 100
 Total invoices
 ```
+
+Use this for documents that complete the defined capture-to-posting path without manual intervention.
 
 ### First-pass match rate
 
@@ -2068,6 +2211,8 @@ Duplicate invoices detected
 Total invoices
 ```
 
+Separate suspected duplicates from confirmed duplicates and from duplicate payments. A rising detection rate can mean stronger detection, worse supplier behavior, or duplicate intake channels.
+
 ### On-time payment rate
 
 ```text
@@ -2076,27 +2221,39 @@ Invoices paid on/before due date
 Total paid invoices
 ```
 
+Exclude invoices placed on a legitimate documented dispute only if the policy says so, and report avoidable late payments separately.
+
 ### Touchless invoice rate
 
-Percentage of invoices processed without human handling.
+Percentage of invoices processed without human handling. If this has the same start and end points as straight-through processing, use one metric rather than reporting two labels. Some organizations define touchless capture separately from end-to-end STP; document the distinction.
 
 ### Exception rate
 
-Percentage of invoices requiring manual intervention.
+```text
+Invoices that entered an exception workflow
+------------------------------------------- × 100
+Invoices in the defined population
+```
+
+Also report exception reason and owner so the metric leads to process improvement.
 
 ### Average approval cycle time
 
-Time from workflow submission to final approval.
+Time from workflow submission to final approval. Report active processing time separately from time waiting on the approver when the workflow supports it.
 
 ### Cost per invoice
 
 Total AP processing cost divided by invoice volume.
+
+State which labor, technology, outsourcing, exception, and overhead costs are included. Compare PO, non-PO, touchless, and exception-heavy invoices because their economics differ.
 
 ---
 
 # 46. Common P2P Exceptions
 
 Common production issues include:
+
+Every exception should answer four operational questions: **Is posting blocked? Is payment blocked? Who owns resolution? What evidence closes it?** A dashboard without these fields becomes an aging list rather than a control.
 
 ## 46.1 PO not found
 
@@ -2398,7 +2555,12 @@ THEN status = Pending Receipt
 ## 49.5 Quantity match
 
 ```text
-IF invoice_qty <= available_received_qty + tolerance
+available_received_qty = accepted_receipts
+                       - receipt_returns
+                       - prior_invoiced_qty
+                       + reversed_invoice_qty
+
+IF invoice_qty <= available_received_qty + configured_tolerance
 THEN quantity_match = PASS
 ELSE quantity_match = FAIL
 ```
@@ -2406,12 +2568,19 @@ ELSE quantity_match = FAIL
 ## 49.6 Price match
 
 ```text
-variance_percent = ((invoice_price - po_price) / po_price) * 100
+normalized_po_price = convert_currency_uom_and_price_unit(po_price)
+
+IF normalized_po_price = 0
+THEN route to zero-price rule or exception
+ELSE variance_percent = ((invoice_price - normalized_po_price)
+                         / normalized_po_price) * 100
 
 IF abs(variance_percent) <= configured_tolerance
 THEN price_match = PASS
 ELSE price_match = FAIL
 ```
+
+`convert_currency_uom_and_price_unit` represents a required normalization step, not a universal built-in function. The implementation must define exchange-rate source/date, unit conversion, price unit, discounts, freight, and tax treatment.
 
 ## 49.7 Auto-post
 
@@ -2467,15 +2636,18 @@ THEN route to configured approval workflow
 | SoD | Segregation of Duties |
 | Vendor Aging | Analysis of outstanding supplier balances by age |
 | Payment Terms | Rules determining payment due date |
+| Baseline Date | Policy-defined date from which payment terms calculate the due date |
 | Payment Block | Flag preventing invoice from being paid |
 | Credit Note | Supplier document reducing amount payable |
 | Debit Note | Buyer/supplier adjustment document depending on process |
 | Withholding Tax | Tax withheld from supplier payment where applicable |
 | HSN/SAC | Goods/service classification used in Indian GST processes |
+| Idempotency | Property that lets the same integration request be retried without creating a duplicate result |
+| Master Data | Reusable controlled records such as vendors, materials, GL accounts, tax codes, and payment terms |
 
 ---
 
-# Recommended P2P Principle
+# 51. Recommended P2P Principle
 
 The most important P2P control can be summarized as:
 
@@ -2507,7 +2679,7 @@ High Automation
 
 ---
 
-# Quick P2P Interview / Revision Summary
+# 52. Quick P2P Interview / Revision Summary
 
 If you need to explain P2P quickly in an interview:
 
@@ -2515,7 +2687,7 @@ If you need to explain P2P quickly in an interview:
 
 ---
 
-# Final End-to-End Reference Flow
+# 53. Final End-to-End Reference Flow
 
 ```text
 BUSINESS NEED

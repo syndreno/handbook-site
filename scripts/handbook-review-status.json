@@ -1,0 +1,13 @@
+{
+  "_active": "PHP/PHP_Master_Handbook.md",
+  "GIT/git_master_handbook_in_depth.md": {
+    "status": "Completed",
+    "reviewed": "2026-08-13",
+    "note": "Completed a fresh beginning-to-end review of all 49 chapters. Expanded why and when guidance, command effects, outputs, alternatives, risks, recovery, real-world workflows, troubleshooting, and practice outcomes. Rebase was fully rewritten. Representative commands were tested with Git 2.50.0, advanced claims were checked against official Git documentation, Markdown validation passed, and the production page was verified."
+  },
+  "PHP/PHP_Master_Handbook.md": {
+    "status": "In review",
+    "reviewed": "-",
+    "note": "Full audit completed. Chapters 1-72 have passed the section-level beginner review, covering fundamentals, functions, web input, errors, OOP, namespaces, Composer, enums, attributes, readonly data, composite types, generators, iterables, and Fibers. Chapters 73-204 remain in active editorial and technical review."
+  }
+}

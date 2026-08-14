@@ -1,6 +1,8 @@
 # Laravel Version Evolution Handbook
 
 > A learner-friendly guide to how Laravel changed from Laravel 4.x through Laravel 13.x — without turning into an overwhelming release-note dump.
+>
+> Current baseline: **Laravel Framework 13.25.0**, verified in August 2026. Historical snippets are examples of the conventions used in their era; run them only in a matching project/version unless a section explicitly labels them modern.
 
 ---
 
@@ -32,13 +34,30 @@ Do not try to master every version separately.
 Think of Laravel history in generations:
 
 | Generation | Versions | Main idea |
-|---|---|---|
+| --- | --- | --- |
 | Early modern Laravel | 4.x | Composer, IoC container, migrations, Eloquent foundation |
 | Laravel 5 architecture | 5.0–5.8 | Modern application structure takes shape |
 | Stability / SemVer era | 6–7 | Semantic versioning, improved framework consistency |
 | Modern developer experience | 8–10 | Class-based routes, modern factories, PHP 8, better tooling |
 | Slim application skeleton | 11–12 | Smaller bootstrap, less boilerplate, modern defaults |
 | AI-aware Laravel | 13 | AI SDK, newer framework APIs, PHP 8.3+ |
+
+## Supported-version timeline
+
+This table is the practical bridge between framework history and maintenance decisions:
+
+| Version | Supported PHP | Released | Security fixes until | State on Aug. 13, 2026 |
+| --- | --- | --- | --- | --- |
+| 6 (LTS) | 7.2–8.0 | Sep. 3, 2019 | Sep. 6, 2022 | End of life |
+| 7 | 7.2–8.0 | Mar. 3, 2020 | Mar. 3, 2021 | End of life |
+| 8 | 7.3–8.1 | Sep. 8, 2020 | Jan. 24, 2023 | End of life |
+| 9 | 8.0–8.2 | Feb. 8, 2022 | Feb. 6, 2024 | End of life |
+| 10 | 8.1–8.3 | Feb. 14, 2023 | Feb. 4, 2025 | End of life |
+| 11 | 8.2–8.4 | Mar. 12, 2024 | Mar. 12, 2026 | End of life |
+| 12 | 8.2–8.5 | Feb. 24, 2025 | Feb. 24, 2027 | Bug-fix window ends Aug. 13, 2026; security support continues |
+| 13 | 8.3–8.5 | Mar. 17, 2026 | Mar. 17, 2028 | Current major; bug fixes through Q3 2027 |
+
+“Supported PHP” is Laravel's documented compatibility range, not merely a version on which the application happens to boot. Composer packages, operating systems, extensions, and database drivers can impose narrower constraints. An end-of-life framework should be treated as security/maintenance debt even when the application still runs.
 
 ---
 
@@ -58,7 +77,7 @@ Early Laravel versions introduced ideas that eventually became central to the fr
 
 You generally do **not** need to study Laravel 1–3 to become a Laravel developer today.
 
-### Learner takeaway
+## Learner takeaway
 
 Know that Laravel evolved quickly in its early years, but Laravel 4 is the first version that strongly resembles the architectural direction of modern Laravel.
 
@@ -1501,13 +1520,14 @@ Laravel 12's changes are intentionally less "framework rewrite" and more "modern
 
 Modern Laravel increasingly treats frontend architecture as a choice rather than forcing one universal stack.
 
-Common options include ecosystems around:
+Laravel 12 introduced official starter kits for:
 
-- Blade / Livewire
-- React
-- Vue
-- Inertia
-- TypeScript-oriented frontend tooling
+- React with Inertia and TypeScript
+- Svelte with Inertia and TypeScript
+- Vue with Inertia and TypeScript
+- Livewire for a primarily PHP/server-driven frontend
+
+These kits provide authentication through Laravel Fortify. Breeze and Jetstream remain important when maintaining projects created in earlier generations, but a new 12/13 project should begin by checking the current starter-kit documentation instead of copying an older installation command.
 
 ### Why this matters
 
@@ -1550,9 +1570,9 @@ Laravel 12 should be viewed as part of the **Laravel 11+ generation**:
 
 # 19. Laravel 13 — AI-Native Laravel and Modern Framework APIs
 
-Laravel 13 is the current major generation represented by this handbook.
+Laravel 13 was released on March 17, 2026. This revision was checked against framework 13.25.0.
 
-It continues Laravel's yearly release cadence and requires PHP 8.3+.
+It continues Laravel's yearly release cadence, supports PHP 8.3–8.5, receives bug fixes through Q3 2027, and receives security fixes through March 17, 2028.
 
 ## Important themes
 
@@ -1562,12 +1582,23 @@ Laravel 13 focuses on:
 - stronger modern defaults
 - expressive framework APIs
 - new queue capabilities
-- modern JSON/API capabilities
+- first-party JSON:API resources
+- semantic/vector search support
+- expanded PHP attributes
+- stronger request-forgery protection
 - continued PHP modernization
 
 ## Laravel AI SDK
 
-AI application functionality can be integrated using Laravel-oriented abstractions.
+The first-party AI SDK is an optional package, not code installed in every new application:
+
+```bash
+composer require laravel/ai
+php artisan vendor:publish --provider="Laravel\Ai\AiServiceProvider"
+php artisan migrate
+```
+
+It provides Laravel-oriented abstractions for agents, tool calling, structured output, images, audio, transcription, embeddings, reranking, files, and vector stores.
 
 Typical application architecture:
 
@@ -1596,20 +1627,19 @@ Use cases include:
 - embeddings
 - tool-using agents
 
-### Example conceptual service
+### Real SDK call
 
 ```php
-class InvoiceAiService
-{
-    public function extract(string $text): array
-    {
-        // Send invoice content to an AI model
-        // request structured fields
-        // validate returned structure
-        // return normalized invoice data
-    }
-}
+use App\Ai\Agents\InvoiceAssistant;
+
+$response = InvoiceAssistant::make()->prompt(
+    'Explain why invoice INV-1001 failed validation.'
+);
+
+return (string) $response;
 ```
+
+The call returns a response object and performs external, billable, nondeterministic work. Configure provider credentials outside version control, validate structured results, define timeouts/failure handling, fake the boundary in routine tests, and queue slow calls when the user does not need to wait.
 
 The important architecture lesson is:
 
@@ -1628,7 +1658,13 @@ Consider:
 
 ## MCP-related development
 
-Modern Laravel documentation includes tooling around Model Context Protocol.
+Laravel MCP is also an optional first-party package:
+
+```bash
+composer require laravel/mcp
+php artisan vendor:publish --tag=ai-routes
+php artisan make:mcp-server InvoiceServer
+```
 
 The broad idea:
 
@@ -1642,9 +1678,24 @@ Tools / resources exposed by an application
 
 This allows AI systems to interact with structured application capabilities in a controlled way.
 
+“Controlled” must mean authenticated routes, narrow tools, validated schemas, per-record authorization, output filtering, rate limits, and auditability. Never expose an unrestricted SQL, filesystem, or shell tool merely because the client speaks MCP.
+
 ## Queue evolution
 
-Laravel 13 continues to improve queue routing and job orchestration capabilities.
+Laravel 13 adds central queue routing by class:
+
+```php
+use App\Jobs\ProcessInvoiceOcr;
+use Illuminate\Support\Facades\Queue;
+
+Queue::route(
+    ProcessInvoiceOcr::class,
+    connection: 'redis',
+    queue: 'ocr',
+);
+```
+
+Register the route in a service provider's `boot()` method. The connection selects the backend; the queue selects a workload lane, and a worker must listen to that queue.
 
 Queues remain essential for:
 
@@ -1655,6 +1706,56 @@ Queues remain essential for:
 - report generation
 - webhooks
 - media processing
+
+Laravel 13 also introduces queue attributes such as `#[Tries]`, `#[Backoff]`, `#[Timeout]`, and `#[FailOnTimeout]`. These express retry/runtime policy on a job class but do not make the job idempotent automatically.
+
+## JSON:API resources and controller attributes
+
+Laravel 13 can generate a first-party JSON:API resource:
+
+```bash
+php artisan make:resource PostResource --json-api
+```
+
+The generated `JsonApiResource` handles resource objects, relationships, sparse fieldsets, includes, links, and the JSON:API response content type. This is distinct from the older, general-purpose `JsonResource`; choose JSON:API only when clients benefit from that specification.
+
+Controller behavior can be colocated through real PHP attributes:
+
+```php
+use App\Models\Comment;
+use App\Models\Post;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Attributes\Controllers\Authorize;
+use Illuminate\Routing\Attributes\Controllers\Middleware;
+
+#[Middleware('auth')]
+class CommentController
+{
+    #[Authorize('create', [Comment::class, 'post'])]
+    public function store(Request $request, Post $post): RedirectResponse
+    {
+        $validated = $request->validate([
+            'body' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $post->comments()->create([
+            'user_id' => $request->user()->id,
+            'body' => $validated['body'],
+        ]);
+
+        return redirect()
+            ->route('posts.show', $post)
+            ->with('status', 'Comment created.');
+    }
+}
+```
+
+The request enters through authenticated middleware, the attribute asks the
+`CommentPolicy` whether this user may create a comment for the bound post, and
+validation runs before persistence. The method returns a redirect response.
+The attribute names are shorthand for the same middleware/policy concepts;
+they do not replace server-side validation or careful policy design.
 
 ## Learner takeaway
 
@@ -1849,9 +1950,9 @@ bootstrap/app.php
 
 ---
 
-## Transition 10 — Traditional Web Framework → AI-Aware Framework
+## Transition 10 — Traditional Web Framework → Modern Application Platform
 
-Laravel 13 adds a new layer:
+Laravel 13 adds several opt-in or incremental layers:
 
 ```text
 Traditional Laravel
@@ -1866,8 +1967,15 @@ agents
 embeddings
 semantic workflows
 MCP
+JSON:API resources
+vector search
+central queue routing
+PHP attributes
 ```
 
+These features do not replace core Laravel. The AI SDK and MCP package are
+optional Composer dependencies; JSON:API resources, vector queries, queue
+routing, and controller/job attributes extend familiar framework concepts.
 The fundamentals still come first.
 
 ---
@@ -1948,6 +2056,10 @@ Simple authentication for:
 OAuth2 server.
 
 Use Passport when you really need OAuth2 semantics.
+
+### Laravel 12–13 starter kits
+
+For new applications, the official choices are React, Svelte, Vue, and Livewire. The JavaScript kits use Inertia and TypeScript; the Livewire kit keeps most UI development in PHP/Blade. All use Fortify for authentication behavior. Check the current installer/starter-kit documentation because old Breeze, Jetstream, or `laravel/ui` commands describe different generations.
 
 ---
 
@@ -2261,7 +2373,8 @@ name     : laravel/framework
 versions : * v13.x.x
 ```
 
-This is the best method.
+This reads the installed dependency metadata and is the best method when
+Composer is available.
 
 ## Method 2 — Artisan
 
@@ -2288,6 +2401,17 @@ Legacy project:
 ```json
 "laravel/framework": "5.8.*"
 ```
+
+This is a **constraint**, not proof of the installed patch. For example,
+`^13.0` permits compatible 13.x releases. Use `composer show` or inspect the
+locked package entry in `composer.lock` to identify what is actually installed.
+
+| Check | Answers | Important limitation |
+| --- | --- | --- |
+| `composer show laravel/framework` | Installed framework package version | Requires installed vendor metadata |
+| `php artisan --version` | Framework version the application boots with | Can fail when dependencies or environment are broken |
+| `composer.json` | Version range the project allows | Does not identify the exact installed patch |
+| `composer.lock` | Version selected at the last successful dependency resolution | May be stale if dependencies were changed incorrectly |
 
 ## Do not guess purely from directory structure
 
@@ -2399,14 +2523,20 @@ Back up:
 - queue configuration
 - server configuration
 
+Verify that the database/file backup can actually be restored in a separate environment. A backup that has never passed a restore test is only an assumption.
+
 ## Step 3 — Record current versions
 
 ```bash
+git status --short
 php -v
 composer --version
 php artisan --version
-composer show
+composer show laravel/framework
+composer outdated --direct
 ```
+
+Record database, Redis, Node/npm, operating-system, queue-driver, and important extension versions as well. Work on a dedicated version-controlled branch with a reproducible lock file.
 
 ## Step 4 — Read every intermediate upgrade guide
 
@@ -2428,6 +2558,8 @@ Laravel 13
 
 Do not assume you can safely reason only about 8 → 13 differences.
 
+Create a checklist from every guide before changing dependencies. Pay special attention to low-probability changes that affect your application: route precedence, mail transport internals, Flysystem behavior, cache TTLs, authentication scaffolding, renamed config, PHPUnit/Pest versions, and changes to the application skeleton.
+
 ## Step 5 — Upgrade PHP where needed
 
 Framework versions may require newer PHP.
@@ -2442,6 +2574,8 @@ Also inspect:
 - Node.js
 - npm packages
 
+Do not jump PHP and Laravel blindly in one edit. Choose an intermediate PHP version supported by both the current and next Laravel major when possible, update/fix PHP deprecations, then advance the framework.
+
 ## Step 6 — Upgrade third-party packages
 
 Common blocker:
@@ -2449,6 +2583,12 @@ Common blocker:
 ```text
 Laravel supports version X
 but package Y only supports older Illuminate components
+```
+
+Ask Composer why an upgrade cannot be selected:
+
+```bash
+composer why-not laravel/framework '^13.0'
 ```
 
 Options:
@@ -2465,6 +2605,16 @@ php artisan test
 ```
 
 Do not wait until the end.
+
+Also run the project's formatter/static analysis and inspect routes/config:
+
+```bash
+php artisan about
+php artisan route:list
+php artisan config:show app
+```
+
+Use commands that exist in that intermediate Laravel version; a modern diagnostic command may not exist in a very old release.
 
 ## Step 8 — Check logs and deprecations
 
@@ -2486,12 +2636,14 @@ smoke test
 production
 ```
 
+Use backward-compatible database migrations so old and new application instances can overlap during deployment. Restart queue/Octane workers to load new code, run smoke tests, monitor errors/latency/queue failures, and keep an application-code rollback plan. Database rollback is harder than code rollback, so prefer reversible staged schema/data changes and forward fixes.
+
 ---
 
 # 31. Upgrade Risk Matrix
 
 | Change | Risk |
-|---|---:|
+| --- | ---: |
 | Patch version | Low |
 | Minor version | Usually low |
 | One Laravel major | Medium |
@@ -2500,6 +2652,8 @@ production
 | Framework + PHP + database + frontend rewrite together | Very high |
 
 Do not unnecessarily combine unrelated migrations.
+
+Laravel follows semantic versioning, so compatible minor/patch releases should not contain breaking changes. Two important caveats are that named parameter names are not covered by Laravel's backward-compatibility promise, and third-party packages can introduce their own regressions or constraints. “Low risk” still means test and review the lock-file diff.
 
 For example, avoid doing all of these in one production release:
 
@@ -2656,7 +2810,7 @@ Laravel 9   → PHP 8 + Symfony Mailer + new Attribute API + enums
 Laravel 10  → types + Process + Pennant
 Laravel 11  → slim application skeleton + bootstrap/app.php
 Laravel 12  → continuation of modern slim Laravel
-Laravel 13  → PHP 8.3+ + AI-aware Laravel APIs
+Laravel 13  → PHP 8.3–8.5 + AI SDK/MCP + JSON:API + queue routing/attributes
 ```
 
 That is enough to build a strong mental map.
@@ -2855,25 +3009,25 @@ This prevents mistakes such as copying Laravel 13 middleware configuration into 
 
 When code from Stack Overflow or an AI assistant does not work, ask:
 
-### 1. Which Laravel version is this answer for?
+## 1. Which Laravel version is this answer for?
 
-### 2. Which PHP version is required?
+## 2. Which PHP version is required?
 
-### 3. Is the package version compatible?
+## 3. Is the package version compatible?
 
-### 4. Did the application skeleton change?
+## 4. Did the application skeleton change?
 
-### 5. Was the API renamed?
+## 5. Was the API renamed?
 
-### 6. Was functionality moved to a package?
+## 6. Was functionality moved to a package?
 
-### 7. Is the tutorial using Mix while the project uses Vite?
+## 7. Is the tutorial using Mix while the project uses Vite?
 
-### 8. Is it showing `Kernel.php` while the project uses Laravel 11+ bootstrapping?
+## 8. Is it showing `Kernel.php` while the project uses Laravel 11+ bootstrapping?
 
-### 9. Is it showing old model factories?
+## 9. Is it showing old model factories?
 
-### 10. Is it showing old authentication scaffolding?
+## 10. Is it showing old authentication scaffolding?
 
 This solves a surprising number of Laravel problems.
 
@@ -3045,9 +3199,12 @@ Laravel 12
 Laravel 13
 │
 ├─ PHP 8.3+
-├─ AI-aware development
-├─ MCP / agent ecosystem
-└─ continued modern API improvements
+├─ optional AI SDK and MCP packages
+├─ first-party JSON:API resources
+├─ vector-similarity query support
+├─ central queue routing and job attributes
+├─ controller middleware/authorization attributes
+└─ stronger request-forgery protection
 ```
 
 ---
@@ -3058,26 +3215,36 @@ This handbook intentionally summarizes the **learner-relevant changes**, not eve
 
 For exact upgrade work, always use the official Laravel documentation and the upgrade guide for each major version.
 
-Official documentation:
+Official current-version references:
 
-- Laravel 13 Release Notes: https://laravel.com/docs/13.x/releases
-- Laravel 13 Upgrade Guide: https://laravel.com/docs/13.x/upgrade
-- Laravel 12 Release Notes: https://laravel.com/docs/12.x/releases
-- Laravel 11 Release Notes: https://laravel.com/docs/11.x/releases
-- Laravel 10 Release Notes: https://laravel.com/docs/10.x/releases
-- Laravel 9 Release Notes: https://laravel.com/docs/9.x/releases
-- Laravel 8 Release Notes: https://laravel.com/docs/8.x/releases
-- Laravel 7 Release Notes: https://laravel.com/docs/7.x/releases
-- Laravel 6 Release Notes: https://laravel.com/docs/6.x/releases
-- Laravel 5.8 Release Notes: https://laravel.com/docs/5.8/releases
-- Laravel 5.7 Release Notes: https://laravel.com/docs/5.7/releases
-- Laravel 5.6 Release Notes: https://laravel.com/docs/5.6/releases
-- Laravel 5.5 Release Notes: https://laravel.com/docs/5.5/releases
-- Laravel 5.4 Release Notes: https://laravel.com/docs/5.4/releases
-- Laravel 5.3 Release Notes: https://laravel.com/docs/5.3/releases
-- Laravel 5.2 Release Notes: https://laravel.com/docs/5.2/releases
-- Laravel 5.1 Release Notes: https://laravel.com/docs/5.1/releases
-- Laravel 5.0 Release Notes: https://laravel.com/docs/5.0/releases
+- [Laravel 13 release notes and support policy](https://laravel.com/docs/13.x/releases)
+- [Laravel 13 upgrade guide](https://laravel.com/docs/13.x/upgrade)
+- [Laravel framework package releases](https://packagist.org/packages/laravel/framework)
+- [Laravel AI SDK](https://laravel.com/docs/13.x/ai-sdk)
+- [Laravel MCP](https://laravel.com/docs/13.x/mcp)
+- [Laravel JSON:API resources](https://laravel.com/docs/13.x/eloquent-resources#json-api-resources)
+- [Laravel queues](https://laravel.com/docs/13.x/queues)
+- [Laravel request-forgery protection](https://laravel.com/docs/13.x/csrf)
+- [Laravel 12 starter kits](https://laravel.com/docs/12.x/starter-kits)
+
+Official historical release notes:
+
+- [Laravel 12](https://laravel.com/docs/12.x/releases)
+- [Laravel 11](https://laravel.com/docs/11.x/releases)
+- [Laravel 10](https://laravel.com/docs/10.x/releases)
+- [Laravel 9](https://laravel.com/docs/9.x/releases)
+- [Laravel 8](https://laravel.com/docs/8.x/releases)
+- [Laravel 7](https://laravel.com/docs/7.x/releases)
+- [Laravel 6](https://laravel.com/docs/6.x/releases)
+- [Laravel 5.8](https://laravel.com/docs/5.8/releases)
+- [Laravel 5.7](https://laravel.com/docs/5.7/releases)
+- [Laravel 5.6](https://laravel.com/docs/5.6/releases)
+- [Laravel 5.5](https://laravel.com/docs/5.5/releases)
+- [Laravel 5.4](https://laravel.com/docs/5.4/releases)
+- [Laravel 5.3](https://laravel.com/docs/5.3/releases)
+- [Laravel 5.2](https://laravel.com/docs/5.2/releases)
+- [Laravel 5.1](https://laravel.com/docs/5.1/releases)
+- [Laravel 5.0](https://laravel.com/docs/5.0/releases)
 
 ---
 

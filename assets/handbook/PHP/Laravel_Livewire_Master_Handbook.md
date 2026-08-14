@@ -2,7 +2,9 @@
 
 > **A beginner-to-advanced learning guide for building dynamic Laravel applications with Livewire.**
 >
-> Target: **Laravel + Livewire 4.x**. The examples intentionally use normal Laravel concepts such as Eloquent, validation, authorization, queues, storage, pagination, routing, Blade, and testing so you learn Livewire as part of Laravel rather than as an isolated library.
+> Target: **Laravel + Livewire 4.x**. This revision was checked against **Livewire 4.3.5**, the current stable release in August 2026. Livewire 4 requires Laravel 10 or later and PHP 8.1 or later. Use the newest compatible 4.x patch in a real project, and consult the upgrade guide before adopting newer minor releases.
+>
+> The examples intentionally use normal Laravel concepts such as Eloquent, validation, authorization, queues, storage, pagination, routing, Blade, and testing so you learn Livewire as part of Laravel rather than as an isolated library.
 
 ---
 
@@ -267,9 +269,21 @@ That means:
 
 Livewire 4 is installed inside an existing Laravel project.
 
+Before installing, confirm the application meets the minimum requirements:
+
 ```bash
-composer require livewire/livewire
+php -v
+php artisan --version
+composer --version
 ```
+
+You need PHP 8.1+, Laravel 10+, and a working Composer installation. Then require the current compatible 4.x release:
+
+```bash
+composer require livewire/livewire:^4.0
+```
+
+Composer updates `composer.json` and `composer.lock`, downloads Livewire, and registers the package through Laravel package discovery. Commit both Composer files so every environment installs the same dependency set.
 
 Create the default Livewire layout if needed:
 
@@ -300,6 +314,14 @@ A basic layout typically contains:
 
 ## Installation check
 
+Ask Composer which version was installed:
+
+```bash
+composer show livewire/livewire
+```
+
+The output should identify `livewire/livewire`, show a `4.x` version, and list its dependency constraints. Next, confirm that Laravel discovered the package.
+
 Run:
 
 ```bash
@@ -313,6 +335,8 @@ php artisan list | Select-String livewire
 ```
 
 You should see Livewire commands.
+
+Finally, create and render the counter from Chapter 6. Seeing the initial count and observing it change without a full-page reload verifies the PHP package, layout assets, route, and browser runtime together.
 
 ---
 
@@ -921,12 +945,18 @@ public string $price = '';
 
 public function save(): void
 {
-    Product::create([
-        'name' => $this->name,
-        'price' => $this->price,
+    $validated = $this->validate([
+        'name' => ['required', 'string', 'max:150'],
+        'price' => ['required', 'numeric', 'min:0'],
     ]);
+
+    Product::create($validated);
+
+    $this->reset(['name', 'price']);
 }
 ```
+
+`wire:submit="save"` prevents the normal browser submission, invokes `save()` on the server, and applies the returned DOM changes. The action validates before writing; the `Product` model must also allow only these fields through `$fillable` (or an equivalent guarded design).
 
 ## 11.1 Reset form
 
@@ -1026,6 +1056,8 @@ Blade:
 Useful for complex or dynamic validation.
 
 ```php
+use Illuminate\Validation\Rule;
+
 protected function rules(): array
 {
     return [
@@ -1131,6 +1163,10 @@ class ProductForm extends Form
 
     public function update(): void
     {
+        if ($this->product === null) {
+            throw new \LogicException('Call setProduct() before update().');
+        }
+
         $validated = $this->validate();
         $this->product->update($validated);
     }
@@ -1146,10 +1182,14 @@ public ProductForm $form;
 
 public function save(): void
 {
+    $this->authorize('create', Product::class);
+
     $this->form->store();
     $this->form->reset();
 }
 ```
+
+Keep authorization in the component or a domain action that knows the current user. A form object organizes state and validation; it does not make an unauthorized create or update safe.
 
 Blade:
 
@@ -1158,7 +1198,7 @@ Blade:
 <input wire:model="form.price">
 ```
 
-### Use form objects when
+## Use form objects when
 
 - the form has many fields
 - create/edit share logic
@@ -1192,6 +1232,21 @@ Use for:
 
 Useful for setup that may need to occur during Livewire requests.
 
+Unlike `mount()`, `boot()` runs at the beginning of every request, including later Livewire updates. It is a good place to receive a request-scoped dependency into a protected/private property:
+
+```php
+use App\Services\TenantContext;
+
+private TenantContext $tenantContext;
+
+public function boot(TenantContext $tenantContext): void
+{
+    $this->tenantContext = $tenantContext;
+}
+```
+
+Do not perform writes in `boot()`. It may run more often than a beginner expects.
+
 ## 14.3 `render()`
 
 Returns the component view.
@@ -1212,8 +1267,9 @@ Bad:
 ```php
 public function render()
 {
-    AuditLog::create([...]);
-    return view(...);
+    AuditLog::create(['event' => 'products-rendered']);
+
+    return view('livewire.products');
 }
 ```
 
@@ -1353,7 +1409,22 @@ public function handleProductCreated(int $productId): void
 
 ## 16.3 Dispatch to a specific component
 
-Livewire supports targeted event dispatching when you know which component should receive the event.
+Target a component class when you know exactly which component should receive the event:
+
+```php
+use App\Livewire\ProductTable;
+
+$this->dispatch('product-created', productId: $product->id)
+    ->to(ProductTable::class);
+```
+
+Use `->self()` when only the current component instance should handle it:
+
+```php
+$this->dispatch('draft-saved')->self();
+```
+
+The listener still uses `#[On(...)]`. Targeting narrows delivery; it does not bypass validation or authorization in the receiving action.
 
 ## 16.4 Events and Alpine
 
@@ -1515,6 +1586,20 @@ Without this, a user on page 8 could search for a result set that has only one p
 
 Use named paginators when one component has more than one paginated collection.
 
+```php
+$products = Product::paginate(10, pageName: 'products-page');
+$invoices = Invoice::paginate(10, pageName: 'invoices-page');
+```
+
+Pass the same name when controlling a paginator programmatically:
+
+```php
+$this->resetPage(pageName: 'products-page');
+$this->nextPage(pageName: 'invoices-page');
+```
+
+The names become distinct query-string keys, so moving the invoice paginator does not move the product paginator.
+
 ---
 
 # 20. Search, Sort, and Filtering
@@ -1615,7 +1700,7 @@ Blade:
 </div>
 ```
 
-### Security lesson
+## Security lesson
 
 Never directly trust a sort column supplied by the browser:
 
@@ -1675,6 +1760,7 @@ in query-string state.
 Use the `WithFileUploads` trait.
 
 ```php
+use Illuminate\Support\Facades\Storage;
 use Livewire\WithFileUploads;
 
 class ProfilePhoto extends Component
@@ -1685,7 +1771,9 @@ class ProfilePhoto extends Component
 
     public function save(): void
     {
-        $validated = $this->validate([
+        $this->authorize('update', auth()->user());
+
+        $this->validate([
             'photo' => ['required', 'image', 'max:2048'],
         ]);
 
@@ -1694,9 +1782,13 @@ class ProfilePhoto extends Component
         auth()->user()->update([
             'profile_photo' => $path,
         ]);
+
+        session()->flash('success', "Photo stored at {$path}.");
     }
 }
 ```
+
+`store()` returns the generated relative path, not a public URL. On a public disk, run `php artisan storage:link` once and generate URLs with `Storage::disk('public')->url($path)`. Never trust the original client filename; let Laravel generate the stored name unless a carefully sanitized business name is required.
 
 Blade:
 
@@ -1752,8 +1844,16 @@ public $invoicePdf;
 
 public function uploadInvoice(): void
 {
+    $this->authorize('create', Invoice::class);
+
     $this->validate([
-        'invoicePdf' => ['required', 'file', 'mimes:pdf', 'max:10240'],
+        'invoicePdf' => [
+            'required',
+            'file',
+            'mimes:pdf',
+            'mimetypes:application/pdf',
+            'max:10240',
+        ],
     ]);
 
     $path = $this->invoicePdf->store('invoices/originals');
@@ -1766,6 +1866,8 @@ public function uploadInvoice(): void
 
 The important design point is that **Livewire handles the UI/upload interaction; the heavy OCR work should usually run in a queue job**, not inside a long blocking component action.
 
+`mimes:pdf` validates the file type inferred from its contents, not merely the filename extension; `mimetypes` adds an explicit MIME requirement. For high-risk uploads, also scan the stored object, keep it on a private disk, and do not serve it until scanning succeeds.
+
 ---
 
 # 23. File Downloads
@@ -1773,12 +1875,20 @@ The important design point is that **Livewire handles the UI/upload interaction;
 A Livewire action can return a normal Laravel download response.
 
 ```php
-public function downloadInvoice(int $invoiceId)
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+
+public function downloadInvoice(int $invoiceId): StreamedResponse
 {
     $invoice = Invoice::findOrFail($invoiceId);
     $this->authorize('view', $invoice);
 
-    return Storage::download($invoice->file_path);
+    abort_unless(Storage::disk('local')->exists($invoice->file_path), 404);
+
+    return Storage::disk('local')->download(
+        $invoice->file_path,
+        "invoice-{$invoice->id}.pdf"
+    );
 }
 ```
 
@@ -1935,7 +2045,10 @@ public string $status = 'queued';
 
 public function refreshStatus(): void
 {
-    $this->status = Invoice::findOrFail($this->invoiceId)->processing_status;
+    $invoice = Invoice::findOrFail($this->invoiceId);
+    $this->authorize('view', $invoice);
+
+    $this->status = $invoice->processing_status;
 }
 ```
 
@@ -1963,7 +2076,12 @@ use Livewire\Attributes\Lazy;
 #[Lazy]
 class ExpensiveReport extends Component
 {
-    // ...
+    public function render()
+    {
+        return view('livewire.expensive-report', [
+            'report' => Report::latest()->first(),
+        ]);
+    }
 }
 ```
 
@@ -1991,7 +2109,12 @@ use Livewire\Attributes\Defer;
 #[Defer]
 class RevenueWidget extends Component
 {
-    // ...
+    public function render()
+    {
+        return view('livewire.revenue-widget', [
+            'revenue' => Order::paid()->sum('total'),
+        ]);
+    }
 }
 ```
 
@@ -2010,6 +2133,23 @@ Defer  -> load after initial page load
 ## Placeholder
 
 Provide a skeleton/loading placeholder so the page does not jump visually.
+
+For a class-based component, return HTML or a Blade view from `placeholder()`:
+
+```php
+public function placeholder()
+{
+    return view('livewire.placeholders.report');
+}
+```
+
+`resources/views/livewire/placeholders/report.blade.php`:
+
+```blade
+<div aria-busy="true">Loading report...</div>
+```
+
+The placeholder and the final component must use the same root element type. For single-file and multi-file components, use the `@placeholder` block shown in the next chapter instead.
 
 ---
 
@@ -2086,7 +2226,20 @@ This can make page transitions feel more SPA-like while still using server-drive
 
 ## Active navigation
 
-Livewire 4 includes navigation-related directives such as `wire:current` for applying state to the current link.
+`wire:current` adds classes when the link matches the current URL:
+
+```blade
+<nav>
+    <a href="/" wire:navigate wire:current.exact="font-bold">
+        Dashboard
+    </a>
+    <a href="/products" wire:navigate wire:current="font-bold">
+        Products
+    </a>
+</nav>
+```
+
+Matching is partial by default, so `/products` also matches `/products/42`. Use `.exact` when only the exact path should be active. Livewire also adds `data-current` to matching `wire:navigate` links, which can be styled directly in CSS.
 
 ## Persist UI across navigation
 
@@ -2171,7 +2324,7 @@ Concept:
 ```html
 <script>
     async function saveFromJavascript() {
-        await $wire.save()
+        await $wire.save();
     }
 </script>
 ```
@@ -2179,13 +2332,13 @@ Concept:
 Refresh:
 
 ```js
-$wire.$refresh()
+$wire.$refresh();
 ```
 
 Call method:
 
 ```js
-await $wire.generateReport()
+await $wire.generateReport();
 ```
 
 ## Dispatch browser event from PHP
@@ -2203,7 +2356,19 @@ Listen in JavaScript/Alpine:
 
 ## Execute JavaScript from component
 
-Livewire provides APIs/attributes for component JavaScript interaction. Keep JavaScript small and purposeful rather than moving business rules into the browser.
+Use `$this->js()` after a server action when code must run after its response:
+
+```php
+public function save(): void
+{
+    $validated = $this->validate();
+    Product::create($validated);
+
+    $this->js("document.getElementById('product-name').focus()");
+}
+```
+
+Use `#[Js]` for a method whose returned JavaScript executes entirely in the browser, as shown in Chapter 35. Keep authorization and business rules on the server.
 
 ---
 
@@ -2216,7 +2381,9 @@ Use `wire:ignore` when Livewire should leave a DOM region alone.
 ```blade
 <div wire:ignore>
     <select id="select2-country">
-        ...
+        <option value="">Choose a country</option>
+        <option value="IN">India</option>
+        <option value="US">United States</option>
     </select>
 </div>
 ```
@@ -2227,8 +2394,8 @@ Concept:
 
 ```js
 $('#select2-country').on('change', function () {
-    $wire.$set('countryId', this.value)
-})
+    $wire.$set('countryId', this.value);
+});
 ```
 
 ## Common libraries needing care
@@ -2275,7 +2442,10 @@ Call an action from a click.
 Handle form submission.
 
 ```blade
-<form wire:submit="save">...</form>
+<form wire:submit="save">
+    <input wire:model="name">
+    <button type="submit">Save</button>
+</form>
 ```
 
 ## `wire:model`
@@ -2323,9 +2493,15 @@ Use Livewire navigation behavior for links.
 
 ## `wire:current`
 
-Apply current-route/current-navigation UI behavior.
+Add CSS classes to a link whose `href` matches the current URL.
 
-Useful for navigation bars.
+```blade
+<a href="/orders" wire:navigate wire:current="font-bold text-blue-700">
+    Orders
+</a>
+```
+
+Use `wire:current.exact` for exact-path matching.
 
 ## `wire:cloak`
 
@@ -2333,7 +2509,7 @@ Hide Livewire-dependent content until Livewire initializes, reducing flashes of 
 
 ```blade
 <div wire:cloak>
-    ...
+    Livewire is ready.
 </div>
 ```
 
@@ -2357,7 +2533,13 @@ Ask for confirmation before running an action.
 
 ## `wire:transition`
 
-Apply transitions to Livewire-controlled visibility/DOM changes.
+Name a region that participates in the browser's native View Transitions API when a Livewire action changes it.
+
+```blade
+<div wire:transition="wizard-content">
+    Step {{ $step }}
+</div>
+```
 
 Useful for:
 
@@ -2372,7 +2554,7 @@ Trigger an action after the component initializes.
 
 ```blade
 <div wire:init="loadData">
-    ...
+    {{ $loaded ? 'Data loaded' : 'Loading data' }}
 </div>
 ```
 
@@ -2399,7 +2581,9 @@ Example concept:
 Repeat an action or refresh periodically.
 
 ```blade
-<div wire:poll.10s="refreshStatus">...</div>
+<div wire:poll.10s="refreshStatus">
+    Status: {{ $status }}
+</div>
 ```
 
 ## `wire:offline`
@@ -2475,7 +2659,11 @@ Do not confuse streaming with queue-based background processing; long-running bu
 
 Bind/update an element's text from reactive state.
 
-Useful for simple text synchronization without replacing unnecessary markup.
+```blade
+<span wire:text="search.length + ' characters'"></span>
+```
+
+The expression is evaluated reactively in the browser, so the text can change without a server round trip or DOM morph. Treat the expression as client-visible UI logic, not a place for secrets or authorization.
 
 ## `wire:key`
 
@@ -2507,7 +2695,12 @@ Create derived/memoized-per-request component data.
 
 ```php
 #[Computed]
-public function total() { ... }
+public function total(): float
+{
+    return $this->items->sum(
+        fn ($item) => $item->quantity * $item->unit_price
+    );
+}
 ```
 
 ## `#[Defer]`
@@ -2526,11 +2719,50 @@ Good for:
 
 ## `#[Js]`
 
-Define JavaScript-oriented component behavior where Livewire's attribute API is appropriate.
+Mark a PHP method whose returned JavaScript should execute in the browser without a server request:
+
+```php
+use Livewire\Attributes\Js;
+
+#[Js]
+public function clearDraft(): string
+{
+    return <<<'JS'
+        $wire.title = ''
+        $wire.body = ''
+    JS;
+}
+```
+
+Call it with `$wire.clearDraft()` from Alpine or component JavaScript. The PHP method is read as a JavaScript definition; it is not executed as a server action on each call.
 
 ## `#[Json]`
 
-Use Livewire's JSON-oriented property/state behavior where structured JSON serialization is intended.
+Mark an action as a JSON endpoint whose return value is delivered directly to JavaScript:
+
+```php
+use Livewire\Attributes\Json;
+
+#[Json]
+public function searchProducts(string $query)
+{
+    validator(['query' => $query], [
+        'query' => ['required', 'string', 'min:2', 'max:100'],
+    ])->validate();
+
+    return Product::query()
+        ->select(['id', 'name'])
+        ->where('name', 'like', "%{$query}%")
+        ->limit(10)
+        ->get();
+}
+```
+
+```js
+const products = await $wire.searchProducts('chair');
+```
+
+JSON actions skip rendering and run asynchronously. Validation failures reject the JavaScript promise with status `422` and structured errors instead of populating the normal component error bag. Select only data the caller is authorized to see.
 
 ## `#[Layout]`
 
@@ -2568,7 +2800,10 @@ Listen for events.
 
 ```php
 #[On('order-approved')]
-public function refreshOrder() {}
+public function refreshOrder(): void
+{
+    $this->order->refresh();
+}
 ```
 
 ## `#[Reactive]`
@@ -2598,7 +2833,25 @@ Set page title metadata for page components.
 
 ## `#[Transition]`
 
-Configure transition-related behavior at the component/attribute level where supported.
+Configure View Transition behavior for an action:
+
+```php
+use Livewire\Attributes\Transition;
+
+#[Transition(type: 'forward')]
+public function next(): void
+{
+    $this->step++;
+}
+
+#[Transition(skip: true)]
+public function resetWizard(): void
+{
+    $this->step = 1;
+}
+```
+
+The `type` can be targeted from CSS; `skip: true` disables the transition for that action.
 
 ## `#[Url]`
 
@@ -2691,7 +2944,21 @@ public function mount(int $id): void
 Route::livewire('/products/{product}', 'pages::products.show');
 ```
 
-Then a matching typed property/model can be bound according to Livewire's page component behavior.
+Accept the model in `mount()` just as you would in a controller:
+
+```php
+use App\Models\Product;
+
+public Product $product;
+
+public function mount(Product $product): void
+{
+    $this->authorize('view', $product);
+    $this->product = $product;
+}
+```
+
+Laravel resolves `{product}` by its route key and returns `404` if it does not exist. Binding proves the record exists; the explicit policy check proves the current user may view it.
 
 ## Middleware
 
@@ -2981,7 +3248,8 @@ Bad:
 public function render()
 {
     $report = ExternalApi::downloadHugeReport();
-    return view(...);
+
+    return view('livewire.report', ['report' => $report]);
 }
 ```
 
@@ -3462,6 +3730,8 @@ public string $notes = '';
 
 public function updatedNotes(): void
 {
+    $this->authorize('update', $this->invoice);
+
     $this->validateOnly('notes', [
         'notes' => ['nullable', 'string', 'max:5000'],
     ]);
@@ -3625,7 +3895,10 @@ public string $jobStatus = 'pending';
 
 public function refreshJob(): void
 {
-    $this->jobStatus = ReportRequest::findOrFail($this->requestId)->status;
+    $reportRequest = ReportRequest::findOrFail($this->requestId);
+    $this->authorize('view', $reportRequest);
+
+    $this->jobStatus = $reportRequest->status;
 }
 ```
 
@@ -3676,6 +3949,8 @@ We will build a simple **Product Management** screen containing:
 - loading state
 - confirmation
 - flash message
+- policy authorization
+- a locked server-controlled edit identifier
 
 This example uses a class-based component because the PHP/Blade separation is easy for beginners to inspect.
 
@@ -3738,6 +4013,48 @@ class Product extends Model
 }
 ```
 
+Generate a policy:
+
+```bash
+php artisan make:policy ProductPolicy --model=Product
+```
+
+This minimal example assumes the `users` table has an `is_admin` boolean. Replace the condition with your application's role/permission rules:
+
+```php
+<?php
+
+namespace App\Policies;
+
+use App\Models\Product;
+use App\Models\User;
+
+class ProductPolicy
+{
+    public function viewAny(User $user): bool
+    {
+        return (bool) $user->is_admin;
+    }
+
+    public function create(User $user): bool
+    {
+        return (bool) $user->is_admin;
+    }
+
+    public function update(User $user, Product $product): bool
+    {
+        return (bool) $user->is_admin;
+    }
+
+    public function delete(User $user, Product $product): bool
+    {
+        return (bool) $user->is_admin;
+    }
+}
+```
+
+Laravel normally discovers a conventionally named policy in `app/Policies`. If your application does not, register the model-to-policy mapping explicitly in its authorization configuration.
+
 ## 47.2 Create Livewire component
 
 ```bash
@@ -3754,14 +4071,16 @@ php artisan make:livewire ProductManager --class
 namespace App\Livewire;
 
 use App\Models\Product;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Validation\Rule;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
 class ProductManager extends Component
 {
-    use WithPagination;
+    use AuthorizesRequests, WithPagination;
 
     #[Url]
     public string $search = '';
@@ -3769,6 +4088,7 @@ class ProductManager extends Component
     #[Url]
     public string $categoryFilter = '';
 
+    #[Locked]
     public ?int $editingId = null;
     public string $name = '';
     public string $sku = '';
@@ -3811,17 +4131,18 @@ class ProductManager extends Component
     {
         $validated = $this->validate();
 
-        Product::updateOrCreate(
-            ['id' => $this->editingId],
-            $validated
-        );
+        if ($this->editingId === null) {
+            $this->authorize('create', Product::class);
+            Product::create($validated);
+            $message = 'Product created successfully.';
+        } else {
+            $product = Product::findOrFail($this->editingId);
+            $this->authorize('update', $product);
+            $product->update($validated);
+            $message = 'Product updated successfully.';
+        }
 
-        session()->flash(
-            'success',
-            $this->editingId
-                ? 'Product updated successfully.'
-                : 'Product created successfully.'
-        );
+        session()->flash('success', $message);
 
         $this->resetForm();
     }
@@ -3829,9 +4150,7 @@ class ProductManager extends Component
     public function edit(int $id): void
     {
         $product = Product::findOrFail($id);
-
-        // In a secured application:
-        // $this->authorize('update', $product);
+        $this->authorize('update', $product);
 
         $this->editingId = $product->id;
         $this->name = $product->name;
@@ -3847,9 +4166,7 @@ class ProductManager extends Component
     public function delete(int $id): void
     {
         $product = Product::findOrFail($id);
-
-        // In a secured application:
-        // $this->authorize('delete', $product);
+        $this->authorize('delete', $product);
 
         $product->delete();
 
@@ -3897,6 +4214,8 @@ class ProductManager extends Component
 
     public function render()
     {
+        $this->authorize('viewAny', Product::class);
+
         $products = Product::query()
             ->when($this->search, function ($query) {
                 $query->where(function ($query) {
@@ -4085,6 +4404,18 @@ class ProductManager extends Component
 
 ## 47.5 Render in a Laravel Blade page
 
+Protect the page with authentication. The policy in the component then decides whether the signed-in user may manage products:
+
+```php
+use Illuminate\Support\Facades\Route;
+
+Route::view('/admin/products', 'admin.products')
+    ->middleware('auth')
+    ->name('admin.products');
+```
+
+`resources/views/admin/products.blade.php`:
+
 ```blade
 @extends('layouts.app')
 
@@ -4107,6 +4438,8 @@ wire:submit
 wire:click
 validation
 unique validation on edit
+policy authorization
+locked server-controlled ID
 create/update
 search
 filtering
@@ -4679,6 +5012,24 @@ With `Livewire::test()`/Livewire test utilities plus normal Laravel assertions, 
 
 # 54. Cheat Sheet
 
+Use this table to recall the contract behind the syntax, not just the spelling:
+
+| API | Main input | Result / return behavior |
+| --- | --- | --- |
+| `wire:click="save"` | Browser click | Sends a Livewire request and calls public action `save()` |
+| `wire:submit="save"` | Form submit | Prevents normal navigation and calls `save()` |
+| `wire:model="name"` | Input value | Synchronizes public property `name` on the next request |
+| `wire:model.live.debounce.300ms` | Repeated input | Synchronizes after 300 ms of inactivity |
+| `$this->validate()` | Component properties and rules | Returns only validated data or responds with validation errors |
+| `$this->reset(...)` | One or more property names | Restores those properties to their declared initial values |
+| `$this->dispatch(...)` | Event name and named payload | Dispatches a browser event; targeting methods narrow recipients |
+| `$this->authorize(...)` | Ability plus model/class | Continues when allowed; otherwise throws an authorization exception |
+| `paginate(10)` | Query and page size | Returns a paginator and stores page state in the URL by default |
+| `$upload->store($path, $disk)` | Temporary upload, directory, disk | Stores the file and returns its relative path |
+| `#[Computed]` | Method | Exposes derived data and memoizes it for the current request |
+| `#[Locked]` | Public property | Rejects client-side attempts to mutate that property |
+| `#[Json]` | Action return data | Resolves a JavaScript promise without a component re-render |
+
 ## Install
 
 ```bash
@@ -4708,7 +5059,10 @@ php artisan make:livewire product-table --mfc
 ## Submit
 
 ```blade
-<form wire:submit="save">...</form>
+<form wire:submit="save">
+    <input wire:model="name">
+    <button type="submit">Save</button>
+</form>
 ```
 
 ## Model
@@ -4741,7 +5095,9 @@ php artisan make:livewire product-table --mfc
 ## Loop key
 
 ```blade
-<div wire:key="product-{{ $product->id }}">...</div>
+<div wire:key="product-{{ $product->id }}">
+    {{ $product->name }}
+</div>
 ```
 
 ## Validation
@@ -4790,7 +5146,10 @@ public int $recordId;
 
 ```php
 #[Computed]
-public function total() {}
+public function total(): int
+{
+    return $this->items->sum('amount');
+}
 ```
 
 ## Pagination
@@ -4816,7 +5175,9 @@ public $photo;
 ## Poll
 
 ```blade
-<div wire:poll.5s="refreshStatus">...</div>
+<div wire:poll.5s="refreshStatus">
+    Status: {{ $status }}
+</div>
 ```
 
 ## Navigate
@@ -4885,18 +5246,24 @@ public $photo;
 
 Use the official documentation as the final authority for syntax that may evolve between Livewire versions.
 
-- Livewire 4 documentation: <https://livewire.laravel.com/docs/4.x/quickstart>
-- Livewire components: <https://livewire.laravel.com/docs/4.x/components>
-- Livewire properties: <https://livewire.laravel.com/docs/4.x/properties>
-- Livewire actions: <https://livewire.laravel.com/docs/4.x/actions>
-- Livewire forms: <https://livewire.laravel.com/docs/4.x/forms>
-- Livewire validation: <https://livewire.laravel.com/docs/4.x/validation>
-- Livewire events: <https://livewire.laravel.com/docs/4.x/events>
-- Livewire lifecycle hooks: <https://livewire.laravel.com/docs/4.x/lifecycle-hooks>
-- Livewire file uploads: <https://livewire.laravel.com/docs/4.x/uploads>
-- Livewire testing: <https://livewire.laravel.com/docs/4.x/testing>
-- Livewire JavaScript: <https://livewire.laravel.com/docs/4.x/javascript>
-- Laravel documentation: <https://laravel.com/docs>
+- [Livewire 4 quickstart](https://livewire.laravel.com/docs/4.x/quickstart)
+- [Livewire 4 installation requirements](https://livewire.laravel.com/docs/4.x/installation)
+- [Livewire 4 upgrade guide](https://livewire.laravel.com/docs/4.x/upgrading)
+- [Livewire releases](https://github.com/livewire/livewire/releases)
+- [Components](https://livewire.laravel.com/docs/4.x/components)
+- [Properties and security notes](https://livewire.laravel.com/docs/4.x/properties)
+- [Actions](https://livewire.laravel.com/docs/4.x/actions)
+- [Forms](https://livewire.laravel.com/docs/4.x/forms)
+- [Validation](https://livewire.laravel.com/docs/4.x/validation)
+- [Events](https://livewire.laravel.com/docs/4.x/events)
+- [Lifecycle hooks](https://livewire.laravel.com/docs/4.x/lifecycle-hooks)
+- [File uploads](https://livewire.laravel.com/docs/4.x/uploads)
+- [Testing](https://livewire.laravel.com/docs/4.x/testing)
+- [JavaScript integration](https://livewire.laravel.com/docs/4.x/javascript)
+- [`#[Js]` attribute](https://livewire.laravel.com/docs/4.x/attribute-js)
+- [`#[Json]` attribute](https://livewire.laravel.com/docs/4.x/attribute-json)
+- [`#[Transition]` attribute](https://livewire.laravel.com/docs/4.x/attribute-transition)
+- [Laravel documentation](https://laravel.com/docs)
 
 ---
 

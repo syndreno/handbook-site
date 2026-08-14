@@ -91,6 +91,56 @@
 83. [Glossary](#83-glossary)
 84. [Final Checklist](#84-final-checklist)
 
+### Appendix Index
+
+| Appendix | Topic |
+|---|---|
+| A | [Recommended Practice Company](#appendix-a--recommended-practice-company) |
+| B | [Transaction-to-Voucher Decision Guide](#appendix-b--transaction-to-voucher-decision-guide) |
+| C | [How to Think Like an Accountant While Using Tally](#appendix-c--how-to-think-like-an-accountant-while-using-tally) |
+| D | [Data Quality Checklist](#appendix-d--data-quality-checklist) |
+| E | [30-Day Learning Plan](#appendix-e--30-day-tallyerp-9-learning-plan) |
+| F | [Multi-Currency Accounting](#appendix-f--multi-currency-accounting) |
+| G | [Voucher Types, Numbering and Voucher Classes](#appendix-g--voucher-types-numbering-and-voucher-classes) |
+| H | [Alter, Display, Delete and Cancel](#appendix-h--alter-display-delete-and-cancel) |
+| I | [Point of Sale Concepts](#appendix-i--point-of-sale-pos-concepts) |
+| J | [Trade and Cash Discounts](#appendix-j--discounts-trade-discount-and-cash-discount) |
+| K | [Additional Purchase and Sales Charges](#appendix-k--additional-charges-in-purchase-and-sales) |
+| L | [Actual vs Billed Quantity](#appendix-l--actual-quantity-vs-billed-quantity) |
+| M | [Free Goods and Zero-Valued Entries](#appendix-m--free-goods-and-zero-valued-inventory-entries) |
+| N | [BOM and Manufacturing](#appendix-n--bill-of-materials-bom-and-manufacturing) |
+| O | [Job Work](#appendix-o--job-work-concepts) |
+| P | [Inventory Valuation Methods](#appendix-p--inventory-valuation-methods) |
+| Q | [Reorder Levels](#appendix-q--reorder-levels-and-inventory-planning) |
+| R | [Slow-Moving and Ageing Stock](#appendix-r--slow-moving-non-moving-and-ageing-stock) |
+| S | [Job Costing](#appendix-s--job-costing) |
+| T | [Scenario Management](#appendix-t--scenario-management) |
+| U | [Multi-Company Management](#appendix-u--multi-company-management) |
+| V | [Group Company and Consolidation](#appendix-v--group-company-and-consolidated-reporting-concepts) |
+| W | [Branch Accounting](#appendix-w--branch-accounting) |
+| X | [Loan Accounting](#appendix-x--loan-accounting) |
+| Y | [Fixed Assets and Depreciation](#appendix-y--fixed-assets-and-depreciation) |
+| Z | [Provisions, Accruals and Prepayments](#appendix-z--provisions-accruals-and-prepayments) |
+| AA | [Capital, Drawings and Owner Transactions](#appendix-aa--capital-drawings-and-owner-transactions) |
+| AB | [Security Deposits and Advances](#appendix-ab--security-deposits-and-advances) |
+| AC | [Suspense Account](#appendix-ac--suspense-account) |
+| AD | [Control Accounts and Reconciliation](#appendix-ad--control-accounts-and-reconciliation) |
+| AE | [Voucher Narration Standards](#appendix-ae--voucher-narration-standards) |
+| AF | [Source Documents and Voucher Mapping](#appendix-af--source-documents-and-voucher-mapping) |
+| AG | [Legacy Indirect Tax Modules](#appendix-ag--legacy-indirect-tax-modules) |
+| AH | [Payroll Controls](#appendix-ah--payroll-controls) |
+| AI | [Petty Cash Management](#appendix-ai--petty-cash-management) |
+| AJ | [Credit Control](#appendix-aj--credit-control) |
+| AK | [Purchase Controls](#appendix-ak--purchase-controls) |
+| AL | [Duplicate Invoice Control](#appendix-al--duplicate-invoice-control) |
+| AM | [Master Data Governance](#appendix-am--master-data-governance) |
+| AN | [Data Migration Checklist](#appendix-an--data-migration-checklist) |
+| AO | [Excel and MIS Workflow](#appendix-ao--excel-and-mis-workflow) |
+| AP | [Fraud and Error Red Flags](#appendix-ap--fraud-and-error-red-flags) |
+| AQ | [Operator Routine](#appendix-aq--daily-weekly-and-monthly-operator-routine) |
+| AR | [Advanced Practice Case Study](#appendix-ar--advanced-practice-case-study) |
+| AS | [Master Concept Map](#appendix-as--master-concept-map) |
+
 ---
 
 # 1. About This Handbook
@@ -117,6 +167,12 @@ The handbook focuses on both:
 2. **Practical usage** — how it is used in a real business.
 
 > **Important:** Tally.ERP 9 is a legacy Tally product. TallyPrime is the newer product line. Tally.ERP 9 is still useful for learning legacy environments and understanding core Tally accounting concepts. Statutory rules such as GST, TDS, TCS, e-invoicing, e-way bills, return formats, thresholds and due dates can change. Always verify current legal requirements before using this handbook for live statutory compliance.
+
+## Version and compliance boundary
+
+This handbook teaches the **Tally.ERP 9 interface and legacy workflows**. Menu names, features, licensing behavior, and statutory utilities can differ by release, country, enabled features, and customization. Confirm instructions against the exact release shown in the product's About/Release information.
+
+As of this handbook's review on **13 August 2026**, Tally's active product line is TallyPrime, and Tally provides a supported migration path from Tally.ERP 9. For a new live deployment, current statutory updates, or a legally required tamper-resistant edit log, evaluate the current TallyPrime product and local professional requirements. Use the [official Tally.ERP 9 help archive](https://help.tallysolutions.com/article/Tally.ERP9/), [official upgrade guidance](https://help.tallysolutions.com/upgrade-to-latest-tallyprime/), and [official Edit Log guidance](https://help.tallysolutions.com/tracking-modifications/) for version-specific steps.
 
 ---
 
@@ -199,6 +255,8 @@ The fundamental accounting concepts remain similar, but the interface and workfl
 | Learning value | Excellent for legacy systems | Better for new deployments |
 
 If you work in an organization that still uses Tally.ERP 9, you should learn the exact menus and shortcuts of ERP 9.
+
+Do not open or migrate the only copy of production data merely to explore the newer product. Take a verified backup, retain the original data, test conversion on a copy, and reconcile company count, voucher count, trial balance, receivables, payables, inventory quantity/value, taxes, bank balances, and critical reports before users switch systems.
 
 ---
 
@@ -407,7 +465,7 @@ Review reports
 
 ## Educational vs Licensed Usage
 
-Tally installations may operate differently depending on licensing status.
+Tally installations operate differently depending on licensing status. Educational mode is intended for learning and historically restricts voucher entry to particular calendar dates. Tally's own legacy help pages describe different permitted dates for different releases, so check the message shown by the installed build instead of assuming one universal date rule. Some licensed or connected features may also be unavailable.
 
 For training, focus on:
 
@@ -416,6 +474,17 @@ For training, focus on:
 - Voucher entry.
 - Reports.
 - Data backup.
+
+Do not use Educational mode as a live-books workaround. It can force artificial transaction dates and produce misleading aging, tax periods, inventory movement, and bank reconciliation.
+
+Before installation or upgrade:
+
+1. obtain the installer and support files from Tally or an authorized source, not an unverified download site;
+2. confirm operating-system and license requirements for the exact release;
+3. record the current application release and data path;
+4. take a verified company-data backup;
+5. keep installer/license information under authorized control;
+6. test opening the copied data before changing production.
 
 ---
 
@@ -524,6 +593,10 @@ Sundry Debtors
   └── Customer C
 ```
 
+A **group** controls classification and report presentation; a **ledger** stores transaction balances. Tally.ERP 9 includes predefined groups and two predefined ledgers: `Cash` and `Profit & Loss A/c`. Use the existing Cash ledger unless the business genuinely needs additional cash ledgers such as `Petty Cash—Mumbai`.
+
+Grouping errors do not normally break debit-credit equality, but they can move balances to the wrong report. A customer under `Sales Accounts` can make revenue and receivables misleading even though the Trial Balance still balances.
+
 ## 8.1 Common Predefined Groups
 
 ### Capital Account
@@ -602,7 +675,7 @@ Examples:
 
 ### Direct Income
 
-Income directly related to business operations in certain accounting models.
+Income directly related to the principal activity or trading account presentation in the entity's accounting design. Classification depends on business substance; do not place ordinary sales here merely to make a desired gross profit.
 
 ### Indirect Income
 
@@ -611,6 +684,8 @@ Examples:
 - Interest received
 - Discount received
 - Commission received
+
+Interest or commission can be direct in one business and indirect in another. Choose grouping from the entity's business model and reporting policy, not from the account name alone.
 
 ## 8.2 Creating a Ledger
 
@@ -667,6 +742,10 @@ Multiple creation:
 # 9. Accounting Vouchers
 
 A voucher records a business transaction.
+
+When saved as a regular accounting voucher, Tally updates the affected ledgers and reports. Inventory-enabled invoice modes can update stock at the same time. A voucher should contain the business date, voucher type/number, party or account, amount, bill or inventory allocation, narration, and tax/cost-centre details required by the setup.
+
+Payment, receipt, and contra screens may appear in single-entry or double-entry mode depending on configuration. The display mode changes data entry, not double-entry accounting: every saved accounting voucher must still produce balanced debit and credit effects.
 
 Core voucher types:
 
@@ -813,10 +892,14 @@ Computer value: ₹100,000.
 
 Depreciation: ₹20,000.
 
+Preferred accumulated-depreciation presentation:
+
 ```text
-Depreciation A/c Dr 20,000
-    To Computer A/c          20,000
+Depreciation A/c Dr            20,000
+    To Accumulated Depreciation—Computers A/c  20,000
 ```
+
+This preserves gross computer cost and separately shows accumulated depreciation. Some businesses credit the asset ledger directly; use one policy consistently and reconcile it to the fixed-asset schedule.
 
 ## Scenario 2: Outstanding Salary
 
@@ -985,6 +1068,14 @@ Inventory decreases.
 
 # 18. Memorandum and Optional Vouchers
 
+These features are for provisional or scenario reporting; they are not substitutes for recording a real, approved transaction in the regular books.
+
+| Feature | Regular Books Affected? | How It Is Used | Typical Purpose |
+|---|---|---|---|
+| Memorandum voucher | No until converted | Separate memo voucher that can later be converted | Uncertain or incomplete transaction |
+| Optional voucher | No while marked optional | A normal voucher type is marked optional | Scenario or provisional version of a familiar transaction |
+| Reversing journal | Not posted to regular books; affects reports only when included for its validity period | Special journal expires/reverses after specified date | Short-term interim reporting adjustment |
+
 ## Memorandum Voucher
 
 Used for provisional entries that should not immediately affect books permanently.
@@ -994,6 +1085,8 @@ Example:
 A manager gives an employee ₹5,000 for expected travel spending, but the final expense classification is not yet known.
 
 A memorandum can be used temporarily depending on company policy.
+
+When the final facts are known, convert it to an appropriate regular voucher or remove it from the active scenario. Do not forget it merely because it does not affect the ordinary books.
 
 ## Optional Voucher
 
@@ -1005,6 +1098,8 @@ Possible uses:
 - Scenario analysis.
 - Expected purchases.
 - Temporary estimates.
+
+An optional voucher is not a separate voucher type; a supported regular voucher is marked optional. It must be included in a scenario to affect that scenario's reports.
 
 ---
 
@@ -1021,7 +1116,7 @@ Audit Fees A/c Dr      30,000
     To Audit Fees Payable     30,000
 ```
 
-The entry can be configured to reverse after the reporting period.
+In Tally.ERP 9, a reversing journal is effective only for the specified period and only in reports/scenarios that include it; it does not become an ordinary posted accrual. If the statutory or regular books require the expense and liability, record an approved regular journal and reverse/settle it through the normal accounting process.
 
 Use case:
 
@@ -1058,6 +1153,10 @@ Opening Quantity
 Rate
 Value
 ```
+
+Inventory has both a **quantity** and a **value**. A voucher can be quantity-only, value-only, or both depending on its type and configuration. Before entry, decide whether the event is a purchase/sale, physical movement, internal transfer, production, return, or count correction; choosing a voucher only because it changes stock can create the wrong accounting effect.
+
+Negative stock may be allowed by configuration, but it is a warning that recorded issues exceed available quantity at that date/location. It can distort cost and profit when the later purchase rate differs. Correct transaction dates, units, godowns, and missing receipts rather than accepting negative stock as normal.
 
 ---
 
@@ -1492,6 +1591,8 @@ Payment/receipt before invoice.
 
 Amount recorded without immediate bill allocation.
 
+Use `On Account` only when the specific reference is genuinely unknown. It keeps the party's total balance correct but leaves invoice-level aging and settlement incomplete. Reallocate it promptly once the invoice or advance is identified.
+
 ## Ageing
 
 Example:
@@ -1609,6 +1710,8 @@ Use cases:
 - Project budgets.
 - Sales targets.
 
+A budget report compares actual and planned values; it is not automatically the same as a purchase-approval workflow or hard spending block. Confirm what the configured Tally release actually prevents or warns about. Investigate whether a favorable variance reflects efficiency, delayed spending, or missing vouchers, and whether an unfavorable variance is authorized or erroneous.
+
 ---
 
 # 33. Interest Calculation
@@ -1647,6 +1750,8 @@ Possible use:
 - Late-payment charges.
 - Loan accounting.
 - Interest receivable/payable.
+
+Inputs commonly include the principal or outstanding bill, annual rate, day basis, overdue start date, and whether earlier receipts reduce the balance. The displayed calculation is not automatically proof that interest is legally due or posted in the ledger. Confirm the contract and policy, then raise the required debit note/invoice or journal if interest must be recognized.
 
 ---
 
@@ -1703,6 +1808,8 @@ Interstate:
 IGST 18% = ₹1,800
 Invoice  = ₹11,800
 ```
+
+These figures explain tax mechanics only. Whether a supply is taxable, exempt, zero-rated, reverse-charged, or subject to a particular rate depends on current law and facts. Tally calculates from configured masters and voucher details; it does not make an incorrect classification legally correct.
 
 ---
 
@@ -1780,6 +1887,8 @@ Input CGST A/c Dr        9,000
 Input SGST A/c Dr        9,000
     To Supplier A/c             118,000
 ```
+
+The input-tax ledgers represent recoverable tax only when credit is legally eligible and adequately supported. Blocked or ineligible tax may need to be included in expense or asset cost instead of remaining as a recoverable balance.
 
 ## Interstate Purchase Example
 
@@ -1869,6 +1978,8 @@ Recipient may claim input credit if legally eligible
 
 Exact applicability depends on current law.
 
+Illustrative accounting mechanics can involve recognizing the purchase/expense, a reverse-charge tax liability, and—only when legally eligible—input tax credit. Liability and credit may arise at different times or require separate statutory vouchers/configuration. Never net them automatically without confirming the current rule and evidence.
+
 ---
 
 # 40. Composition Dealer Concepts
@@ -1930,6 +2041,8 @@ Possible reasons:
 
 Reconciliation should investigate differences before claiming or reporting amounts.
 
+Match at least GSTIN, document type, normalized invoice number, invoice date, taxable value, tax components, place of supply, amendments, and credit/debit notes. Preserve raw book and portal values plus the resolution reason. Do not overwrite a supplier invoice number in books solely to force a match without retaining the original document and an approved correction trail.
+
 ---
 
 # 42. HSN/SAC, Tax Rates and Cess
@@ -1938,9 +2051,13 @@ Reconciliation should investigate differences before claiming or reporting amoun
 
 Used for classification of goods.
 
+The selected code influences reporting and may influence the configured rate, but the code and rate are separate facts. Validate the product description, composition, use, and current statutory guidance.
+
 ## SAC
 
 Used for classification of services.
+
+Classify the actual service supplied, not simply the supplier's industry. A consulting company can provide multiple services with different codes or place-of-supply implications.
 
 Example:
 
@@ -1964,7 +2081,7 @@ Do not copy an HSN/SAC code from an unrelated product just because the tax rate 
 
 # 43. E-Way Bill and E-Invoice Concepts
 
-Depending on software build and statutory setup, Tally.ERP 9 environments may support workflows around e-way bills or e-invoicing.
+Depending on software build and statutory setup, Tally.ERP 9 environments may support legacy workflows around e-way bills or e-invoicing. Official Tally.ERP 9 guidance includes JSON/offline-tool processes; do not assume the legacy workflow has the same connected capabilities as current TallyPrime releases.
 
 Core concepts:
 
@@ -2001,6 +2118,8 @@ Invoice record updated
 ```
 
 Eligibility, thresholds, APIs and procedures change over time.
+
+An invoice saved in Tally is not automatically a successfully registered e-invoice. Keep the submission status, acknowledgement, IRN/QR details where applicable, rejection response, and cancellation linkage. Prevent printing or sending a document as successfully registered when the authorized system rejected or never received it.
 
 ---
 
@@ -2058,6 +2177,16 @@ Customer Invoice: ₹101,000
 ```
 
 Actual applicability depends on current law.
+
+Illustrative accounting when ₹1,000 TCS is validly added to a ₹100,000 sale:
+
+```text
+Customer A/c Dr       101,000
+    To Sales A/c              100,000
+    To TCS Payable A/c          1,000
+```
+
+When remitted, debit `TCS Payable` and credit bank. The applicable section, base, timing, rate, threshold, and interaction with other provisions must come from current law.
 
 ---
 
@@ -2155,6 +2284,16 @@ Deductions   ₹4,000
 Net Pay     ₹43,000
 ```
 
+Simplified accounting:
+
+```text
+Salary Expense A/c Dr        47,000
+    To Employee Deductions Payable A/c   4,000
+    To Salary Payable A/c                43,000
+```
+
+Payment of ₹43,000 debits Salary Payable and credits Bank. Employer contributions that are additional to gross salary require a separate employer expense and liability; they should not be silently deducted from employee net pay.
+
 Payroll processing usually involves:
 
 ```text
@@ -2233,6 +2372,19 @@ Bank statement may still show:
 
 Reconciliation explains the difference.
 
+Classify differences before posting:
+
+| Difference | Book Entry Now? | Action |
+|---|---|---|
+| Issued cheque recorded in Tally but not cleared by bank | No | Enter/retain bank date when cleared; treat as timing item |
+| Deposit recorded but not yet credited | No | Keep as timing item and monitor |
+| Bank charge or interest absent from Tally | Yes | Record the correct expense/income and bank entry |
+| Direct customer receipt absent from Tally | Yes | Record and allocate against the correct customer/bill |
+| Wrong amount/date/account in Tally | Yes | Post an approved correction |
+| Bank error | Usually no immediate book correction | Obtain bank resolution and evidence |
+
+The reconciliation is complete when the adjusted book balance agrees with the adjusted bank balance and every old outstanding item has an owner and explanation. Do not enter a plug voucher merely to force agreement.
+
 ---
 
 # 51. Cheque Printing and Payment Advice
@@ -2248,6 +2400,8 @@ Typical setup may require:
 - Date.
 
 Payment advice provides a document showing payment details for suppliers.
+
+Cheque printing formats the instrument; it does not approve the payment or prove bank clearance. Restrict blank cheque stock, control instrument numbers, prevent unauthorized reprints, mark voids, and reconcile issued cheques with the bank. Payment advice should reference the supplier, invoice(s), deductions, amount, date, and bank/payment reference.
 
 ---
 
@@ -2273,6 +2427,8 @@ Outstanding Reports
 ```
 
 The quality of reports depends on correct ledger grouping and transaction entry.
+
+Always confirm the selected company, date/period, display configuration, valuation method, and whether optional/reversing vouchers or scenarios are included. Tally reports are drillable: move from the summary to the group, ledger, voucher, and source evidence. A report that changes after altering a master or old voucher needs review and an audit trail; "the software generated it" is not independent validation.
 
 ---
 
@@ -2303,6 +2459,8 @@ Capital            ₹600,000
 Total             ₹1,000,000
 ```
 
+This is a snapshot at one date. Current-period profit or loss is ultimately part of equity/capital, so a wrong P&L also makes the Balance Sheet wrong. Confirm that bank, customers, suppliers, taxes, loans, fixed assets, and stock reconcile to independent schedules—not only that the two sides agree.
+
 ---
 
 # 54. Profit & Loss Account
@@ -2326,7 +2484,7 @@ Example:
 
 ```text
 Sales              ₹1,000,000
-Purchases/COGS       ₹600,000
+Cost of Goods Sold   ₹600,000
 Gross Profit         ₹400,000
 
 Salary               ₹150,000
@@ -2335,6 +2493,14 @@ Other Expense         ₹20,000
 
 Net Profit            ₹180,000
 ```
+
+For a trading business, purchases are not automatically equal to COGS:
+
+```text
+COGS = Opening Stock + Net Purchases + Direct Costs - Closing Stock
+```
+
+Example: opening stock ₹100,000 + purchases ₹650,000 - closing stock ₹150,000 = COGS ₹600,000, ignoring other direct costs. This distinction prevents the common mistake of treating unsold inventory as a current-period expense.
 
 ---
 
@@ -2353,6 +2519,8 @@ However, a balanced trial balance does not guarantee that every entry is correct
 Example:
 
 If office rent is accidentally posted to advertising expense, debit and credit can still balance.
+
+Use the Trial Balance to find unusual balances, drill into ledgers, and compare with the prior period. A difference between total debits and credits signals a data or extraction problem, but equal totals do not detect omitted transactions, duplicates, wrong parties, wrong dates, or equal-value misclassifications.
 
 ---
 
@@ -2378,6 +2546,10 @@ Use them to answer:
 Where did money come from?
 Where was money used?
 ```
+
+Cash flow classifies movements as operating, investing, and financing and reconciles opening to closing cash/cash equivalents. Profit is not cash: credit sales, unpaid expenses, depreciation, stock growth, asset purchases, loans, and owner capital create differences.
+
+Funds flow is a traditional working-capital analysis and is not a substitute for the statutory Cash Flow Statement. Use the report format and classification required by the applicable accounting framework.
 
 ---
 
@@ -2424,6 +2596,8 @@ Then:
 ```
 
 Ratios should be interpreted in business context.
+
+Use consistent formulas and compare with prior periods, budgets, and suitable peers. A current ratio of 2.0 can still hide slow-moving stock or uncollectible debtors. Gross profit percentage can change because of selling price, purchase cost, stock valuation, returns, discounts, or ledger grouping. Drill down before drawing a conclusion.
 
 ---
 
@@ -2526,11 +2700,13 @@ Security principles:
 - Maintain backups.
 - Audit sensitive changes.
 
+Use named user accounts rather than shared logins, restrict both company and voucher-type access, and review powerful actions such as back-dating, alteration, deletion, export, data split, restore, master changes, and security administration. Segregate vendor/customer master maintenance, voucher entry, bank payment, and review where staffing permits.
+
 ---
 
 # 62. TallyVault and Data Security
 
-TallyVault provides enhanced protection for company data.
+TallyVault encrypts company data to help preserve confidentiality. The password is critical: Tally's official guidance warns that forgetting it may make the data inaccessible. Store the password under an authorized recovery process and test access to backups; do not put the only copy in one person's memory.
 
 Security should include:
 
@@ -2544,6 +2720,8 @@ Tally Security
 ```
 
 Do not treat application password protection as a complete cybersecurity strategy.
+
+Encryption does not prevent an authorized user from making an incorrect entry, and it does not replace backups, malware protection, device controls, least privilege, or an edit history.
 
 ---
 
@@ -2574,9 +2752,13 @@ A backup is useful only if it can be restored.
 
 Practice restore using a test location.
 
+Do not restore directly over the only live data folder. Restore to a separate destination, open and verify the company, compare key counts/reports, and then use an approved recovery plan. Label backups with company, period, date/time, application release, and encryption requirements.
+
 ## Data Verification
 
 Periodically check data integrity where supported.
+
+Verification is especially important before data splitting, migration, major import, or release change. A clean verification result does not replace accounting reconciliation.
 
 ---
 
@@ -2618,6 +2800,8 @@ Before splitting:
 4. Confirm opening balances.
 5. Test split data.
 
+Splitting creates period-based child data and is not mandatory merely because a financial year changed. Some non-accounting documents—such as purchase or sales orders in legacy Tally.ERP 9—may not carry forward in the way financial vouchers do. Review open orders, unreconciled bank items, bill references, tax linkages, and operational documents in both resulting datasets before sign-off. Keep the unsplit backup recoverable.
+
 ---
 
 # 65. Import, Export and Data Exchange
@@ -2650,6 +2834,8 @@ Possible formats/workflows:
 - Migration tools.
 
 Always test imports on a backup copy first.
+
+For a full XML transfer, import compatible masters before dependent vouchers and align relevant F11 features between source and destination. Define how duplicate masters and voucher numbers will be handled. After import, review the import log and reconcile voucher counts, trial balance, party bills, inventory quantities/values, taxes, and cost-centre allocations; "import completed" does not prove that every record was accepted correctly.
 
 ---
 
@@ -2721,6 +2907,8 @@ Important considerations:
 - Conflict management.
 - Backup.
 
+Also define ownership of master creation, voucher numbering, conflict resolution, failed-sync retry, cut-off times, and how each branch proves completeness. Synchronization is not a backup: it can transmit an erroneous alteration or deletion as well as a correct voucher.
+
 ---
 
 # 68. ODBC, XML and Integration Concepts
@@ -2738,6 +2926,8 @@ Use cases:
 - Custom MIS.
 - Data extraction.
 
+Treat ODBC exposure as sensitive accounting access. Use least privilege, restrict network reachability, avoid direct external writes unless explicitly supported and tested, and reconcile extracted totals to Tally.
+
 ## XML
 
 XML can be used for structured data exchange with Tally.
@@ -2751,6 +2941,8 @@ Conceptual import:
 ```
 
 Actual XML schemas should be tested against the exact Tally release.
+
+An integration should be idempotent: retrying a request after a timeout must not create a duplicate voucher. Store source IDs, Tally voucher identifiers, responses, and error logs, and query the destination before retrying an outcome-unknown request.
 
 ## Integration Example
 
@@ -2866,6 +3058,10 @@ Which document supports it?
 Who approved it?
 Was it later changed?
 ```
+
+Tally.ERP 9 includes a legacy Tally Audit feature that can help review selected changes, but it should not be assumed to satisfy every current legal edit-log requirement. Tally's current official guidance directs Tally.ERP 9 data that needs the modern Edit Log capability through migration to TallyPrime Edit Log. Confirm the applicable company-law requirement, retention period, enabled product, and auditor expectations before relying on a legacy audit listing.
+
+A review report is useful only if ordinary users cannot bypass it by sharing administrator credentials, changing system dates, deleting evidence, or restoring older data without control. Protect backups and administration with the same care as live vouchers.
 
 ---
 
@@ -3618,7 +3814,6 @@ Create:
 
 ```text
 Capital
-Cash
 HDFC Bank
 Purchase
 Sales
@@ -3626,6 +3821,19 @@ Office Rent
 Electricity
 Supplier A
 Customer A
+```
+
+Use the predefined `Cash` ledger rather than creating a duplicate. Suggested groups:
+
+```text
+Capital       → Capital Account
+HDFC Bank     → Bank Accounts
+Purchase      → Purchase Accounts
+Sales         → Sales Accounts
+Office Rent   → Indirect Expenses
+Electricity   → Indirect Expenses
+Supplier A    → Sundry Creditors
+Customer A    → Sundry Debtors
 ```
 
 Identify the correct group for each.
@@ -3646,21 +3854,58 @@ Verify the balance sheet.
 
 Buy goods worth ₹50,000 on credit.
 
+Expected accounting effect:
+
+```text
+Purchase / Inventory A/c Dr   50,000
+    To Supplier A A/c                 50,000
+```
+
+Use a Purchase voucher. Select stock items in item-invoice mode when quantity must update.
+
 ## Exercise 5: Sale
 
 Sell goods worth ₹70,000 on credit.
+
+```text
+Customer A A/c Dr       70,000
+    To Sales A/c                70,000
+```
+
+Use a Sales voucher. COGS/stock value depends on the inventory configuration and valuation method.
 
 ## Exercise 6: Receipt
 
 Receive ₹40,000 from customer by bank.
 
+```text
+HDFC Bank A/c Dr        40,000
+    To Customer A A/c           40,000
+```
+
+Use a Receipt voucher and allocate `Agst Ref` to the ₹70,000 sales invoice.
+
 ## Exercise 7: Payment
 
 Pay supplier ₹30,000 by bank.
 
+```text
+Supplier A A/c Dr       30,000
+    To HDFC Bank A/c            30,000
+```
+
+Use a Payment voucher and allocate it against the ₹50,000 purchase bill. This payment clears liability; it does not create the purchase expense again.
+
 ## Exercise 8: Expense
 
 Pay office rent ₹10,000.
+
+```text
+Office Rent A/c Dr      10,000
+    To Cash/Bank A/c            10,000
+```
+
+Use a Payment voucher. Choose the actual payment account and attach/retain the rent evidence.
 
 ## Exercise 9: Outstanding
 
@@ -4210,6 +4455,10 @@ Expense directly connected to production/purchase.
 
 Stock storage location.
 
+## Group
+
+Classification that determines where ledgers appear in reports; it does not itself replace the individual transaction ledger.
+
 ## GST
 
 Goods and Services Tax.
@@ -4277,6 +4526,14 @@ Tax Collected at Source.
 ## TDS
 
 Tax Deducted at Source.
+
+## TallyVault
+
+Tally.ERP 9 feature that encrypts company data; loss of the password may make the data inaccessible.
+
+## Tally Audit / Edit Log
+
+Tally Audit is the legacy Tally.ERP 9 review feature. Edit Log is the modern change-history capability in current TallyPrime products; legal suitability must be confirmed for the entity and jurisdiction.
 
 ## Trial Balance
 
@@ -4388,7 +4645,7 @@ Furniture          ₹100,000
 Opening Stock      ₹100,000
 ```
 
-To keep the opening balance sheet balanced, create realistic corresponding balances as part of the exercise.
+The assets total ₹500,000 and are exactly matched by ₹500,000 capital, so this simplified opening Balance Sheet already balances. If you add a loan, supplier balance, customer balance, or other opening item, update the corresponding side and verify the opening Trial Balance before entering monthly transactions.
 
 ## Suppliers
 
@@ -5301,7 +5558,7 @@ Closing = ₹880
 
 The valuation method can materially affect gross profit and closing stock.
 
-Do not change valuation method casually.
+Tally can display or calculate multiple valuation views, but a method available in software is not automatically acceptable for statutory financial statements or tax. Do not change the accounting valuation method casually; document approval, consistency, transition effects, and the applicable reporting rules.
 
 ---
 

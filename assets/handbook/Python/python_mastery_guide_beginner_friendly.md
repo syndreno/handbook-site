@@ -4,6 +4,8 @@
 
 > A practical, scenario-driven handbook for mastering modern Python 3.
 >
+> **Edition baseline (August 2026):** The latest stable feature series is Python 3.14. The core examples are intentionally conservative and generally run on Python 3.10 or newer; sections that need a later version say so. Prefer the newest maintenance release in a supported series rather than a preview release for ordinary projects.
+>
 > Use this file as:
 > - a complete learning roadmap,
 > - a revision handbook,
@@ -80,6 +82,8 @@
 63. [90-Day Learning Plan](#63-90-day-learning-plan)
 64. [Python Cheat Sheet](#64-python-cheat-sheet)
 65. [Final Mastery Checklist](#65-final-mastery-checklist)
+
+- [Appendix: Official References](#appendix-official-references)
 
 ---
 
@@ -323,6 +327,8 @@ import copy
 b = copy.deepcopy(a)
 ```
 
+`deepcopy()` is not a universal “safer copy.” It recursively duplicates reachable objects, can be expensive, and may be inappropriate for resources such as files, sockets, locks, or database connections. Prefer a purpose-built copy of the data your application actually owns.
+
 ---
 
 # 3. Installation and Environment
@@ -342,6 +348,21 @@ On some systems:
 ```bash
 python3 --version
 ```
+
+At the time of this edition, Python 3.14 is the current stable feature series. Download Python from the official Python website or use a trusted operating-system package manager. A command such as this is expected to print a version, for example:
+
+```text
+Python 3.14.7
+```
+
+Confirm which interpreter and package installer a project is using:
+
+```bash
+python -c "import sys; print(sys.executable)"
+python -m pip --version
+```
+
+Using `python -m pip` ties `pip` to the same interpreter selected by `python`, which avoids a common multi-version setup mistake.
 
 Run a file:
 
@@ -382,6 +403,8 @@ my_project/
 ├── pyproject.toml
 └── requirements.txt
 ```
+
+This is a menu, not a requirement for every script. `pyproject.toml` describes a package and its dependencies; `requirements.txt` is often used as an environment snapshot or deployment input. A `.env` file may contain local secrets, so list it in `.gitignore` and commit an example such as `.env.example` instead. With a `src/` layout, install the project (often `python -m pip install -e .`) before importing it in development.
 
 ---
 
@@ -645,6 +668,21 @@ code = str(1001)
 enabled = bool(1)
 ```
 
+Boolean conversion uses **truthiness**, not human-language parsing. Every non-empty string is truthy:
+
+```python
+print(bool("false"))
+# True
+```
+
+Parse configuration text explicitly instead:
+
+```python
+enabled = raw_value.strip().lower() in {"1", "true", "yes", "on"}
+```
+
+For strict configuration, reject values outside the accepted set instead of silently treating them as false.
+
 ## Multiple assignment
 
 > **What this means:** Python can assign several names in one statement by unpacking values from an iterable. This is concise and especially useful for fixed-size results such as coordinates or multiple return values.
@@ -716,6 +754,14 @@ a <= b
 is_admin and is_active
 is_admin or is_manager
 not is_deleted
+```
+
+`and` and `or` short-circuit: Python may skip the right operand when the result is already known. They also return one of their operands rather than always returning a `bool`:
+
+```python
+display_name = supplied_name or "Anonymous"
+print(display_name)
+# Anonymous  (when supplied_name is empty)
 ```
 
 ## Membership
@@ -1507,17 +1553,28 @@ def calculate_discount(user, amount):
 Recursion means a function calls itself to solve a smaller version of the same problem.
 
 ```python
-def factorial(number):
-    if number <= 1:
+def factorial(number: int) -> int:
+    """Return number!, rejecting booleans and negative integers."""
+    if isinstance(number, bool) or not isinstance(number, int):
+        raise TypeError("number must be an integer")
+
+    if number < 0:
+        raise ValueError("factorial is undefined for negative integers")
+
+    if number in (0, 1):
         return 1
 
     return (
         number *
         factorial(number - 1)
     )
+
+
+print(factorial(5))
+# 120
 ```
 
-Every recursive solution needs a **base case** that stops recursion.
+Every recursive solution needs a **base case** that stops recursion. The validation matters: the shorter condition `number <= 1` would incorrectly return `1` for negative inputs.
 
 Recursion is natural for some tree and graph problems, but Python has a recursion-depth limit and loops are often simpler for ordinary repetition.
 
@@ -2382,24 +2439,51 @@ def measure_time(func):
 > **What this means:** A decorator with arguments has one extra layer: the outer function receives decorator configuration, the middle function receives the function being decorated, and the wrapper handles each call.
 
 ```python
-def retry(max_attempts):
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            last_error = None
+from collections.abc import Callable
+from functools import wraps
+from time import sleep
+from typing import ParamSpec, TypeVar
 
-            for _ in range(max_attempts):
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+def retry(
+    max_attempts: int,
+    *,
+    exceptions: tuple[type[Exception], ...],
+    base_delay: float = 0.25,
+):
+    """Retry selected transient failures with exponential backoff."""
+    if max_attempts < 1:
+        raise ValueError("max_attempts must be at least 1")
+
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
+        @wraps(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            for attempt in range(1, max_attempts + 1):
                 try:
                     return func(*args, **kwargs)
-                except Exception as exc:
-                    last_error = exc
+                except exceptions:
+                    if attempt == max_attempts:
+                        raise
 
-            raise last_error
+                    sleep(base_delay * (2 ** (attempt - 1)))
 
         return wrapper
 
     return decorator
 ```
+
+Example use:
+
+```python
+@retry(max_attempts=3, exceptions=(TimeoutError,))
+def read_remote_status() -> str:
+    ...
+```
+
+Parameters: `max_attempts` includes the first call, `exceptions` names only failures believed to be temporary, and `base_delay` controls backoff. The wrapper returns the original function's value or re-raises the final selected exception. Do not blindly retry validation errors, authentication failures, or non-idempotent operations such as charging a card unless the protocol provides an idempotency key.
 
 ---
 
@@ -2429,6 +2513,8 @@ class DatabaseConnection:
     def __exit__(self, exc_type, exc_value, traceback):
         print("Close connection")
 ```
+
+`__enter__()` returns the value bound after `as`. `__exit__()` receives the exception type, exception value, and traceback when the block fails. Returning a truthy value suppresses that exception; returning `False` or `None`, as above, lets it propagate after cleanup. Suppress exceptions only when the context manager can handle them completely and intentionally.
 
 Usage:
 
@@ -2622,8 +2708,13 @@ T = TypeVar("T")
 
 
 def first(items: list[T]) -> T:
+    if not items:
+        raise ValueError("items must not be empty")
+
     return items[0]
 ```
+
+The parameter is a list of `T` and the result is one `T`. Without an explicit check, an empty list would raise `IndexError`; choosing `ValueError` makes the public contract clearer. If callers should handle absence normally, return `T | None` instead.
 
 ---
 
@@ -2784,6 +2875,8 @@ with open("invoice.json", encoding="utf-8") as file:
     data = json.load(file)
 ```
 
+`json.dump()` and `json.dumps()` accept JSON-compatible data: dictionaries with suitable keys, lists/tuples, strings, JSON numbers, booleans, and `None`. Values such as `datetime`, `Decimal`, `Path`, or arbitrary class instances need an explicit conversion or encoder. Also impose input-size and nesting limits before parsing JSON from an untrusted source; syntactically valid data can still consume excessive memory or CPU.
+
 ## CSV
 
 > **What this means:** CSV stores rows and columns as text. It is simple and widely supported, but it does not preserve rich types automatically—dates, numbers, and missing values may need explicit parsing.
@@ -2841,6 +2934,8 @@ for child in root:
     print(child.tag, child.text)
 ```
 
+The standard XML parsers are suitable for trusted or controlled documents, but hostile XML can use resource-exhaustion techniques. For untrusted uploads, enforce size/depth limits and use a hardened XML solution appropriate to your threat model. Never enable external entity or network access merely to make an unknown document parse.
+
 ## YAML
 
 > **What this means:** YAML is often used for configuration because it is easier for humans to read than JSON. Because some YAML loaders can construct arbitrary objects, use safe loading for untrusted files.
@@ -2865,11 +2960,12 @@ Prefer `safe_load`, not unsafe object deserialization.
 For production systems, prefer timezone-aware datetimes when an instant can be observed from different locations.
 
 ```python
-from datetime import datetime
+from datetime import datetime, timezone
 
-now = datetime.now()
+now = datetime.now(timezone.utc)
 
-print(now)
+print(now.isoformat())
+# Example: 2026-08-13T09:30:00+00:00
 ```
 
 Specific date:
@@ -2903,15 +2999,15 @@ from datetime import timedelta
 tomorrow = now + timedelta(days=1)
 ```
 
-Timezone-aware code:
+Convert an instant for display in another IANA time zone (Python 3.9+):
 
 ```python
-from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
-utc_now = datetime.now(timezone.utc)
+india_time = now.astimezone(ZoneInfo("Asia/Kolkata"))
 ```
 
-For real applications, prefer timezone-aware datetimes.
+Naive datetimes have `tzinfo=None`; their time zone is implicit and easy to misinterpret. Prefer aware values for instants, commonly store or transmit UTC, and convert at system boundaries for local display. A `date` is still the right type for a calendar-only value such as an invoice date or birthday.
 
 ---
 
@@ -2964,7 +3060,7 @@ cleaned = re.sub(
 gstin_pattern = r"\b\d{2}[A-Z]{5}\d{4}[A-Z][A-Z0-9]Z[A-Z0-9]\b"
 ```
 
-Do not depend only on regex for business validation. Validate structure and business rules separately.
+Use `re.fullmatch(pattern, value)` when the whole input must conform; `re.search()` only needs a matching substring. Compile patterns reused many times with `re.compile()`. Do not depend only on regex for business validation: validate structure and business rules separately. Be cautious with complex patterns on attacker-controlled long strings because catastrophic backtracking can consume excessive CPU; bound input length and prefer simple, well-tested patterns.
 
 ---
 
@@ -3002,6 +3098,8 @@ logger.error("Invoice processing failed")
 logger.exception("Unhandled exception")
 ```
 
+`logger.exception()` should normally be called inside an `except` block because it includes the active traceback. Outside exception handling, use `logger.error()` instead.
+
 Scenario:
 
 ```python
@@ -3025,26 +3123,43 @@ Read arguments with `argparse`.
 
 ```python
 import argparse
+from pathlib import Path
 
 
-parser = argparse.ArgumentParser(
-    description="Invoice processor"
-)
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Invoice processor"
+    )
 
-parser.add_argument(
-    "--file",
-    required=True,
-)
+    parser.add_argument(
+        "--file",
+        required=True,
+        type=Path,
+        help="PDF invoice to process",
+    )
 
-parser.add_argument(
-    "--output",
-    default="output.json",
-)
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path("output.json"),
+    )
 
-args = parser.parse_args()
+    return parser.parse_args()
 
-print(args.file)
-print(args.output)
+
+def main() -> int:
+    args = parse_args()
+
+    if not args.file.is_file():
+        print(f"Input file does not exist: {args.file}")
+        return 2
+
+    print(f"Writing result to {args.output}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
 ```
 
 Run:
@@ -3052,6 +3167,8 @@ Run:
 ```bash
 python app.py --file invoice.pdf --output result.json
 ```
+
+`argparse` handles `--help` and syntax errors. Returning an integer from `main()` gives shell automation a useful exit status: `0` means success and a nonzero value means failure. `type=Path` converts argument text before `main()` receives it, but it does not prove the path exists—validation still belongs in the program.
 
 ---
 
@@ -3081,6 +3198,20 @@ Required:
 
 ```python
 api_key = os.environ["API_KEY"]
+```
+
+`os.getenv("NAME")` returns `None` (or a supplied default) when absent; `os.environ["NAME"]` raises `KeyError`, which is useful for truly required configuration. Environment variables are always strings, so parse and validate numbers and booleans explicitly:
+
+```python
+raw_timeout = os.environ.get("API_TIMEOUT_SECONDS", "10")
+
+try:
+    api_timeout = float(raw_timeout)
+except ValueError as exc:
+    raise ValueError("API_TIMEOUT_SECONDS must be numeric") from exc
+
+if api_timeout <= 0:
+    raise ValueError("API_TIMEOUT_SECONDS must be positive")
 ```
 
 `.env` example:
@@ -3153,6 +3284,8 @@ python -m pip install -r requirements.txt
 ```
 
 Modern projects frequently use `pyproject.toml` for project metadata and tool configuration.
+
+`pip freeze` records everything installed in the current environment; it does not distinguish direct from transitive dependencies and may include unrelated development tools. Use it deliberately for a clean environment or deployment snapshot. For an installable project, declare direct dependencies and `requires-python` in `pyproject.toml`; use a lock or constraints workflow when exact reproducibility is required.
 
 ---
 
@@ -3233,21 +3366,36 @@ import requests
 
 
 def get_with_retry(url, attempts=3):
+    if attempts < 1:
+        raise ValueError("attempts must be at least 1")
+
     for attempt in range(1, attempts + 1):
         try:
             response = requests.get(
                 url,
                 timeout=10,
             )
-            response.raise_for_status()
-            return response
 
-        except requests.RequestException:
+            if response.status_code not in {
+                408, 429, 500, 502, 503, 504
+            }:
+                response.raise_for_status()
+                return response
+
+            response.raise_for_status()
+
+        except (
+            requests.Timeout,
+            requests.ConnectionError,
+            requests.HTTPError,
+        ):
             if attempt == attempts:
                 raise
 
             sleep(2 ** (attempt - 1))
 ```
+
+This example retries only `GET`, an idempotent method, and a small set of commonly transient statuses. A production client should also cap delays, add random jitter, honor a valid `Retry-After` header where applicable, reuse a `requests.Session`, and validate the returned content type/schema. Do not retry every `4xx` response: authentication and validation failures normally require a change, not another identical request.
 
 ---
 
@@ -3313,12 +3461,18 @@ connection.close()
 Context manager:
 
 ```python
-with sqlite3.connect("app.db") as connection:
-    connection.execute(
-        "INSERT INTO users(name) VALUES (?)",
-        ("Bob",),
-    )
+from contextlib import closing
+
+
+with closing(sqlite3.connect("app.db")) as connection:
+    with connection:  # commit on success; roll back on exception
+        connection.execute(
+            "INSERT INTO users(name) VALUES (?)",
+            ("Bob",),
+        )
 ```
+
+The `sqlite3.Connection` context manager controls a transaction, but leaving it does **not** close the connection. `closing()` makes the lifetime explicit. In larger applications, a framework or connection pool usually owns connection cleanup.
 
 ## Transactions
 
@@ -3378,6 +3532,8 @@ Waiting for APIs → asyncio
 ```
 
 Python's exact runtime behavior depends on interpreter implementation, workload, and libraries, so benchmark realistic workloads.
+
+Most CPython installations use a Global Interpreter Lock (GIL), so only one thread executes Python bytecode at a time even though threads overlap I/O and some native-library work. CPython 3.13+ also offers an optional **free-threaded** build that can disable the GIL; it is not something ordinary code should assume. It may have single-thread overhead, and imported extension modules can re-enable the GIL when they are not marked as free-threading compatible. Correct synchronization is required in either build—do not treat the traditional GIL as a data-consistency lock.
 
 ---
 
@@ -3471,25 +3627,31 @@ Shared memory is convenient but dangerous: two threads can read or update the sa
 
 ```python
 from concurrent.futures import ThreadPoolExecutor
+from urllib.request import urlopen
 
 
-def download(url):
-    ...
-```
+def download(url: str) -> bytes:
+    with urlopen(url, timeout=10) as response:
+        return response.read()
 
-```python
+
 urls = [
-    "https://example.com/1",
-    "https://example.com/2",
+    "https://example.com/",
+    "https://www.python.org/",
 ]
 
 with ThreadPoolExecutor(
-    max_workers=5,
+    max_workers=2,
 ) as executor:
     results = list(
         executor.map(download, urls)
     )
+
+print([len(body) for body in results])
+# Example: [1256, 51480] (page sizes change over time)
 ```
+
+`executor.map()` preserves input order and re-raises a worker exception while results are consumed. Bound the worker count, set timeouts on I/O, and decide whether one failed item should stop the batch or be recorded as a per-item failure.
 
 Protect shared mutable state:
 
@@ -3562,14 +3724,21 @@ Concurrent tasks:
 
 ```python
 async def main():
-    results = await asyncio.gather(
-        fetch_data(),
-        fetch_data(),
-        fetch_data(),
-    )
+    async with asyncio.TaskGroup() as group:
+        tasks = [
+            group.create_task(fetch_data())
+            for _ in range(3)
+        ]
 
+    results = [task.result() for task in tasks]
     print(results)
+
+
+asyncio.run(main())
+# ['done', 'done', 'done']
 ```
+
+`TaskGroup` (Python 3.11+) provides structured concurrency: when one child fails, the remaining children are cancelled and the group waits for them before raising an exception group. `asyncio.gather()` is still useful when its result-order and failure semantics are what you need. Put time limits around external operations with `asyncio.timeout()` (3.11+) or `asyncio.wait_for()`, and allow cancellation to propagate unless you can finish cleanup safely.
 
 ## Important concepts
 
@@ -3621,12 +3790,20 @@ Tests protect against:
 
 ## Simple pytest example
 
+`pytest` is a third-party test runner. Install it in the active virtual environment, save tests in a file such as `tests/test_totals.py`, and run it from the project root:
+
+```bash
+python -m pip install pytest
+python -m pytest -q
+```
+
+Expected output for the two passing tests below is similar to `2 passed`.
+
 ```python
 def add(a, b):
     return a + b
-```
 
-```python
+
 def test_add():
     assert add(2, 3) == 5
 ```
@@ -3634,6 +3811,10 @@ def test_add():
 ## Arrange-Act-Assert
 
 ```python
+def calculate_total(invoice):
+    return invoice["subtotal"] + invoice["tax"]
+
+
 def test_invoice_total():
     # Arrange
     invoice = {
@@ -3652,6 +3833,13 @@ def test_invoice_total():
 
 ```python
 import pytest
+
+
+def process_amount(amount):
+    if amount < 0:
+        raise ValueError("amount must not be negative")
+
+    return amount
 
 
 def test_negative_amount():
@@ -3845,6 +4033,8 @@ breakpoint()
 
 Then use debugger commands.
 
+Useful commands include `n` (next line), `s` (step into), `c` (continue), `p expression` (print), `pp expression` (pretty-print), `l` (list source), and `q` (quit). Debuggers execute expressions in the paused program, so avoid side effects while inspecting production-like data.
+
 ## Inspect exception traceback
 
 Read from the bottom upward:
@@ -3913,19 +4103,19 @@ def process_everything():
 Better:
 
 ```python
-def read_document(...):
+def read_document(path):
     ...
 
-def extract_text(...):
+def extract_text(document):
     ...
 
-def normalize_fields(...):
+def normalize_fields(fields):
     ...
 
-def validate_invoice(...):
+def validate_invoice(invoice):
     ...
 
-def persist_invoice(...):
+def persist_invoice(invoice):
     ...
 ```
 
@@ -3979,7 +4169,7 @@ except KeyError:
     ...
 ```
 
-Use whichever is clearer for the situation.
+Catch only the exception you expect from the smallest useful block. A broad `except Exception` around several operations can hide an unrelated programming bug. Use whichever style is clearer for the situation; pre-checks are still appropriate when they avoid expensive work or when the operation is not safe to attempt speculatively.
 
 ## Avoid duplicate logic
 
@@ -4147,13 +4337,43 @@ ExcelExtractor
 
 Subclasses should honor the expectations of their base abstraction.
 
+If code accepts a `DocumentStore`, replacing one valid implementation with another should not break documented behavior. A subtype should not strengthen preconditions unexpectedly, return an incompatible result, or silently remove guarantees promised by the abstraction.
+
+```python
+from typing import Protocol
+
+
+class DocumentStore(Protocol):
+    def save(self, name: str, content: bytes) -> None:
+        ...
+
+
+def archive(store: DocumentStore, content: bytes) -> None:
+    store.save("invoice.pdf", content)
+```
+
+Both a local store and a cloud store can satisfy this contract. Tests should verify the shared observable behavior.
+
 ## I — Interface Segregation
 
 Prefer small focused interfaces.
 
+A read-only report generator should not depend on one large interface that also requires `delete()`, `send_email()`, and `approve()`. Give clients the smallest behavior they need—perhaps a `ReportReader` protocol containing only `get_report()`. This reduces fake methods and makes alternate implementations easier.
+
 ## D — Dependency Inversion
 
 High-level logic depends on abstractions, not concrete infrastructure.
+
+```python
+class InvoiceService:
+    def __init__(self, store: DocumentStore) -> None:
+        self.store = store
+
+    def archive(self, content: bytes) -> None:
+        self.store.save("invoice.pdf", content)
+```
+
+The caller injects the concrete store. The service can be tested with an in-memory implementation and does not need to know a cloud SDK. In Python, an abstraction can be a protocol or focused callable; it does not always require an inheritance hierarchy.
 
 ---
 
@@ -4496,6 +4716,28 @@ output = base_dir / user_filename
 
 Validate that resolved paths remain inside the allowed directory.
 
+One containment check for a single-file upload is:
+
+```python
+from pathlib import Path
+
+
+def safe_upload_path(base_dir: Path, supplied_name: str) -> Path:
+    # Accept a filename, not a client-controlled directory tree.
+    if Path(supplied_name).name != supplied_name:
+        raise ValueError("a plain filename is required")
+
+    base = base_dir.resolve()
+    candidate = (base / supplied_name).resolve()
+
+    if not candidate.is_relative_to(base):  # Python 3.9+
+        raise ValueError("path escapes the upload directory")
+
+    return candidate
+```
+
+This illustrates lexical containment but does not by itself eliminate every race or symbolic-link attack. For hostile multi-user filesystems, use operating-system facilities and an upload-storage design that avoids trusting client filenames at all; generate server-side names and restrict permissions.
+
 ## Unsafe pickle
 
 > **What this means:** `pickle` is a Python object-serialization format that can execute code while loading crafted data. Only unpickle data from a source you fully trust.
@@ -4542,6 +4784,10 @@ Modern project configuration commonly lives in `pyproject.toml`.
 Example:
 
 ```toml
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "invoice-engine"
 version = "0.1.0"
@@ -4549,9 +4795,11 @@ description = "Invoice processing engine"
 requires-python = ">=3.11"
 
 dependencies = [
-    "requests",
+    "requests>=2.32,<3",
 ]
 ```
+
+`[build-system]` tells build frontends which backend creates distributions. `[project]` contains standardized package metadata. Choose one backend and follow its package-discovery rules; a `pyproject.toml` alone does not guarantee that the intended source files will be included.
 
 Editable install:
 
@@ -4562,8 +4810,11 @@ python -m pip install -e .
 Build:
 
 ```bash
+python -m pip install build
 python -m build
 ```
+
+The command normally creates a wheel (`.whl`) and source distribution (`.tar.gz`) in `dist/`. Test-install the wheel in a fresh virtual environment before publishing. Publishing to a package index also requires a unique name, credentials, and a deliberate release process; never embed index tokens in the file.
 
 Key concepts:
 
@@ -4588,6 +4839,8 @@ Example:
 ```text
 2.4.1
 ```
+
+Semantic Versioning is a useful convention, not something Python packaging enforces automatically. Whatever version policy you choose, document what counts as a breaking change and avoid overwriting an already published release.
 
 ---
 
@@ -6453,6 +6706,21 @@ Move forward when you can:
 6. apply it inside a project.
 
 That is how Python knowledge turns into engineering skill.
+
+---
+
+# Appendix: Official References
+
+Use primary documentation to verify behavior that changes across Python or library versions:
+
+- [Python documentation](https://docs.python.org/3/) — tutorial, language reference, standard library, how-to guides, and “What's New” notes.
+- [Python downloads](https://www.python.org/downloads/) — current stable releases and installers.
+- [Python Packaging User Guide](https://packaging.python.org/) — `pyproject.toml`, builds, dependency specifications, and publishing.
+- [Python Enhancement Proposals](https://peps.python.org/) — design and status of language, packaging, typing, and runtime changes.
+- [PyPI](https://pypi.org/) — published package metadata; verify that a package's own documentation supports your Python version.
+- [Python security response](https://www.python.org/dev/security/) — reporting and response information for Python vulnerabilities.
+
+Third-party APIs such as `requests`, PyYAML, pytest, pandas, web frameworks, and OCR libraries have independent release cycles. Pin or constrain them according to your deployment policy, read their versioned documentation, and test upgrades in an isolated environment.
 
 ---
 

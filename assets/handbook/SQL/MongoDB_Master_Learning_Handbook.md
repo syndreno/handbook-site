@@ -3,7 +3,9 @@
 
 > A single-file MongoDB learning and reference handbook for beginners, backend/full-stack developers, interview preparation, and production troubleshooting.
 
-**Version note:** Prepared on **2026-08-12**. MongoDB documentation listed the **8.3 series as the current stable release** at that time. Core concepts here are broadly version-independent; verify version-specific behavior before production use.
+**Version note:** Reviewed on **2026-08-13**. MongoDB documentation listed the **8.3 series as the current stable release** at that time. Core concepts here are broadly version-independent; verify version-specific behavior before production use.
+
+Unless a section names an application driver, JavaScript-looking commands such as `db.users.find(...)` are **`mongosh` examples**, not browser JavaScript. Output is shortened for readability: generated `ObjectId` values, timestamps, acknowledgements, and execution statistics will differ on your machine.
 
 ---
 
@@ -348,7 +350,7 @@ shop
 
 ## Collection
 
-A group of BSON documents.
+A named group of BSON documents, roughly comparable to a table in a relational database. Collections do not require every document to have identical fields, but production applications should still enforce a deliberate shape through application validation, database schema validation, or both.
 
 ## Document
 
@@ -364,7 +366,7 @@ A BSON record:
 
 ## Field
 
-A key/value pair:
+A named key/value pair inside a document. A field's value can be a scalar value, array, embedded document, or another BSON type:
 
 ```javascript
 price: 2500
@@ -372,15 +374,15 @@ price: 2500
 
 ## `_id`
 
-Every document has a unique `_id`. If omitted, MongoDB usually generates an `ObjectId`.
+Every document has a unique `_id`, and the collection automatically indexes it. If an insert omits `_id`, MongoDB drivers and `mongosh` normally generate an `ObjectId`. Choose the identifier type deliberately: the string `"42"`, number `42`, and `ObjectId("...")` are different values and do not match each other.
 
 ## `mongod`
 
-The MongoDB database server process.
+The MongoDB database server process. It accepts client connections, reads and writes data, maintains indexes, and participates in replication or sharding when configured. An application connects to `mongod` directly in a standalone or replica-set deployment; it normally connects through `mongos` in a sharded deployment.
 
 ## `mongosh`
 
-The MongoDB Shell used from a terminal.
+The interactive MongoDB Shell used from a terminal. It sends commands to a MongoDB deployment and prints their results. It is ideal for learning and administration, while application code should use the official driver for its language so it can use connection pooling, typed APIs, timeouts, and error handling.
 
 ## MongoDB Compass
 
@@ -394,7 +396,7 @@ A graphical tool useful for:
 
 ## MongoDB Atlas
 
-MongoDB's managed cloud database platform.
+MongoDB's managed cloud database platform. Atlas can provision clusters, backups, monitoring, private networking, and services such as MongoDB Search. Managed service does not remove application responsibilities: use least-privilege database users, restrict network access, test restores, and design indexes for the real workload.
 
 ---
 
@@ -469,7 +471,7 @@ Be careful with floating-point precision. For exact decimal values, consider Dec
 
 ## Document size and growth
 
-MongoDB documents have a maximum BSON size. The design lesson is more important than memorizing the number:
+Most normal MongoDB documents have a maximum BSON size of **16 MiB**. GridFS is designed for larger files, but ordinary application documents should usually be much smaller. The design lesson is more important than memorizing the limit:
 
 > Do not create documents or arrays that grow forever.
 
@@ -503,26 +505,19 @@ Good for offline development and server-learning.
 
 ## Option C — Docker
 
-Basic learning container:
+Basic local-learning container. Pin a tested image version instead of relying on the moving `latest` tag, bind the port to loopback so it is not exposed on every network interface, and use a secret value that is not committed to source control:
 
 ```bash
 docker run -d \
   --name mongodb \
-  -p 27017:27017 \
-  mongo
-```
-
-With persistence/authentication concept:
-
-```bash
-docker run -d \
-  --name mongodb \
-  -p 27017:27017 \
+  -p 127.0.0.1:27017:27017 \
   -v mongodb_data:/data/db \
   -e MONGO_INITDB_ROOT_USERNAME=admin \
-  -e MONGO_INITDB_ROOT_PASSWORD=StrongPassword \
-  mongo
+  -e MONGO_INITDB_ROOT_PASSWORD='replace-with-a-strong-local-secret' \
+  mongo:8.3
 ```
+
+Here `-d` runs the container in the background, `-p` maps the local port, `-v` keeps database files in a Docker volume, and the two environment variables create the initial root user. This root account is suitable for bootstrapping a learning environment, not as an application's production identity. Remove the container with `docker rm -f mongodb`; the named volume remains until it is explicitly removed.
 
 ## Connection strings
 
@@ -661,6 +656,8 @@ db.users.deleteOne(...)
 
 ## `insertOne()`
 
+`insertOne(document)` inserts one document and returns an acknowledgement containing the new `_id`:
+
 ```javascript
 db.users.insertOne({
   name: "Aarav",
@@ -669,6 +666,14 @@ db.users.insertOne({
   active: true
 })
 ```
+
+Example result:
+
+```javascript
+{ acknowledged: true, insertedId: ObjectId("...") }
+```
+
+If validation fails or `_id` violates a unique index, the method throws an error instead of returning a successful result.
 
 ## Custom `_id`
 
@@ -683,6 +688,8 @@ db.users.insertOne({
 
 ## `insertMany()`
 
+`insertMany(documents, options?)` inserts an array of documents. Its result includes an `insertedIds` map. By default, MongoDB processes the batch in order and stops after an error; `{ ordered: false }` allows independent later operations to continue, although failed documents are still reported.
+
 ```javascript
 db.products.insertMany([
   { name: "Keyboard", price: 2500, stock: 20 },
@@ -696,6 +703,8 @@ For large imports, batch operations can reduce network round trips, but do not b
 ---
 
 # 13. Read and Query Operations
+
+`find(filter?, projection?)` returns a **cursor**, which retrieves matching documents as they are iterated; it does not immediately return a JavaScript array. `findOne(filter?, options?)` returns the first matching document or `null`. In application code, drivers expose methods such as `toArray()`, `next()`, or asynchronous iteration to consume a cursor.
 
 All documents:
 
@@ -736,11 +745,22 @@ db.users.find({
 })
 ```
 
+If one matching document is `{ name: "Aarav", address: { city: "Mumbai" } }`, `find()` prints that document along with any other matches. An empty result means no document matched; it is not an error.
+
 ---
 
 # 14. Query Operators
 
 ## Comparison
+
+Comparison operators test a field against a value. The outer object names the field, while the inner object names the operator:
+
+| Operator | Meaning |
+|---|---|
+| `$eq` | equal to |
+| `$ne` | not equal to |
+| `$gt` / `$gte` | greater than / greater than or equal to |
+| `$lt` / `$lte` | less than / less than or equal to |
 
 ```javascript
 { price: { $eq: 1000 } }
@@ -753,6 +773,8 @@ db.users.find({
 
 ### `$in`
 
+`$in` matches when a field equals at least one value in the supplied array. It is clearer than a long `$or` that repeatedly tests the same field.
+
 ```javascript
 db.orders.find({
   status: {
@@ -763,10 +785,13 @@ db.orders.find({
 
 ### `$nin`
 
+`$nin` matches values not in the supplied array **and also documents where the field is missing**. If the field must exist, combine it with `$exists: true`.
+
 ```javascript
 db.orders.find({
   status: {
-    $nin: ["CANCELLED", "REJECTED"]
+    $nin: ["CANCELLED", "REJECTED"],
+    $exists: true
   }
 })
 ```
@@ -926,7 +951,7 @@ db.orders.find({
 
 # 16. Projection, Sorting, Pagination, and Counting
 
-Projection:
+A projection limits fields returned by the server. `1` includes a field and `0` excludes it. Except for `_id`, do not mix inclusion and exclusion in the same projection document.
 
 ```javascript
 db.users.find(
@@ -946,6 +971,8 @@ Descending:
 ```javascript
 db.products.find().sort({ price: -1 })
 ```
+
+Sort values are `1` for ascending and `-1` for descending. If several documents can have the same price, add a unique tie-breaker for deterministic pagination, for example `.sort({ price: -1, _id: -1 })`.
 
 Limit:
 
@@ -986,7 +1013,7 @@ For reliable cursor pagination, use a stable deterministic sort key; often a uni
 
 # 17. Update Operations
 
-`updateOne()`:
+`updateOne(filter, update, options?)` modifies at most one matching document. The result reports values such as `matchedCount`, `modifiedCount`, and possibly `upsertedId`:
 
 ```javascript
 db.users.updateOne(
@@ -994,6 +1021,14 @@ db.users.updateOne(
   { $set: { active: false } }
 )
 ```
+
+Expected result when one active value changed:
+
+```javascript
+{ acknowledged: true, matchedCount: 1, modifiedCount: 1 }
+```
+
+`matchedCount: 0` means no document matched. `matchedCount: 1` with `modifiedCount: 0` often means the document already held the requested value.
 
 `updateMany()`:
 
@@ -1014,6 +1049,8 @@ Common update operators:
 { $rename: { mobile: "phone" } }
 { $currentDate: { updatedAt: true } }
 ```
+
+Operators such as `$inc` change a field atomically within one document. For inventory, prefer a conditional atomic update such as `db.products.updateOne({ sku: "A", stock: { $gte: 1 } }, { $inc: { stock: -1 } })` over reading stock and later writing a calculated value; the condition prevents stock from dropping below zero during concurrent requests.
 
 Array push:
 
@@ -1058,6 +1095,8 @@ db.orders.updateOne(
 )
 ```
 
+The positional `$` updates the first array element that matched the query condition. If several elements must be changed, use `$[]` for all elements or `$[identifier]` with `arrayFilters` for selected elements.
+
 Array filters:
 
 ```javascript
@@ -1080,12 +1119,18 @@ db.orders.updateOne(
 
 # 18. Delete Operations
 
-Delete one:
+`deleteOne(filter)` removes at most one matching document; `deleteMany(filter)` removes all matches. Their results include `acknowledged` and `deletedCount`.
 
 ```javascript
 db.users.deleteOne({
   email: "old@example.com"
 })
+```
+
+Example result:
+
+```javascript
+{ acknowledged: true, deletedCount: 1 }
 ```
 
 Delete many:
@@ -1565,6 +1610,8 @@ Choose or calculate fields:
 
 ## `$set` / `$addFields`
 
+`$set` adds new fields or replaces existing field values in each pipeline document. `$addFields` is an alias. The stage outputs the original fields plus the calculated fields unless a later projection removes them.
+
 ```javascript
 {
   $set: {
@@ -1576,6 +1623,8 @@ Choose or calculate fields:
 ```
 
 ## `$unset`
+
+`$unset` removes one or more fields from pipeline output. This aggregation stage is different from the `$unset` **update operator**, which removes stored fields from matched documents.
 
 ```javascript
 {
@@ -1612,6 +1661,8 @@ $addToSet
 
 ## `$sort`
 
+`$sort` orders the documents currently flowing through the pipeline. It does not change storage order. Put `$match` early and ensure an appropriate index can support an initial filter/sort when performance matters.
+
 ```javascript
 {
   $sort: {
@@ -1622,11 +1673,15 @@ $addToSet
 
 ## `$limit`
 
+`$limit` passes only the first specified number of input documents to later stages. Its result depends on the existing order, so use `$sort` first when “top” or “latest” has business meaning.
+
 ```javascript
 { $limit: 10 }
 ```
 
 ## `$skip`
+
+`$skip` discards the specified number of input documents. It is convenient for shallow pages, but large skips still require work; cursor/range pagination is usually better for deep, high-volume API pagination.
 
 ```javascript
 { $skip: 20 }
@@ -1733,6 +1788,8 @@ Useful for complex join predicates and projections:
 
 ## `$count`
 
+`$count` consumes its input and emits one document whose field name you choose. If no documents reach the stage, it emits no document rather than `{ totalOrders: 0 }`.
+
 ```javascript
 { $count: "totalOrders" }
 ```
@@ -1790,15 +1847,15 @@ Conceptually equals group + count + sort.
 
 ## `$replaceRoot` / `$replaceWith`
 
-Useful for replacing the current document with a nested document or newly constructed object.
+These stages replace the entire current pipeline document with a nested document or a newly constructed document. `$replaceWith` is the shorter expression form. The replacement expression must evaluate to a document; missing or non-document values can cause an error, so use `$ifNull` or filter invalid inputs when necessary.
 
 ## `$merge`
 
-Writes aggregation output into a target collection. Useful for ETL and materialized summaries.
+`$merge` writes pipeline results into a target collection and can insert, merge, replace, keep, fail, or run a custom update pipeline when a target key matches. It is useful for repeatable ETL and materialized summaries. It changes data and must be the final stage, so test the read-only part of the pipeline before enabling the write stage.
 
 ## `$out`
 
-Writes pipeline output to a collection. Understand replacement and deployment semantics before using it.
+`$out` writes the pipeline result as a target collection rather than returning ordinary result documents. It is appropriate for rebuilding a complete derived collection. Unlike `$merge`, it is not a per-document upsert tool; understand replacement, atomic-renaming, sharding, and deployment restrictions for the exact server version before using it. Treat both `$out` and `$merge` as destructive-capable operations.
 
 ## `$setWindowFields`
 
@@ -2194,6 +2251,8 @@ Every normal collection has a unique `_id` index.
 
 ## Single-field index
 
+A single-field index stores values from one field in sorted index order. It can support equality/range filters and, when direction and query shape allow, sorting without an in-memory sort.
+
 ```javascript
 db.users.createIndex({ email: 1 })
 ```
@@ -2333,11 +2392,15 @@ Useful for unpredictable field sets, but it does not replace workload-driven ind
 
 ## Geospatial index
 
+A `2dsphere` index supports queries over GeoJSON geometry on the earth-like spherical model. GeoJSON point coordinates are ordered **longitude, latitude**, not latitude, longitude.
+
 ```javascript
 db.places.createIndex({
   location: "2dsphere"
 })
 ```
+
+Use it with operators and stages such as `$near`, `$geoWithin`, or `$geoNear`. Do not use a normal ascending index when the query requires spherical distance calculations.
 
 ## Hidden index
 
@@ -2640,6 +2703,8 @@ Potentially higher latency
 
 For critical writes, understand majority acknowledgement and journaling behavior for your deployment/version instead of accepting defaults blindly.
 
+Write concern does not change *what* a write means; it changes what acknowledgement must occur before the client receives success. A timeout means the requested acknowledgement was not obtained in time—it does not by itself prove that no member applied the write. Design retryable/idempotent operations and inspect the driver's error labels.
+
 ## Read Concern
 
 Controls read consistency/isolation behavior.
@@ -2663,6 +2728,8 @@ Choose based on:
 - latency;
 - topology;
 - recency requirements.
+
+Read concern answers “what consistency/isolation guarantee should this operation have?” It is not the same as read preference, which chooses eligible nodes. For example, `readConcern: "majority"` concerns majority-committed data, while `readPreference: "secondary"` permits the read to run on a secondary.
 
 ## Read Preference
 
@@ -2700,7 +2767,7 @@ Writes ───▶│   Primary   │
 
 ## Primary
 
-Normally receives writes.
+Normally receives writes and, with the default read preference, reads. A replica set has at most one writable primary at a time. During an election there may temporarily be no primary, so applications need bounded timeouts and driver-supported retry behavior.
 
 ## Secondary
 
@@ -2806,7 +2873,7 @@ The query router used by applications in a sharded cluster.
 
 ## Config servers
 
-Store cluster metadata/configuration.
+Store sharded-cluster metadata such as chunk ranges and shard membership. In production they run as a dedicated replica set. Applications should not query config servers for normal business data; they connect to `mongos` routers.
 
 ## Balancer
 
@@ -2844,6 +2911,8 @@ Security starts at design time.
 Answers:
 
 > Who are you?
+
+Authentication verifies an identity using credentials or a supported external mechanism. Create a separate identity for each application or operational purpose so access can be revoked and audited independently; do not share the bootstrap/root account with application code.
 
 ## Authorization
 
@@ -3218,7 +3287,18 @@ These are related but different.
 
 ## Traditional text index
 
-Useful for simpler full-text queries in MongoDB.
+Useful for simpler language-aware word search stored in a normal MongoDB text index:
+
+```javascript
+db.articles.createIndex({ title: "text", body: "text" })
+
+db.articles.find(
+  { $text: { $search: "mongodb indexing" } },
+  { title: 1, score: { $meta: "textScore" } }
+).sort({ score: { $meta: "textScore" } })
+```
+
+`$text` tokenizes the search string and can return a text relevance score; it is not arbitrary substring matching. A collection can have at most one text index, although that index may include multiple fields. Use it for modest built-in text requirements, not for autocomplete, typo tolerance, or advanced analyzers.
 
 ## Atlas Search
 
@@ -3231,6 +3311,8 @@ A richer search capability in MongoDB Atlas for requirements such as:
 - advanced text-search pipelines.
 
 Do not assume basic `$text` and Atlas Search are equivalent.
+
+MongoDB Search is an Atlas capability with its own search indexes and aggregation stages such as `$search`. It is not served by the same B-tree/text indexes used by ordinary `find()` queries. Index mappings, analyzers, permissions, and deployment tier must be configured before a search pipeline works.
 
 ## Vector Search
 
@@ -4500,9 +4582,13 @@ Better: a separate events collection or bounded subset.
 
 A query that feels instant with 1,000 test documents may fail badly at tens of millions.
 
+Start from important filter-and-sort shapes, create the smallest useful set of indexes, and compare `totalDocsExamined`, `totalKeysExamined`, and `nReturned` with `explain("executionStats")` on production-like data.
+
 ## 5. Too many indexes
 
 Indexes increase write cost and consume storage/memory.
+
+Do not add one index per field “just in case.” Compound indexes often support complete access patterns, and overlapping prefixes may be redundant. Before dropping an index, check workload evidence and consider hiding it temporarily where supported.
 
 ## 6. Inconsistent data types
 
@@ -4548,15 +4634,15 @@ Use range/cursor pagination when appropriate.
 
 ## 10. Connection per request
 
-Use driver-managed connection pools.
+Creating a client per request repeats DNS, TCP, TLS, authentication, and topology discovery work and can exhaust server connections. Create the driver client during application startup, reuse its managed pool, and close it during graceful shutdown.
 
 ## 11. Massive long-running transactions
 
-Keep transactions short and focused.
+Long transactions retain resources, increase conflict probability, and make retries more expensive. Keep transactions short and focused, avoid network calls or user interaction inside them, and prefer a single-document atomic design when the data naturally belongs together.
 
 ## 12. Public database exposure
 
-Convenience must never override security.
+Binding a database port to the public internet invites scanning and credential attacks. Restrict network paths, require authentication and TLS, patch promptly, and use private connectivity or allowlists appropriate to the deployment. Convenience must never override security.
 
 ## 13. No restore testing
 
@@ -4664,7 +4750,7 @@ Do not “fix” by removing uniqueness if uniqueness is a real business rule. I
 
 ## Invalid ObjectId
 
-Validate external IDs before constructing ObjectIds.
+Validate external IDs before constructing ObjectIds. In application code, reject malformed identifiers as a client error instead of letting a constructor exception become a generic server error. Also remember that a valid-looking ObjectId that does not exist should normally produce “not found,” not “invalid ID.”
 
 ## Slow query
 
@@ -6202,21 +6288,21 @@ For version-sensitive behavior, use the official MongoDB documentation as the so
 
 Recommended official areas:
 
-- MongoDB Manual
-- CRUD Operations
-- Data Modeling
-- Aggregation Framework
-- Indexes
-- Schema Validation
-- Transactions
-- Replication
-- Sharding
-- Security
-- Change Streams
-- Time Series Collections
-- Geospatial Queries
-- MongoDB Drivers
-- Release Notes
+- [MongoDB Manual](https://www.mongodb.com/docs/manual/)
+- [CRUD Operations](https://www.mongodb.com/docs/manual/crud/)
+- [Data Modeling](https://www.mongodb.com/docs/manual/data-modeling/)
+- [Aggregation Operations](https://www.mongodb.com/docs/manual/aggregation/)
+- [Indexes](https://www.mongodb.com/docs/manual/indexes/)
+- [Schema Validation](https://www.mongodb.com/docs/manual/core/schema-validation/)
+- [Transactions](https://www.mongodb.com/docs/manual/core/transactions/)
+- [Replication](https://www.mongodb.com/docs/manual/replication/)
+- [Sharding](https://www.mongodb.com/docs/manual/sharding/)
+- [Security](https://www.mongodb.com/docs/manual/security/)
+- [Change Streams](https://www.mongodb.com/docs/manual/changeStreams/)
+- [Time Series Collections](https://www.mongodb.com/docs/manual/core/timeseries-collections/)
+- [Geospatial Queries](https://www.mongodb.com/docs/manual/geospatial-queries/)
+- [MongoDB Drivers](https://www.mongodb.com/docs/drivers/)
+- [Release Notes](https://www.mongodb.com/docs/manual/release-notes/)
 
 As software evolves, always check the documentation for the exact MongoDB server and driver versions used by your project.
 
