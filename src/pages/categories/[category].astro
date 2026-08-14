@@ -4,7 +4,14 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 import HandbookCard from "@/components/HandbookCard.astro";
 import { getCategories } from "@/utils/documents";
 
-export const getStaticPaths = (() => getCategories().map((category) => ({ params: { category: category.slug }, props: { category } }))) satisfies GetStaticPaths;
+export const getStaticPaths = (async () => {
+  const categories = await getCategories();
+  return categories.map((category) => ({
+    params: { category: category.slug },
+    props: { category }
+  }));
+}) satisfies GetStaticPaths;
+
 const { category } = Astro.props;
 ---
 

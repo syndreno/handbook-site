@@ -5,7 +5,7 @@ import { getCategories, getDocumentNeighbors, getDocuments, getRelatedDocuments 
 import { renderMarkdown } from "@/utils/markdown";
 
 export const getStaticPaths = (async () => {
-  const documents = getDocuments();
+  const documents = await getDocuments();
   return documents.map((document) => ({
     params: { slug: document.slug },
     props: { sourcePath: document.sourcePath }
@@ -13,13 +13,13 @@ export const getStaticPaths = (async () => {
 }) satisfies GetStaticPaths;
 
 const { sourcePath } = Astro.props;
-const documents = getDocuments();
+const documents = await getDocuments();
 const document = documents.find((item) => item.sourcePath === sourcePath);
 if (!document) throw new Error(`Handbook not found: ${sourcePath}`);
 const html = await renderMarkdown(document);
-const categories = getCategories(documents);
-const { previous, next } = getDocumentNeighbors(document, documents);
-const related = getRelatedDocuments(document, documents);
+const categories = await getCategories(documents);
+const { previous, next } = await getDocumentNeighbors(document, documents);
+const related = await getRelatedDocuments(document, 3, documents);
 ---
 
 <DocsLayout {document} {categories} {html} {previous} {next} {related} />

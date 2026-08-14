@@ -1,33 +1,65 @@
-import fs from "node:fs";
-import path from "node:path";
 import matter from "gray-matter";
 import GithubSlugger from "github-slugger";
 import { toString } from "mdast-util-to-string";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { visit } from "unist-util-visit";
-import { siteConfig } from "@/config/site";
 import type { CategoryMetadata, DocumentHeading, DocumentMetadata } from "@/types/documents";
 import { humanize, slugify } from "@/utils/path";
 
 let manifestCache: DocumentMetadata[] | undefined;
 
-function walk(directory: string, root: string): string[] {
-  const files: string[] = [];
-  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    const relative = path.relative(root, path.join(directory, entry.name)).replaceAll("\\", "/");
-    if (entry.isDirectory()) {
-      if (!siteConfig.content.excludedDirectories.includes(entry.name as never)) {
-        files.push(...walk(path.join(directory, entry.name), root));
-      }
-    } else if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) {
-      const isExcluded = siteConfig.content.excludedFiles.some(
-        (name) => name.toLowerCase() === entry.name.toLowerCase()
-      );
-      if (!isExcluded) files.push(relative);
-    }
+// GitHub configuration
+const GITHUB_OWNER = "syndreno";
+const GITHUB_REPO = "handbooks";
+const GITHUB_BRANCH = "main";
+
+interface IndexedFile {
+  name: string;
+  path: string;
+  rawUrl: string;
+}
+
+interface HandbookIndex {
+  files: IndexedFile[];
+  generated: string;
+}
+
+/**
+ * Load the pre-generated handbook index
+ */
+async function loadHandbookIndex(): Promise<HandbookIndex> {
+  try {
+    // Import the JSON directly (works at build time)
+    const index = await import("@/data/handbook-index.json", {
+      with: { type: "json" }
+    });
+    return index.default as HandbookIndex;
+  } catch (error) {
+    console.warn("⚠️ handbook-index.json not found. Run: node scripts/generate-index.mjs");
+    return { files: [], generated: new Date().toISOString() };
   }
-  return files;
+}
+
+/**
+ * Fetch raw markdown content from GitHub
+ */
+async function fetchMarkdownContent(filePath: string): Promise<string> {
+  const rawUrl = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${filePath}`;
+
+  try {
+    const response = await fetch(rawUrl);
+
+    if (!response.ok) {
+      console.error(`Failed to fetch: ${rawUrl} (${response.status})`);
+      return "";
+    }
+
+    return await response.text();
+  } catch (error) {
+    console.error(`Error fetching ${filePath}:`, error);
+    return "";
+  }
 }
 
 function plainText(value: string): string {
@@ -53,14 +85,22 @@ function extractHeadings(content: string): DocumentHeading[] {
   return headings;
 }
 
-function createDocument(sourcePath: string, contentRoot: string): DocumentMetadata {
-  const absolutePath = path.join(contentRoot, sourcePath);
-  const source = fs.readFileSync(absolutePath, "utf8");
+/**
+ * Create document metadata from GitHub markdown file
+ */
+async function createDocument(sourcePath: string): Promise<DocumentMetadata | null> {
+  const source = await fetchMarkdownContent(sourcePath);
+
+  if (!source) {
+    return null;
+  }
+
   let parsed: matter.GrayMatterFile<string>;
   try {
     parsed = matter(source);
   } catch (error) {
-    throw new Error(`Invalid frontmatter in ${sourcePath}: ${(error as Error).message}`);
+    console.error(`Invalid frontmatter in ${sourcePath}:`, error);
+    return null;
   }
 
   const pathParts = sourcePath.split("/");
@@ -74,24 +114,30 @@ function createDocument(sourcePath: string, contentRoot: string): DocumentMetada
   const title = String(parsed.data.title || firstH1 || humanize(fileName));
   const bodyText = plainText(parsed.content);
   const words = bodyText ? bodyText.split(/\s+/) : [];
-  const descriptionSource = String(parsed.data.description || "").trim() ||
-    bodyText.replace(title, "").trim();
-  const description = descriptionSource.length > 170
-    ? `${descriptionSource.slice(0, 167).trimEnd()}...`
-    : descriptionSource || `Learn ${title} with this practical developer handbook.`;
+  const descriptionSource =
+    String(parsed.data.description || "").trim() || bodyText.replace(title, "").trim();
+  const description =
+    descriptionSource.length > 170
+      ? `${descriptionSource.slice(0, 167).trimEnd()}...`
+      : descriptionSource || `Learn ${title} with this practical developer handbook.`;
   const tags = Array.isArray(parsed.data.tags)
     ? parsed.data.tags.map(String)
     : typeof parsed.data.tags === "string"
-      ? parsed.data.tags.split(",").map((tag: string) => tag.trim()).filter(Boolean)
+      ? parsed.data.tags
+          .split(",")
+          .map((tag: string) => tag.trim())
+          .filter(Boolean)
       : [];
   const order = Number.isFinite(Number(parsed.data.order)) ? Number(parsed.data.order) : undefined;
+
+  const githubUrl = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/blob/${GITHUB_BRANCH}/${sourcePath}`;
 
   return {
     title,
     description,
     sourcePath,
-    repositoryPath: path.posix.join(siteConfig.content.rootDirectory, sourcePath),
-    absolutePath,
+    repositoryPath: sourcePath,
+    absolutePath: githubUrl,
     sourceDirectory: folderParts.join("/"),
     route: `/handbooks/${routeParts.join("/")}/`,
     slug: routeParts.join("/"),
@@ -104,82 +150,119 @@ function createDocument(sourcePath: string, contentRoot: string): DocumentMetada
     wordCount: words.length,
     readingMinutes: Math.max(1, Math.ceil(words.length / 220)),
     codeExamples: (parsed.content.match(/^```/gm)?.length ?? 0) / 2,
-    rawContent: parsed.content
+    rawContent: parsed.content,
   };
 }
 
-export function getDocuments(): DocumentMetadata[] {
+/**
+ * Get all documents from GitHub using pre-generated index
+ */
+export async function getDocuments(): Promise<DocumentMetadata[]> {
   if (manifestCache) return manifestCache;
-  const contentRoot = path.join(process.cwd(), siteConfig.content.rootDirectory);
-  if (!fs.existsSync(contentRoot)) {
-    throw new Error(`Handbook content root does not exist: ${siteConfig.content.rootDirectory}`);
-  }
-  const documents = walk(contentRoot, contentRoot).map((sourcePath) =>
-    createDocument(sourcePath, contentRoot)
-  );
-  const routes = new Map<string, string>();
-  for (const document of documents) {
-    const duplicate = routes.get(document.route);
-    if (duplicate) {
-      throw new Error(`Duplicate generated route ${document.route}: ${duplicate} and ${document.sourcePath}`);
+
+  try {
+    const index = await loadHandbookIndex();
+
+    if (index.files.length === 0) {
+      console.warn("⚠️ No files in handbook index. Please run: node scripts/generate-index.mjs");
+      return [];
     }
-    routes.set(document.route, document.sourcePath);
+
+    console.log(`📚 Loading ${index.files.length} handbooks from GitHub...`);
+
+    const documents = (
+      await Promise.all(index.files.map((file) => createDocument(file.path)))
+    ).filter((doc): doc is DocumentMetadata => doc !== null);
+
+    console.log(`✅ Loaded ${documents.length} valid handbooks`);
+
+    const routes = new Map<string, string>();
+    for (const document of documents) {
+      const duplicate = routes.get(document.route);
+      if (duplicate) {
+        throw new Error(
+          `Duplicate generated route ${document.route}: ${duplicate} and ${document.sourcePath}`
+        );
+      }
+      routes.set(document.route, document.sourcePath);
+    }
+
+    manifestCache = documents.sort((a, b) => {
+      if (a.order !== undefined || b.order !== undefined)
+        return (a.order ?? 9999) - (b.order ?? 9999);
+      return a.route.localeCompare(b.route);
+    });
+
+    return manifestCache;
+  } catch (error) {
+    console.error("Error loading documents from GitHub:", error);
+    return [];
   }
-  manifestCache = documents.sort((a, b) => {
-    if (a.order !== undefined || b.order !== undefined) return (a.order ?? 9999) - (b.order ?? 9999);
-    return a.route.localeCompare(b.route);
-  });
-  return manifestCache;
 }
 
-export function getCategories(documents = getDocuments()): CategoryMetadata[] {
+export async function getCategories(documents?: DocumentMetadata[]): Promise<CategoryMetadata[]> {
+  const docs = documents || (await getDocuments());
   const groups = new Map<string, DocumentMetadata[]>();
-  for (const document of documents) {
+
+  for (const document of docs) {
     const group = groups.get(document.category) ?? [];
     group.push(document);
     groups.set(document.category, group);
   }
+
   return [...groups.entries()]
     .map(([name, docs]) => ({
       name,
       slug: docs[0].categorySlug,
       documents: docs,
-      wordCount: docs.reduce((total, doc) => total + doc.wordCount, 0)
+      wordCount: docs.reduce((total, doc) => total + doc.wordCount, 0),
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export function getDocumentNeighbors(document: DocumentMetadata, documents = getDocuments()) {
-  const categoryDocuments = documents.filter((item) => item.categorySlug === document.categorySlug);
-  const index = categoryDocuments.findIndex((item) => item.route === document.route);
+export async function getDocumentNeighbors(
+  document: DocumentMetadata,
+  documents?: DocumentMetadata[]
+): Promise<{ previous?: DocumentMetadata; next?: DocumentMetadata }> {
+  const docs = documents || (await getDocuments());
+  const index = docs.findIndex((d) => d.route === document.route);
+
   return {
-    previous: index > 0 ? categoryDocuments[index - 1] : undefined,
-    next: index < categoryDocuments.length - 1 ? categoryDocuments[index + 1] : undefined
+    previous: index > 0 ? docs[index - 1] : undefined,
+    next: index < docs.length - 1 ? docs[index + 1] : undefined,
   };
 }
 
-export function getRelatedDocuments(document: DocumentMetadata, documents = getDocuments()) {
-  return documents
-    .filter((item) => item.route !== document.route)
-    .map((item) => ({
-      item,
-      score:
-        (item.categorySlug === document.categorySlug ? 4 : 0) +
-        item.tags.filter((tag) => document.tags.includes(tag)).length * 2 +
-        (item.sourceDirectory === document.sourceDirectory ? 2 : 0)
-    }))
-    .filter(({ score }) => score > 0)
-    .sort((a, b) => b.score - a.score || a.item.title.localeCompare(b.item.title))
-    .slice(0, 4)
-    .map(({ item }) => item);
+export async function getRelatedDocuments(
+  document: DocumentMetadata,
+  count = 3,
+  documents?: DocumentMetadata[]
+): Promise<DocumentMetadata[]> {
+  const docs = documents || (await getDocuments());
+  const categoryDocs = docs.filter(
+    (d) => d.category === document.category && d.route !== document.route
+  );
+  return categoryDocs.slice(0, count);
 }
 
-export function getSiteStats(documents = getDocuments()) {
+export async function getSitewideStatistics(documents?: DocumentMetadata[]): Promise<{
+  totalDocuments: number;
+  totalWords: number;
+  totalHeadings: number;
+  totalCodeExamples: number;
+  avgReadingMinutes: number;
+  categories: number;
+}> {
+  const docs = documents || (await getDocuments());
+
   return {
-    handbooks: documents.length,
-    categories: getCategories(documents).length,
-    words: documents.reduce((total, doc) => total + doc.wordCount, 0),
-    codeExamples: Math.round(documents.reduce((total, doc) => total + doc.codeExamples, 0)),
-    sections: documents.reduce((total, doc) => total + doc.headings.length, 0)
+    totalDocuments: docs.length,
+    totalWords: docs.reduce((sum, d) => sum + d.wordCount, 0),
+    totalHeadings: docs.reduce((sum, d) => sum + d.headings.length, 0),
+    totalCodeExamples: docs.reduce((sum, d) => sum + d.codeExamples, 0),
+    avgReadingMinutes: Math.round(
+      docs.reduce((sum, d) => sum + d.readingMinutes, 0) / docs.length
+    ),
+    categories: new Set(docs.map((d) => d.category)).size,
   };
 }

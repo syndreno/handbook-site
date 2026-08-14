@@ -1,0 +1,404 @@
+{
+  "generated": "2026-08-14T07:14:26.980Z",
+  "repository": "syndreno/handbooks",
+  "branch": "main",
+  "contentRoot": "assets/handbook",
+  "totalFiles": 79,
+  "files": [
+    {
+      "name": "Agentic_AI_Master_Handbook.md",
+      "path": "assets/handbook/AI/Agentic_AI_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/AI/Agentic_AI_Master_Handbook.md"
+    },
+    {
+      "name": "AI_Assistants_Master_Handbook_2026.md",
+      "path": "assets/handbook/AI/AI_Assistants_Master_Handbook_2026.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/AI/AI_Assistants_Master_Handbook_2026.md"
+    },
+    {
+      "name": "AI_CLI_Master_Handbook.md",
+      "path": "assets/handbook/AI/AI_CLI_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/AI/AI_CLI_Master_Handbook.md"
+    },
+    {
+      "name": "AI_Engineer_Learning_Roadmap.md",
+      "path": "assets/handbook/AI/AI_Engineer_Learning_Roadmap.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/AI/AI_Engineer_Learning_Roadmap.md"
+    },
+    {
+      "name": "ChatGPT_Free_Go_Plus_Master_Guide_2026.md",
+      "path": "assets/handbook/AI/ChatGPT_Free_Go_Plus_Master_Guide_2026.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/AI/ChatGPT_Free_Go_Plus_Master_Guide_2026.md"
+    },
+    {
+      "name": "GenAI_Master_Handbook.md",
+      "path": "assets/handbook/AI/GenAI_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/AI/GenAI_Master_Handbook.md"
+    },
+    {
+      "name": "AWS_Master_Learning_Handbook.md",
+      "path": "assets/handbook/AWS/AWS_Master_Learning_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/AWS/AWS_Master_Learning_Handbook.md"
+    },
+    {
+      "name": "company_accounting_financial_statements_master_handbook.md",
+      "path": "assets/handbook/Business/company_accounting_financial_statements_master_handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Business/company_accounting_financial_statements_master_handbook.md"
+    },
+    {
+      "name": "P2P_Business_Process_Deep_Dive.md",
+      "path": "assets/handbook/Business/P2P_Business_Process_Deep_Dive.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Business/P2P_Business_Process_Deep_Dive.md"
+    },
+    {
+      "name": "Tally_ERP_9_Master_Handbook.md",
+      "path": "assets/handbook/Business/Tally_ERP_9_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Business/Tally_ERP_9_Master_Handbook.md"
+    },
+    {
+      "name": "clean-coding-any-language-master-handbook.md",
+      "path": "assets/handbook/Clean Code/clean-coding-any-language-master-handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Clean%20Code/clean-coding-any-language-master-handbook.md"
+    },
+    {
+      "name": "Clean_Coding_Java_Master_Handbook.md",
+      "path": "assets/handbook/Clean Code/Clean_Coding_Java_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Clean%20Code/Clean_Coding_Java_Master_Handbook.md"
+    },
+    {
+      "name": "clean_coding_python_master_handbook.md",
+      "path": "assets/handbook/Clean Code/clean_coding_python_master_handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Clean%20Code/clean_coding_python_master_handbook.md"
+    },
+    {
+      "name": "javascript-clean-code-master-handbook.md",
+      "path": "assets/handbook/Clean Code/javascript-clean-code-master-handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Clean%20Code/javascript-clean-code-master-handbook.md"
+    },
+    {
+      "name": "PHP_Clean_Coding_Master_Handbook.md",
+      "path": "assets/handbook/Clean Code/PHP_Clean_Coding_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Clean%20Code/PHP_Clean_Coding_Master_Handbook.md"
+    },
+    {
+      "name": "bootstrap-css-master-handbook.md",
+      "path": "assets/handbook/CSS/bootstrap-css-master-handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/CSS/bootstrap-css-master-handbook.md"
+    },
+    {
+      "name": "CSS_Mastery_Handbook.md",
+      "path": "assets/handbook/CSS/CSS_Mastery_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/CSS/CSS_Mastery_Handbook.md"
+    },
+    {
+      "name": "LESS_CSS_Master_Handbook.md",
+      "path": "assets/handbook/CSS/LESS_CSS_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/CSS/LESS_CSS_Master_Handbook.md"
+    },
+    {
+      "name": "SASS_SCSS_Master_Learning_Handbook.md",
+      "path": "assets/handbook/CSS/SASS_SCSS_Master_Learning_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/CSS/SASS_SCSS_Master_Learning_Handbook.md"
+    },
+    {
+      "name": "Tailwind_CSS_Complete_Master_Handbook_In_Depth.md",
+      "path": "assets/handbook/CSS/Tailwind_CSS_Complete_Master_Handbook_In_Depth.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/CSS/Tailwind_CSS_Complete_Master_Handbook_In_Depth.md"
+    },
+    {
+      "name": "DSA_JavaScript_Master_Handbook.md",
+      "path": "assets/handbook/Design Pattern/DSA_JavaScript_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Design%20Pattern/DSA_JavaScript_Master_Handbook.md"
+    },
+    {
+      "name": "DSA_Java_Master_Handbook.md",
+      "path": "assets/handbook/Design Pattern/DSA_Java_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Design%20Pattern/DSA_Java_Master_Handbook.md"
+    },
+    {
+      "name": "DSA_Master_Handbook.md",
+      "path": "assets/handbook/Design Pattern/DSA_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Design%20Pattern/DSA_Master_Handbook.md"
+    },
+    {
+      "name": "DSA_PHP_Master_Handbook.md",
+      "path": "assets/handbook/Design Pattern/DSA_PHP_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Design%20Pattern/DSA_PHP_Master_Handbook.md"
+    },
+    {
+      "name": "DSA_Python_Master_Handbook.md",
+      "path": "assets/handbook/Design Pattern/DSA_Python_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Design%20Pattern/DSA_Python_Master_Handbook.md"
+    },
+    {
+      "name": "project_design_patterns_master_handbook.md",
+      "path": "assets/handbook/Design Pattern/project_design_patterns_master_handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Design%20Pattern/project_design_patterns_master_handbook.md"
+    },
+    {
+      "name": "CI_CD_Master_Learning_Handbook_In_Depth.md",
+      "path": "assets/handbook/Docker, Kubernetes, CI CD/CI_CD_Master_Learning_Handbook_In_Depth.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Docker%2C%20Kubernetes%2C%20CI%20CD/CI_CD_Master_Learning_Handbook_In_Depth.md"
+    },
+    {
+      "name": "docker_master_handbook_in_depth.md",
+      "path": "assets/handbook/Docker, Kubernetes, CI CD/docker_master_handbook_in_depth.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Docker%2C%20Kubernetes%2C%20CI%20CD/docker_master_handbook_in_depth.md"
+    },
+    {
+      "name": "Kubernetes_Master_Learning_Handbook.md",
+      "path": "assets/handbook/Docker, Kubernetes, CI CD/Kubernetes_Master_Learning_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Docker%2C%20Kubernetes%2C%20CI%20CD/Kubernetes_Master_Learning_Handbook.md"
+    },
+    {
+      "name": "corporate_english_master_handbook.md",
+      "path": "assets/handbook/English/corporate_english_master_handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/English/corporate_english_master_handbook.md"
+    },
+    {
+      "name": "English_Mastery_Handbook.md",
+      "path": "assets/handbook/English/English_Mastery_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/English/English_Mastery_Handbook.md"
+    },
+    {
+      "name": "git_master_handbook_in_depth.md",
+      "path": "assets/handbook/GIT/git_master_handbook_in_depth.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/GIT/git_master_handbook_in_depth.md"
+    },
+    {
+      "name": "HTML_Mastery_Handbook.md",
+      "path": "assets/handbook/HTML/HTML_Mastery_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/HTML/HTML_Mastery_Handbook.md"
+    },
+    {
+      "name": "Hibernate_Master_Handbook.md",
+      "path": "assets/handbook/Java/Hibernate_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Java/Hibernate_Master_Handbook.md"
+    },
+    {
+      "name": "JSP_Master_Learning_Handbook.md",
+      "path": "assets/handbook/Java/JSP_Master_Learning_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Java/JSP_Master_Learning_Handbook.md"
+    },
+    {
+      "name": "Mastering_Java_Complete_Guide.md",
+      "path": "assets/handbook/Java/Mastering_Java_Complete_Guide.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Java/Mastering_Java_Complete_Guide.md"
+    },
+    {
+      "name": "Mastering_Java_Complete_Guide_Beginner_Friendly.md",
+      "path": "assets/handbook/Java/Mastering_Java_Complete_Guide_Beginner_Friendly.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Java/Mastering_Java_Complete_Guide_Beginner_Friendly.md"
+    },
+    {
+      "name": "Servlet_Master_Learning_Handbook.md",
+      "path": "assets/handbook/Java/Servlet_Master_Learning_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Java/Servlet_Master_Learning_Handbook.md"
+    },
+    {
+      "name": "spring_boot_master_handbook.md",
+      "path": "assets/handbook/Java/spring_boot_master_handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Java/spring_boot_master_handbook.md"
+    },
+    {
+      "name": "Spring_Framework_Master_Learning_Handbook.md",
+      "path": "assets/handbook/Java/Spring_Framework_Master_Learning_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Java/Spring_Framework_Master_Learning_Handbook.md"
+    },
+    {
+      "name": "angular_developer_mastery_guide.md",
+      "path": "assets/handbook/JS/angular_developer_mastery_guide.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/JS/angular_developer_mastery_guide.md"
+    },
+    {
+      "name": "Angular_Master_Handbook(1).md",
+      "path": "assets/handbook/JS/Angular_Master_Handbook(1).md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/JS/Angular_Master_Handbook(1).md"
+    },
+    {
+      "name": "angular_master_handbook.md",
+      "path": "assets/handbook/JS/angular_master_handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/JS/angular_master_handbook.md"
+    },
+    {
+      "name": "Angular_Version_By_Version_Learning_Guide.md",
+      "path": "assets/handbook/JS/Angular_Version_By_Version_Learning_Guide.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/JS/Angular_Version_By_Version_Learning_Guide.md"
+    },
+    {
+      "name": "expressjs_master_handbook.md",
+      "path": "assets/handbook/JS/expressjs_master_handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/JS/expressjs_master_handbook.md"
+    },
+    {
+      "name": "jquery_mastery_guide_beginner_friendly.md",
+      "path": "assets/handbook/JS/jquery_mastery_guide_beginner_friendly.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/JS/jquery_mastery_guide_beginner_friendly.md"
+    },
+    {
+      "name": "nextjs_master_handbook_in_depth.md",
+      "path": "assets/handbook/JS/nextjs_master_handbook_in_depth.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/JS/nextjs_master_handbook_in_depth.md"
+    },
+    {
+      "name": "NodeJS_Mastery_Handbook.md",
+      "path": "assets/handbook/JS/NodeJS_Mastery_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/JS/NodeJS_Mastery_Handbook.md"
+    },
+    {
+      "name": "react_master_learning_handbook.md",
+      "path": "assets/handbook/JS/react_master_learning_handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/JS/react_master_learning_handbook.md"
+    },
+    {
+      "name": "TypeScript_Master_Learning_Handbook_In_Depth.md",
+      "path": "assets/handbook/JS/TypeScript_Master_Learning_Handbook_In_Depth.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/JS/TypeScript_Master_Learning_Handbook_In_Depth.md"
+    },
+    {
+      "name": "vanilla-javascript-mastery-guide.md",
+      "path": "assets/handbook/JS/vanilla-javascript-mastery-guide.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/JS/vanilla-javascript-mastery-guide.md"
+    },
+    {
+      "name": "linux_mastery_handbook.md",
+      "path": "assets/handbook/Linux/linux_mastery_handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Linux/linux_mastery_handbook.md"
+    },
+    {
+      "name": "Linux_Red_Hat_Linux_Mint_Master_Handbook.md",
+      "path": "assets/handbook/Linux/Linux_Red_Hat_Linux_Mint_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Linux/Linux_Red_Hat_Linux_Mint_Master_Handbook.md"
+    },
+    {
+      "name": "Linux_Ubuntu_Mint_Master_Handbook.md",
+      "path": "assets/handbook/Linux/Linux_Ubuntu_Mint_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Linux/Linux_Ubuntu_Mint_Master_Handbook.md"
+    },
+    {
+      "name": "needtoimplement.md",
+      "path": "assets/handbook/needtoimplement.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/needtoimplement.md"
+    },
+    {
+      "name": "Excel_Mastery_Handbook.md",
+      "path": "assets/handbook/Office/Excel_Mastery_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Office/Excel_Mastery_Handbook.md"
+    },
+    {
+      "name": "Excel_Shortcuts_Productivity_Master_Handbook.md",
+      "path": "assets/handbook/Office/Excel_Shortcuts_Productivity_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Office/Excel_Shortcuts_Productivity_Master_Handbook.md"
+    },
+    {
+      "name": "MS_Access_Master_Handbook.md",
+      "path": "assets/handbook/Office/MS_Access_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Office/MS_Access_Master_Handbook.md"
+    },
+    {
+      "name": "MS_PowerPoint_Master_Handbook.md",
+      "path": "assets/handbook/Office/MS_PowerPoint_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Office/MS_PowerPoint_Master_Handbook.md"
+    },
+    {
+      "name": "codeigniter4_master_handbook.md",
+      "path": "assets/handbook/PHP/codeigniter4_master_handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/PHP/codeigniter4_master_handbook.md"
+    },
+    {
+      "name": "codeigniter_3_master_handbook.md",
+      "path": "assets/handbook/PHP/codeigniter_3_master_handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/PHP/codeigniter_3_master_handbook.md"
+    },
+    {
+      "name": "Laravel_Livewire_Master_Handbook.md",
+      "path": "assets/handbook/PHP/Laravel_Livewire_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/PHP/Laravel_Livewire_Master_Handbook.md"
+    },
+    {
+      "name": "Laravel_Master_Handbook.md",
+      "path": "assets/handbook/PHP/Laravel_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/PHP/Laravel_Master_Handbook.md"
+    },
+    {
+      "name": "Laravel_Version_Evolution_Handbook.md",
+      "path": "assets/handbook/PHP/Laravel_Version_Evolution_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/PHP/Laravel_Version_Evolution_Handbook.md"
+    },
+    {
+      "name": "PHP_Master_Handbook.md",
+      "path": "assets/handbook/PHP/PHP_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/PHP/PHP_Master_Handbook.md"
+    },
+    {
+      "name": "Power_BI_Master_Handbook.md",
+      "path": "assets/handbook/PowerBI/Power_BI_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/PowerBI/Power_BI_Master_Handbook.md"
+    },
+    {
+      "name": "Django_Master_Learning_Handbook.md",
+      "path": "assets/handbook/Python/Django_Master_Learning_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Python/Django_Master_Learning_Handbook.md"
+    },
+    {
+      "name": "NumPy_Master_Handbook.md",
+      "path": "assets/handbook/Python/NumPy_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Python/NumPy_Master_Handbook.md"
+    },
+    {
+      "name": "python_mastery_guide_beginner_friendly.md",
+      "path": "assets/handbook/Python/python_mastery_guide_beginner_friendly.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Python/python_mastery_guide_beginner_friendly.md"
+    },
+    {
+      "name": "regular_expression_master_handbook.md",
+      "path": "assets/handbook/Regular Expression/regular_expression_master_handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Regular%20Expression/regular_expression_master_handbook.md"
+    },
+    {
+      "name": "SEO_Master_Handbook.md",
+      "path": "assets/handbook/SEO/SEO_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/SEO/SEO_Master_Handbook.md"
+    },
+    {
+      "name": "MongoDB_Master_Learning_Handbook.md",
+      "path": "assets/handbook/SQL/MongoDB_Master_Learning_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/SQL/MongoDB_Master_Learning_Handbook.md"
+    },
+    {
+      "name": "MSSQL_Master_Handbook.md",
+      "path": "assets/handbook/SQL/MSSQL_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/SQL/MSSQL_Master_Handbook.md"
+    },
+    {
+      "name": "MySQL_Mastery_Handbook.md",
+      "path": "assets/handbook/SQL/MySQL_Mastery_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/SQL/MySQL_Mastery_Handbook.md"
+    },
+    {
+      "name": "time_management_master_handbook.md",
+      "path": "assets/handbook/Time Managment/time_management_master_handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Time%20Managment/time_management_master_handbook.md"
+    },
+    {
+      "name": "VS_Code_Developer_Master_Handbook.md",
+      "path": "assets/handbook/Vs Code/VS_Code_Developer_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Vs%20Code/VS_Code_Developer_Master_Handbook.md"
+    },
+    {
+      "name": "VS_Code_SFMC_Amp_Master_Handbook.md",
+      "path": "assets/handbook/Vs Code/VS_Code_SFMC_Amp_Master_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Vs%20Code/VS_Code_SFMC_Amp_Master_Handbook.md"
+    },
+    {
+      "name": "wordpress-custom-theme-plugin-master-handbook.md",
+      "path": "assets/handbook/Wordpress/wordpress-custom-theme-plugin-master-handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Wordpress/wordpress-custom-theme-plugin-master-handbook.md"
+    },
+    {
+      "name": "WordPress_Master_Learning_Handbook.md",
+      "path": "assets/handbook/Wordpress/WordPress_Master_Learning_Handbook.md",
+      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/Wordpress/WordPress_Master_Learning_Handbook.md"
+    }
+  ]
+}

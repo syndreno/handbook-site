@@ -1,5 +1,3 @@
-import fs from "node:fs";
-import path from "node:path";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
@@ -18,7 +16,7 @@ import { getDocuments } from "@/utils/documents";
 import { withBase } from "@/utils/path";
 
 const imageExtensions = /\.(png|jpe?g|webp|gif|svg)$/i;
-const renderedMarkdownCache = new Map<string, { modified: number; html: string }>();
+const renderedMarkdownCache = new Map<string, string>();
 
 function removeSourceTitle() {
   return (tree: MdastRoot) => {
@@ -28,23 +26,43 @@ function removeSourceTitle() {
   };
 }
 
-function rewriteLinks(document: DocumentMetadata) {
-  const documents = getDocuments();
+function rewriteLinks(document: DocumentMetadata, documents: DocumentMetadata[]) {
   const bySource = new Map(documents.map((item) => [item.sourcePath.toLowerCase(), item]));
+  
   return () => (tree: MdastRoot) => {
     visit(tree, ["link", "image"], (node: any) => {
       const url = String(node.url || "");
       if (!url || /^(https?:|mailto:|tel:|data:|#)/i.test(url)) return;
+      
       const [pathname, anchor = ""] = url.split("#", 2);
       const decodedPath = decodeURIComponent(pathname).replaceAll("\\", "/");
-      const resolved = path.posix
-        .normalize(path.posix.join(document.sourceDirectory, decodedPath))
-        .replace(/^\.\//, "");
+      
+      // Resolve relative path
+      const resolved = document.sourceDirectory
+        ? decodedPath.startsWith("../")
+          ? decodedPath.split("/").reduce((acc, part, i) => {
+              if (part === "..") return acc.split("/").slice(0, -1).join("/");
+              if (i === 0) return part;
+              return acc + "/" + part;
+            }, document.sourceDirectory)
+          : document.sourceDirectory + "/" + decodedPath
+        : decodedPath;
+
       if (/\.md$/i.test(pathname)) {
         const target = bySource.get(resolved.toLowerCase());
         if (target) node.url = `${withBase(target.route)}${anchor ? `#${anchor}` : ""}`;
       } else if (node.type === "image" || imageExtensions.test(pathname)) {
-        node.url = withBase(`/content/${resolved.split("/").map(encodeURIComponent).join("/")}`);
+        // For GitHub content, resolve image URLs to GitHub raw
+        const imagePath = resolved.split("/").map(encodeURIComponent).join("/");
+        const isGithubUrl = document.absolutePath.includes("github.com");
+        
+        if (isGithubUrl) {
+          // Link directly to GitHub raw content for images
+          const githubPath = document.sourcePath.split("/").slice(0, -1).join("/") + "/" + imagePath;
+          node.url = `https://raw.githubusercontent.com/syndreno/handbooks/master/${githubPath}`;
+        } else {
+          node.url = withBase(`/content/${imagePath}`);
+        }
       }
     });
   };
@@ -73,14 +91,17 @@ const schema = {
 } as typeof defaultSchema;
 
 export async function renderMarkdown(document: DocumentMetadata): Promise<string> {
-  const modified = fs.statSync(document.absolutePath).mtimeMs;
-  const cached = renderedMarkdownCache.get(document.absolutePath);
-  if (cached?.modified === modified) return cached.html;
+  // Check cache
+  const cached = renderedMarkdownCache.get(document.sourcePath);
+  if (cached) return cached;
+
+  const documents = await getDocuments();
+  
   const result = await unified()
     .use(remarkParse)
     .use(remarkGfm)
     .use(removeSourceTitle)
-    .use(rewriteLinks(document))
+    .use(rewriteLinks(document, documents))
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeRaw)
     .use(rehypeSanitize, schema)
@@ -97,7 +118,8 @@ export async function renderMarkdown(document: DocumentMetadata): Promise<string
     .use(secureExternalLinks)
     .use(rehypeStringify)
     .process(document.rawContent);
+  
   const html = String(result);
-  renderedMarkdownCache.set(document.absolutePath, { modified, html });
+  renderedMarkdownCache.set(document.sourcePath, html);
   return html;
 }

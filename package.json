@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "astro dev",
+    "generate-index": "node scripts/generate-index.mjs",
     "build": "npm run lint:docs && astro build && pagefind --site dist",
     "preview": "astro preview",
     "check": "astro check",

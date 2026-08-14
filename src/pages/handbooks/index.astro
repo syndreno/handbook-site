@@ -4,8 +4,8 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 import HandbookCard from "@/components/HandbookCard.astro";
 import { getCategories, getDocuments } from "@/utils/documents";
 
-const documents = getDocuments();
-const categories = getCategories(documents);
+const documents = await getDocuments();
+const categories = await getCategories(documents);
 ---
 
 <BaseLayout title="All Handbooks" description={`Browse all ${documents.length} handbooks in the Developer Master Handbook library.`}>

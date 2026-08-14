@@ -2,14 +2,22 @@
 import { ArrowRight, BookOpen, Braces, GitPullRequest, Search, Users } from "@lucide/astro";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import HandbookCard from "@/components/HandbookCard.astro";
-import { getCategories, getDocuments, getSiteStats } from "@/utils/documents";
+import { getCategories, getDocuments, getSitewideStatistics } from "@/utils/documents";
 import { siteConfig } from "@/config/site";
 import { withBase } from "@/utils/path";
 
-const documents = getDocuments();
-const categories = getCategories(documents);
-const stats = getSiteStats(documents);
+const documents = await getDocuments();
+const categories = await getCategories(documents);
+const sitestats = await getSitewideStatistics(documents);
 const featured = [...documents].sort((a, b) => b.wordCount - a.wordCount).slice(0, 6);
+
+// Transform to expected stats shape for template
+const stats = {
+  handbooks: sitestats.totalDocuments,
+  categories: sitestats.categories,
+  sections: sitestats.totalHeadings,
+  codeExamples: sitestats.totalCodeExamples
+};
 ---
 
 <BaseLayout>
