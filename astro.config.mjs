@@ -1,5 +1,4 @@
 import { defineConfig } from "astro/config";
-import sitemap from "@astrojs/sitemap";
 
 const repository = process.env.GITHUB_REPOSITORY?.split("/")[1];
 const owner = process.env.GITHUB_REPOSITORY?.split("/")[0];
@@ -17,7 +16,6 @@ export default defineConfig({
     prefetchAll: false,
     defaultStrategy: "hover"
   },
-  integrations: [sitemap()],
   markdown: {
     shikiConfig: {
       themes: { light: "github-light", dark: "github-dark" },

@@ -26,6 +26,7 @@ const accentPresets = [
       <h3 id="appearance-colors-title">Colors</h3>
       <div class="appearance-color-grid">
         <label><span>Accent</span><input type="color" data-appearance-color="accent" value="#176b55" /></label>
+        <label><span>Website icon</span><input type="color" data-appearance-color="icon" value="#176b55" /></label>
         <label><span>Page</span><input type="color" data-appearance-color="background" value="#f7f8fa" /></label>
         <label><span>Text</span><input type="color" data-appearance-color="text" value="#1d2427" /></label>
         <label><span>Reading progress</span><input type="color" data-appearance-color="progress" value="#b64e36" /></label>
@@ -87,6 +88,7 @@ const accentPresets = [
 <script>
   type AppearanceSettings = {
     accent?: string;
+    icon?: string;
     background?: string;
     text?: string;
     progress?: string;
@@ -118,7 +120,7 @@ const accentPresets = [
     serif: 'Georgia, Cambria, "Times New Roman", serif',
     mono: '"Cascadia Code", "SFMono-Regular", Consolas, monospace'
   } as const;
-  const propertyNames = ["--accent", "--accent-contrast", "--bg", "--text", "--reading-progress-color", "--appearance-font-family", "--reading-font-size", "--reading-line-height", "--toc-font-size"];
+  const propertyNames = ["--accent", "--accent-contrast", "--brand-icon-color", "--brand-icon-contrast", "--bg", "--text", "--reading-progress-color", "--appearance-font-family", "--reading-font-size", "--reading-line-height", "--toc-font-size"];
 
   const isHex = (value: unknown): value is string => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
   const contrast = (hex: string) => {
@@ -127,8 +129,8 @@ const accentPresets = [
     return luminance > 0.58 ? "#111315" : "#ffffff";
   };
   const defaults = () => root.dataset.theme === "dark"
-    ? { accent: "#5bc29f", background: "#111315", text: "#e9ecee", progress: "#ee8f76" }
-    : { accent: "#176b55", background: "#f7f8fa", text: "#1d2427", progress: "#b64e36" };
+    ? { accent: "#5bc29f", icon: "#5bc29f", background: "#111315", text: "#e9ecee", progress: "#ee8f76" }
+    : { accent: "#176b55", icon: "#176b55", background: "#f7f8fa", text: "#1d2427", progress: "#b64e36" };
   const readSettings = (): AppearanceSettings => {
     try { return JSON.parse(localStorage.getItem(storageKey) || "{}"); } catch { return {}; }
   };
@@ -142,6 +144,19 @@ const accentPresets = [
       root.style.setProperty("--accent-contrast", contrast(settings.accent));
       root.dataset.customAccent = "";
     }
+    const iconColor = isHex(settings.icon)
+      ? settings.icon
+      : isHex(settings.accent)
+        ? settings.accent
+        : defaults().icon;
+    if (isHex(settings.icon)) {
+      root.style.setProperty("--brand-icon-color", iconColor);
+      root.style.setProperty("--brand-icon-contrast", contrast(iconColor));
+    } else {
+      root.style.removeProperty("--brand-icon-color");
+      root.style.removeProperty("--brand-icon-contrast");
+    }
+    window.dispatchEvent(new CustomEvent("handbook:icon-color", { detail: iconColor }));
     if (isHex(settings.background)) {
       root.style.setProperty("--bg", settings.background);
       root.dataset.customBackground = "";
@@ -175,8 +190,9 @@ const accentPresets = [
     const settings = readSettings();
     const themeDefaults = defaults();
     colorInputs.forEach((input) => {
-      const key = input.dataset.appearanceColor as "accent" | "background" | "text" | "progress";
-      input.value = isHex(settings[key]) ? settings[key] : themeDefaults[key];
+      const key = input.dataset.appearanceColor as "accent" | "icon" | "background" | "text" | "progress";
+      const fallback = key === "icon" && isHex(settings.accent) ? settings.accent : themeDefaults[key];
+      input.value = isHex(settings[key]) ? settings[key] : fallback;
     });
     if (fontSelect) fontSelect.value = settings.font || "system";
     if (fontSize) fontSize.value = String(settings.fontSize || 16);
@@ -197,7 +213,7 @@ const accentPresets = [
   dialog?.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); });
   colorInputs.forEach((input) => input.addEventListener("input", () => {
     const settings = readSettings();
-    settings[input.dataset.appearanceColor as "accent" | "background" | "text" | "progress"] = input.value;
+    settings[input.dataset.appearanceColor as "accent" | "icon" | "background" | "text" | "progress"] = input.value;
     writeSettings(settings);
     applySettings(settings);
     syncControls();
@@ -257,8 +273,12 @@ const accentPresets = [
     delete root.dataset.hideSidebar;
     delete root.dataset.hideToc;
     document.body.classList.remove("menu-open", "toc-open");
+    window.dispatchEvent(new CustomEvent("handbook:icon-color", { detail: defaults().icon }));
     syncControls();
   });
-  window.addEventListener("handbook:theme-change", syncControls);
+  window.addEventListener("handbook:theme-change", () => {
+    applySettings(readSettings());
+    syncControls();
+  });
   document.addEventListener("astro:after-swap", () => applySettings(readSettings()));
 </script>

@@ -21,9 +21,14 @@ export const getStaticPaths = (async () => {
 }) satisfies GetStaticPaths;
 
 const { section, trail } = Astro.props;
+const sectionName = trail.map((item) => item.name).join(" ");
+const sectionDescription = `Browse ${section.documents.length} practical ${sectionName} handbooks, tutorials, and reference guides for developers and lifelong learners.`;
 ---
 
-<BaseLayout title={section.name} description={`Explore ${section.documents.length} ${section.name} handbooks.`}>
+<BaseLayout
+  title={trail.map((item) => item.name).join(" - ")}
+  description={sectionDescription}
+>
   <main class="listing-page" id="main-content">
     <nav class="breadcrumbs" aria-label="Breadcrumb">
       <ol>

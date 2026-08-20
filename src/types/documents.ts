@@ -13,6 +13,7 @@ export interface DocumentSection {
 
 export interface DocumentMetadata {
   title: string;
+  seoTitle: string;
   description: string;
   sourcePath: string;
   repositoryPath: string;

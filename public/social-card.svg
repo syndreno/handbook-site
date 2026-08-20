@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title description">
+  <title id="title">Developer Master Handbook</title>
+  <desc id="description">Learn, build, practice, and master software development with an open handbook library.</desc>
+  <rect width="1200" height="630" fill="#f7f8fa"/>
+  <rect x="0" y="0" width="36" height="630" fill="#176b55"/>
+  <rect x="92" y="92" width="92" height="92" rx="18" fill="#176b55"/>
+  <g transform="translate(106 106) scale(2.65)" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 5v16"/>
+    <path d="M16 13h2"/>
+    <path d="M16 9h2"/>
+    <path d="M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/>
+    <path d="M6 13h2"/>
+    <path d="M6 9h2"/>
+  </g>
+  <text x="92" y="282" fill="#111315" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="68" font-weight="700">Developer Master</text>
+  <text x="92" y="362" fill="#111315" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="68" font-weight="700">Handbook</text>
+  <text x="94" y="430" fill="#4d5552" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="30">Learn. Build. Practice. Master.</text>
+  <line x1="94" y1="493" x2="1106" y2="493" stroke="#d7dcda" stroke-width="2"/>
+  <text x="94" y="548" fill="#176b55" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="25" font-weight="600">Open knowledge for developers and lifelong learners</text>
+  <circle cx="1075" cy="125" r="19" fill="#e96f51"/>
+  <circle cx="1124" cy="125" r="19" fill="#e0b84f"/>
+</svg>

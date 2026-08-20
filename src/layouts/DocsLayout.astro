@@ -18,9 +18,26 @@ interface Props {
 }
 const { document, categories, html, previous, next, related } = Astro.props;
 const sourceUrl = document.sourceUrl;
+const breadcrumbs = [
+  { name: "Home", path: "/" },
+  ...document.sections.map((section) => ({
+    name: section.name,
+    path: `/categories/${section.path}/`
+  })),
+  { name: document.title, path: document.route }
+];
 ---
 
-<BaseLayout title={document.title} description={document.description} type="article">
+<BaseLayout
+  title={document.seoTitle}
+  headline={document.title}
+  description={document.description}
+  type="article"
+  keywords={[document.category, document.subcategory ?? "", ...document.tags].filter(Boolean)}
+  articleSection={document.sections.map((section) => section.name).join(" / ")}
+  wordCount={document.wordCount}
+  {breadcrumbs}
+>
   <div class="reading-progress" aria-hidden="true"><span data-reading-progress></span></div>
   <div class="docs-shell">
     <Sidebar categories={categories} currentRoute={document.route} />

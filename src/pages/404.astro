@@ -4,6 +4,6 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 import { withBase } from "@/utils/path";
 ---
 
-<BaseLayout title="Page Not Found" description="The requested handbook page could not be found.">
+<BaseLayout title="Page Not Found" description="The requested handbook page could not be found." robots="noindex, nofollow">
   <main class="not-found" id="main-content"><span>404</span><h1>This page stepped outside the handbook.</h1><p>The address may have changed, or the page may no longer exist.</p><div><a class="button primary" href={withBase("/")}><House size={17} />Go home</a><button class="button secondary" type="button" data-search-open><Search size={17} />Search handbooks</button><a class="button secondary" href={withBase("/handbooks/")}><BookOpen size={17} />Browse all</a></div></main>
 </BaseLayout>

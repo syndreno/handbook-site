@@ -1,5 +1,5 @@
 ---
-import { GitFork, Menu, PanelRight, Search } from "@lucide/astro";
+import { BookOpenText, GitFork, Menu, PanelRight, Search } from "@lucide/astro";
 import { siteConfig } from "@/config/site";
 import { withBase } from "@/utils/path";
 import SearchDialog from "@/components/SearchDialog.astro";
@@ -13,7 +13,7 @@ import AppearanceControl from "@/components/AppearanceControl.astro";
   <div class="header-inner">
     <button class="icon-button mobile-menu-button" type="button" data-menu-toggle aria-controls="site-sidebar" aria-expanded="false" title="Open navigation" aria-label="Open navigation"><Menu size={21} /></button>
     <a class="brand" href={withBase("/")} aria-label={`${siteConfig.title} home`} data-astro-prefetch="viewport">
-      <span class="brand-mark" aria-hidden="true">DM</span>
+      <span class="brand-mark" aria-hidden="true"><BookOpenText size={22} /></span>
       <span><strong>{siteConfig.title}</strong><small>{siteConfig.tagline}</small></span>
     </a>
     <nav class="top-nav" aria-label="Primary navigation">

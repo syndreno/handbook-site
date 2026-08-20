@@ -196,8 +196,8 @@ function readSourceMetadata(sourcePath: string, contentRoot: string): CachedDocu
   const descriptionSource =
     String(parsed.data.description || "").trim() || bodyText.replace(title, "").trim();
   const description =
-    descriptionSource.length > 170
-      ? `${descriptionSource.slice(0, 167).trimEnd()}...`
+    descriptionSource.length > 160
+      ? `${descriptionSource.slice(0, 157).trimEnd()}...`
       : descriptionSource || `Learn ${title} with this practical developer handbook.`;
   const tags = Array.isArray(parsed.data.tags)
     ? parsed.data.tags.map(String)
@@ -236,6 +236,7 @@ function createDocument(metadata: CachedDocumentMetadata, contentRoot: string): 
 
   return {
     ...metadata,
+    seoTitle: metadata.title,
     repositoryPath,
     absolutePath: path.join(contentRoot, sourcePath),
     sourceUrl: `${siteConfig.content.repositoryUrl}/blob/${siteConfig.content.branch}/${encodedRepositoryPath}`,
@@ -257,7 +258,7 @@ function loadCachedMetadata(): CachedDocumentMetadata[] | undefined {
   );
   try {
     const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as CachedManifest;
-    return manifest.version === 1 && Array.isArray(manifest.documents)
+    return manifest.version === 2 && Array.isArray(manifest.documents)
       ? manifest.documents
       : undefined;
   } catch {
@@ -293,12 +294,24 @@ export async function getDocuments(): Promise<DocumentMetadata[]> {
     routes.set(document.route, document.sourcePath);
   }
 
-  manifestCache = documents.sort((a, b) => {
+  const sortedDocuments = documents.sort((a, b) => {
     if (a.order !== undefined || b.order !== undefined) {
       return (a.order ?? 9999) - (b.order ?? 9999);
     }
     return a.route.localeCompare(b.route);
   });
+  const titleCounts = new Map<string, number>();
+  for (const document of sortedDocuments) {
+    const key = document.title.toLocaleLowerCase("en");
+    titleCounts.set(key, (titleCounts.get(key) ?? 0) + 1);
+  }
+  for (const document of sortedDocuments) {
+    if ((titleCounts.get(document.title.toLocaleLowerCase("en")) ?? 0) < 2) continue;
+    const fileLabel = humanize(path.posix.basename(document.sourcePath, ".md"));
+    document.seoTitle = `${document.title} - ${fileLabel}`;
+  }
+
+  manifestCache = sortedDocuments;
   return manifestCache;
 }
 

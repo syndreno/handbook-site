@@ -90,7 +90,8 @@ img, svg { max-width: 100%; }
 .site-header { position: sticky; top: 0; z-index: 100; height: var(--header-height); background: color-mix(in srgb, var(--surface) 94%, transparent); border-bottom: 1px solid var(--border); backdrop-filter: blur(12px); }
 .header-inner { width: min(100%, 1920px); height: 100%; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; gap: 24px; }
 .brand { min-width: 0; display: inline-flex; align-items: center; gap: 11px; line-height: 1.15; }
-.brand-mark { width: 36px; height: 36px; flex: 0 0 36px; display: grid; place-items: center; border-radius: 7px; background: var(--accent); color: var(--accent-contrast); font-size: 12px; font-weight: 800; }
+.brand-mark { width: 36px; height: 36px; flex: 0 0 36px; display: grid; place-items: center; border-radius: 7px; background: var(--brand-icon-color, var(--accent)); color: var(--brand-icon-contrast, var(--accent-contrast)); }
+.brand-mark svg { width: 22px; height: 22px; }
 .brand strong { display: block; font-size: 15px; letter-spacing: 0; white-space: nowrap; }
 .brand small { display: block; margin-top: 3px; color: var(--text-faint); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
 .top-nav { display: flex; align-items: center; gap: 4px; }

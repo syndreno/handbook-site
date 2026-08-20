@@ -18,11 +18,10 @@
     "lint:docs": "node scripts/validate-docs.mjs"
   },
   "dependencies": {
-    "@astrojs/sitemap": "^3.7.3",
+    "@lucide/astro": "^1.31.0",
     "astro": "^7.2.1",
     "github-slugger": "^2.0.0",
     "gray-matter": "^4.0.3",
-    "@lucide/astro": "^1.31.0",
     "mdast-util-to-string": "^4.0.0",
     "rehype-autolink-headings": "^7.1.0",
     "rehype-pretty-code": "^0.14.5",
@@ -39,6 +38,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
+    "@types/node": "^26.2.0",
     "pagefind": "^1.5.2",
     "typescript": "^6.0.3"
   }

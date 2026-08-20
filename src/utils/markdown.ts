@@ -36,6 +36,14 @@ function removeSourceTitle() {
   };
 }
 
+function normalizeSourceHeadingLevels() {
+  return (tree: MdastRoot) => {
+    visit(tree, "heading", (node) => {
+      if (node.depth === 1) node.depth = 2;
+    });
+  };
+}
+
 function collectHeadings(document: DocumentMetadata) {
   return (tree: MdastRoot) => {
     const slugger = new GithubSlugger();
@@ -113,6 +121,7 @@ export async function renderMarkdown(document: DocumentMetadata): Promise<string
     .use(remarkParse)
     .use(remarkGfm)
     .use(removeSourceTitle)
+    .use(normalizeSourceHeadingLevels)
     .use(collectHeadings, document)
     .use(rewriteLinks(document, documents))
     .use(remarkRehype, { allowDangerousHtml: true })

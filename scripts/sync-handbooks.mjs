@@ -22,7 +22,7 @@ const manifestPath = path.resolve(
   repositoryRoot,
   process.env.HANDBOOK_MANIFEST_PATH || ".cache/handbook-manifest.json"
 );
-const manifestVersion = 1;
+const manifestVersion = 2;
 const excludedDirectories = new Set([".git", ".github", ".astro", ".cache", "node_modules", "dist", "build", "coverage", "public", "scripts", "src"]);
 const excludedFiles = new Set([
   "agents.md", "agentguide.md", "readme.md", "contributing.md", "changelog.md",
@@ -198,8 +198,8 @@ function generateManifest(revision) {
     const words = bodyText ? bodyText.split(/\s+/).length : 0;
     const descriptionSource =
       String(parsed.data.description || "").trim() || bodyText.replace(title, "").trim();
-    const description = descriptionSource.length > 170
-      ? `${descriptionSource.slice(0, 167).trimEnd()}...`
+    const description = descriptionSource.length > 160
+      ? `${descriptionSource.slice(0, 157).trimEnd()}...`
       : descriptionSource || `Learn ${title} with this practical developer handbook.`;
     const tags = Array.isArray(parsed.data.tags)
       ? parsed.data.tags.map(String)
