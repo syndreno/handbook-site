@@ -1,15 +1,25 @@
 # Developer Master Handbook
 
-A fully static documentation website generated from the Markdown handbooks in this repository. Astro builds the pages, Shiki highlights code, Pagefind provides full-text search, and GitHub Actions deploys the result to GitHub Pages.
+A fully static documentation website generated from Markdown in the separate
+[`syndreno/handbooks`](https://github.com/syndreno/handbooks) repository. Astro
+builds the pages, Shiki highlights code, Pagefind provides full-text search,
+and GitHub Actions deploys the result to GitHub Pages.
 
-The existing Markdown files are the source of truth. They live in subject folders under `assets/handbook/` and do not need page components or navigation entries.
+The handbook repository is the single source of truth. New category,
+subcategory, and deeper folders are discovered recursively during the next
+build; no website route or navigation component needs to be maintained by hand.
+An optional `INDEX.md` in any folder can provide its display name through the
+first H1, but navigation still works when that file is absent.
 
 ## Requirements
 
 - Node.js 22.12 or newer (Node.js 24 is used in CI)
 - npm
+- Git
+- Read access to the handbook repository
 
-On Windows PowerShell systems where script execution is restricted, use `npm.cmd` in place of `npm`.
+On Windows systems where PowerShell script execution is restricted, use
+`npm.cmd` in place of `npm`.
 
 ## Local development
 
@@ -18,35 +28,43 @@ npm install
 npm run dev
 ```
 
+`npm run dev` synchronizes the latest `main` branch of the handbook repository
+into the ignored `.cache/handbook-repository/` directory, then starts Astro.
 Astro prints the local URL, normally `http://localhost:4321/`.
 
-Production commands:
+Useful commands:
 
 ```bash
+npm run sync:handbooks
+npm run dev:status
+npm run dev:stop
+npm run dev:force
 npm run check
 npm run lint:docs
 npm run build
 npm run preview
 ```
 
-`npm run build` validates Markdown links, generates the static site in `dist/`, and creates the Pagefind index. Full-text search is available after a production build; development mode falls back to title, category, description, and tag search.
+`npm run build` synchronizes content, validates Markdown, generates static HTML
+in `dist/`, and builds the Pagefind search index.
 
-## Add a handbook
+## Add or update a handbook
 
-1. Add a `.md` file to the appropriate subject folder inside `assets/handbook/`, creating the folder if needed.
-2. Optionally add YAML frontmatter.
-3. Run `npm run build` to validate it.
-4. Commit and push.
+1. Work in the `syndreno/handbooks` repository.
+2. Add a `.md` file anywhere under the appropriate category and subcategory
+   folders, or edit an existing file.
+3. Commit and push to `main`.
+4. Trigger the website deployment, or wait for its hourly synchronization.
 
-The next build automatically adds the document to routes, navigation, search, category pages, the handbook index, related content, previous/next links, statistics, and the sitemap.
+The next deployment automatically updates routes, navigation, search,
+categories, related content, previous/next links, statistics, and the sitemap.
 
-Example optional frontmatter:
+Optional frontmatter is supported:
 
 ```yaml
 ---
 title: PostgreSQL Master Handbook
 description: A practical guide to PostgreSQL.
-category: Databases
 tags:
   - postgresql
   - sql
@@ -54,64 +72,84 @@ order: 10
 ---
 ```
 
-Without frontmatter, the title is resolved from the first H1 and then the filename. The category comes from the top-level folder. URLs are normalized from the full source path, and duplicate URLs fail the build instead of overwriting content.
+Without frontmatter, the title comes from the first H1 and then the filename.
+The folder tree supplies the category path. A folder's optional `INDEX.md` is
+navigation metadata and is not published as a handbook. Duplicate generated
+handbook or section routes fail the build instead of silently replacing content.
 
 ## Architecture
 
-- `assets/handbook/`: all dynamically discovered subject folders and Markdown source files
-- `src/config/site.ts`: branding, repository settings, content root, features, and exclusions
-- `src/utils/documents.ts`: recursive discovery and the shared document manifest
-- `src/utils/markdown.ts`: GFM rendering, Shiki, safe HTML handling, link and image rewriting
+- `.cache/handbook-repository/`: ignored build-time checkout of handbook content
+- `.cache/handbook-manifest.json`: ignored, revision-aware metadata cache used for fast startup
+- `scripts/sync-handbooks.mjs`: clones or updates the external content checkout
+- `src/config/site.ts`: branding, repository settings, features, and exclusions
+- `src/utils/documents.ts`: recursive discovery and shared document manifest
+- `src/utils/markdown.ts`: GFM rendering, sanitization, links, and local images
 - `src/pages/handbooks/[...slug].astro`: generated handbook routes
-- `src/pages/categories/[category].astro`: generated category routes
-- `src/components/`: header, search, sidebar, breadcrumbs, TOC, cards, and theme controls
-- `src/styles/global.css`: responsive reading layout, themes, and print styles
-- `scripts/validate-docs.mjs`: broken Markdown link, missing asset, empty file, and frontmatter checks
-- `.github/workflows/deploy.yml`: build and GitHub Pages deployment
+- `src/pages/categories/[...path].astro`: generated category and subcategory routes
+- `scripts/validate-docs.mjs`: content, frontmatter, link, and asset checks
+- `.github/workflows/deploy.yml`: GitHub Pages build and deployment
 
-The manifest is created once per build and reused everywhere. Only `assets/handbook/` is scanned for content, and configured nested exclusions are still respected. Repository files such as `README.md` and `agents.md` cannot accidentally become handbook pages.
+Relative Markdown links become website routes. Relative images are read from
+the checked-out handbook repository and copied under the static `/content/`
+route. Visitors never need direct access to the source repository.
 
-## Markdown behavior
+The sync command generates compact metadata for the current handbook commit.
+Astro can therefore build category and navigation pages without parsing every
+full Markdown document. Exact headings and syntax highlighting are calculated
+only when a handbook page is rendered. The manifest is regenerated
+automatically when the synced repository revision changes.
 
-The renderer supports GitHub-Flavored Markdown, tables, task lists, raw HTML sanitization, stable heading anchors, responsive images, and highlighted fenced code blocks with copy controls. Relative links to other `.md` files are converted to generated website routes. Relative image references are published under the static `/content/` route while preserving their folder hierarchy.
+## GitHub Pages
 
-## GitHub Pages deployment
+In this repository, open **Settings > Pages** and set **Source** to **GitHub
+Actions**. Deployment runs on a site-code push, manual dispatch, external
+`handbooks-updated` repository dispatch, and an hourly schedule.
 
-1. Push the repository to GitHub.
-2. Open **Settings > Pages**.
-3. Set **Source** to **GitHub Actions**.
-4. Push to `master` or `main`, or run the workflow manually.
-
-The workflow detects whether the repository is a user site (`username.github.io`) or a project site (`username.github.io/repository`) and configures Astro's base path accordingly. No base URL edits are required when the repository name changes.
-
-To test a project-site path locally in PowerShell:
+The workflow handles both user sites and project sites. To test a project base
+path locally in PowerShell:
 
 ```powershell
-$env:BASE_PATH='/example-repository'; npm.cmd run build
+$env:BASE_PATH='/handbook-site-code'; npm.cmd run build
 Remove-Item Env:BASE_PATH
 ```
 
+See [GITHUB_LIVE_SETUP.md](GITHUB_LIVE_SETUP.md) for immediate update triggers
+and private-repository setup.
+
 ## Configuration
 
-Edit `src/config/site.ts` to change the site title, description, tagline, branch, feature flags, or content exclusions. During GitHub Actions builds, the repository URL is derived from `GITHUB_REPOSITORY`, enabling source and repository links automatically.
+Defaults live in `src/config/site.ts`. These environment variables can override
+the content source:
 
-For a custom production domain, set `SITE_URL` in the build environment. For local root-path builds, no environment variables are needed.
+| Variable | Default |
+|---|---|
+| `HANDBOOK_REPOSITORY` | `syndreno/handbooks` |
+| `HANDBOOK_BRANCH` | `main` |
+| `HANDBOOK_REPOSITORY_DIR` | `.cache/handbook-repository` |
+| `HANDBOOK_CONTENT_DIR` | `.cache/handbook-repository` |
+| `HANDBOOK_TOKEN` | unset; needed locally only for private content |
+| `SITE_URL` | inferred in GitHub Actions |
 
-## Community and licensing
+## Licensing
 
-The project is intended to be maintained and improved by its learning community:
-
-- Original handbook content under `assets/handbook/` is licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), unless identified otherwise.
+- Original handbook content follows the license in the handbook repository.
 - Website software is licensed under the [MIT License](LICENSE).
-- Contributions follow [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
-- The generated website explains these terms on `/community/` and `/license/`.
-
-Contributors retain copyright in their original work while granting the project permission to distribute it under the applicable project license.
+- Contributions follow [CONTRIBUTING.md](CONTRIBUTING.md) and
+  [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+- The generated site explains sharing terms at `/sharing-policy/`.
 
 ## Troubleshooting
 
-- Search unavailable in development: run `npm run build` and `npm run preview` to test the Pagefind index.
-- A new file does not appear: confirm it ends in `.md`, is outside excluded directories, and is not listed in `excludedFiles`.
-- Duplicate route error: rename one source file or move it to a distinct folder.
-- Broken link warning: correct the relative `.md` or asset path named by `npm run lint:docs`.
-- Missing repository links locally: these are enabled automatically in GitHub Actions, or can be configured directly in `src/config/site.ts`.
+- Sync fails with repository not found: verify the repository/branch and supply
+  `HANDBOOK_TOKEN` for private local access.
+- Another Astro server is running: use `npm run dev:status`, then
+  `npm run dev:stop`. Use `npm run dev:force` only when you intentionally want
+  to replace the existing server.
+- A new file does not appear: sync again, confirm the `.md` extension, and check
+  `excludedFiles` in `src/config/site.ts`.
+- Search is unavailable during development: use `npm run build` followed by
+  `npm run preview` to test Pagefind.
+- A duplicate route fails the build: rename or move one source file.
+- A broken-link warning names a file: correct that relative Markdown or asset
+  path in the handbook repository.

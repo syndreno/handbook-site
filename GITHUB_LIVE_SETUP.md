@@ -1,139 +1,98 @@
-# GitHub Live Content - Setup Guide
+# GitHub Handbook Content Setup
 
-## How This Works
+## Static update model
 
-Instead of building static HTML from local files, your website now:
+GitHub Pages serves generated static files. A browser refresh cannot rebuild a
+changed Markdown file. Each handbook change becomes public after this website's
+deployment workflow checks out the latest content and rebuilds the site.
 
-1. **Stores a handbook index** (`src/data/handbook-index.json`) in the repo
-2. **Website reads this index** at build time
-3. **Fetches actual markdown** from GitHub at build time
-4. **Renders it** as static HTML pages
-5. **No rebuild needed** when you push markdown changes (GitHub Pages auto-updates via browser refresh)
+The website currently checks `syndreno/handbooks` branch `main`. The deployment
+workflow runs:
 
-This is a hybrid approach:
+- immediately when this website repository changes;
+- manually through **Actions > Deploy handbook to GitHub Pages**;
+- when it receives a `handbooks-updated` repository dispatch;
+- hourly as a fallback for content changes.
 
+There is no generated handbook index to commit. Each build recursively scans the
+current content checkout, so added, moved, and removed Markdown files are all
+reflected automatically.
+
+## Immediate deployment after a handbook push
+
+For immediate updates, add this workflow to
+`syndreno/handbooks/.github/workflows/notify-site.yml`:
+
+```yaml
+name: Rebuild handbook website
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch website deployment
+        env:
+          GH_TOKEN: ${{ secrets.SITE_DEPLOY_TOKEN }}
+        run: >-
+          gh api --method POST
+          repos/syndreno/handbook-site-code/dispatches
+          -f event_type=handbooks-updated
 ```
-Your GitHub Repo (assets/handbook/)
-        ↓
-handbook-index.json (lists all files)
-        ↓
-Build reads index + fetches raw markdown
-        ↓
-Static HTML pages generated
-        ↓
-Deployed to GitHub Pages
+
+Create a fine-grained token limited to `syndreno/handbook-site-code` with
+**Contents: Read and write**, then save it in the handbook repository as the
+Actions secret `SITE_DEPLOY_TOKEN`. The workflow sends no handbook content; it
+only asks the site repository to rebuild.
+
+## Making the handbook repository private
+
+The generated website may remain public while the source handbook repository is
+private. The content is embedded into public static HTML during the build, so
+anything published on the website must still be treated as public information.
+
+GitHub's automatic `GITHUB_TOKEN` is scoped to the repository that owns the
+workflow. To check out a different private repository:
+
+1. Create a fine-grained personal access token or GitHub App token with
+   read-only **Contents** access to `syndreno/handbooks`.
+2. Add it to `handbook-site-code` under **Settings > Secrets and variables >
+   Actions** as `HANDBOOKS_TOKEN`.
+3. Run the deployment workflow manually once and confirm the checkout, build,
+   and deployment jobs pass.
+
+Do not put this token in source code, Markdown, an environment file committed to
+Git, or browser JavaScript.
+
+For local development against private content, set `HANDBOOK_TOKEN` only in the
+current shell before running the sync command:
+
+```powershell
+$env:HANDBOOK_TOKEN='your-temporary-token'
+npm.cmd run sync:handbooks
+Remove-Item Env:HANDBOOK_TOKEN
 ```
 
-## Setup Steps
+The sync script supplies the token to Git without writing it into generated site
+files. You can also authenticate Git through your normal credential manager and
+leave `HANDBOOK_TOKEN` unset.
 
-### Step 1: Create an initial index (One-time)
+## Verification
 
-Run this command to scan your local `assets/handbook/` and create the index:
+Run locally:
 
 ```bash
-npm run generate-index
-```
-
-This creates `src/data/handbook-index.json` with all markdown files.
-
-### Step 2: Commit the index
-
-```bash
-git add src/data/handbook-index.json
-git commit -m "Initial handbook index"
-git push
-```
-
-### Step 3: Build the site
-
-```bash
+npm run sync:handbooks
+npm run check
+npm run lint:docs
 npm run build
+npm run preview
 ```
 
-The website now fetches from GitHub instead of local files!
-
-### Step 4: Update the index when adding handbooks
-
-When you or contributors add a new `.md` file to `assets/handbook/`, regenerate the index:
-
-```bash
-npm run generate-index
-git add src/data/handbook-index.json
-git commit -m "Update handbook index"
-git push
-```
-
-Then rebuild:
-
-```bash
-npm run build
-git push  # Deploy to GitHub Pages
-```
-
-## What Changed
-
-| Before | After |
-|--------|-------|
-| Local build from `assets/handbook/` | Fetches from GitHub API |
-| Must rebuild for every change | Rebuild only when index changes |
-| No rate limits | No API calls = no rate limits |
-| Static HTML dependencies on local files | Website reads GitHub content |
-
-## The Index File
-
-The `src/data/handbook-index.json` looks like:
-
-```json
-{
-  "generated": "2026-08-14T12:00:00.000Z",
-  "repository": "syndreno/handbooks",
-  "branch": "main",
-  "contentRoot": "assets/handbook",
-  "totalFiles": 142,
-  "files": [
-    {
-      "name": "javascript.md",
-      "path": "assets/handbook/JS/javascript.md",
-      "rawUrl": "https://raw.githubusercontent.com/syndreno/handbooks/main/assets/handbook/JS/javascript.md"
-    },
-    ...
-  ]
-}
-```
-
-## Workflow for Contributors
-
-1. **Add handbook**: Create `assets/handbook/Category/handbook.md`
-2. **Commit**: `git commit -am "Add new handbook"`
-3. **Push**: `git push`
-4. **Maintainer regenerates index**: `npm run generate-index && git add . && git commit -m "Update index" && git push`
-5. **Rebuild site**: `npm run build && git push`
-
-## Environment Variables
-
-None needed! The configuration is baked into:
-- `src/utils/documents.ts` (GitHub owner, repo, branch)
-- `src/data/handbook-index.json` (file list)
-
-## Troubleshooting
-
-**Issue**: "handbook-index.json not found"
-- Solution: Run `npm run generate-index` from the project root
-
-**Issue**: Build shows 0 handbooks
-- Solution: Check `handbook-index.json` exists and has content
-- Run: `npm run generate-index`
-
-**Issue**: Website shows old content
-- Solution: Browser cache. Hard refresh with `Ctrl+Shift+R` (Windows/Linux) or `Cmd+Shift+R` (Mac)
-
-## Updating from GitHub
-
-Since the index lives in your repo:
-
-1. When you push new markdown to GitHub
-2. Run `npm run generate-index` locally to update the index
-3. Commit and push
-4. GitHub Actions rebuilds
-
-The website will show the latest content automatically!
+A successful build reports the number of discovered handbooks and Pagefind
+pages. Check a known URL such as `/handbooks/php/php-master-handbook/`, verify
+the **Edit on GitHub** link targets the content repository, and test a build with
+the project-site base path before deployment.

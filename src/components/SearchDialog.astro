@@ -2,7 +2,7 @@
 import { Search, X } from "@lucide/astro";
 ---
 
-<dialog class="search-dialog" id="search-dialog" aria-labelledby="search-title" data-base={import.meta.env.BASE_URL} data-pagefind={String(import.meta.env.PROD)} transition:persist="search-dialog">
+<dialog class="search-dialog" id="search-dialog" aria-labelledby="search-title" data-base={import.meta.env.BASE_URL} data-pagefind={String(import.meta.env.PROD)}>
   <div class="search-panel">
     <header>
       <Search size={20} aria-hidden="true" />

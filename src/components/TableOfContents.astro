@@ -14,21 +14,3 @@ const items = headings.filter((heading) => heading.depth === 2 || heading.depth 
     </nav>
   </aside>
 )}
-
-<script>
-  let tocObserver: IntersectionObserver | undefined;
-  const initializeToc = () => {
-    tocObserver?.disconnect();
-    const tocLinks = [...document.querySelectorAll<HTMLAnchorElement>(".page-toc a")];
-    const targets = tocLinks.map((link) => document.getElementById(decodeURIComponent(link.hash.slice(1)))).filter(Boolean) as HTMLElement[];
-    if (!targets.length) return;
-    tocObserver = new IntersectionObserver((entries) => {
-      const visible = entries.filter((entry) => entry.isIntersecting).at(-1);
-      if (!visible) return;
-      tocLinks.forEach((link) => link.classList.toggle("active", link.hash === `#${visible.target.id}`));
-    }, { rootMargin: "-15% 0px -75%" });
-    targets.forEach((target) => tocObserver?.observe(target));
-  };
-  initializeToc();
-  document.addEventListener("astro:page-load", initializeToc);
-</script>

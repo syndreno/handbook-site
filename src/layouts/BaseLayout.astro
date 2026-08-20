@@ -1,6 +1,5 @@
 ---
 import { siteConfig } from "@/config/site";
-import { ClientRouter } from "astro:transitions";
 import Header from "@/components/Header.astro";
 import Footer from "@/components/Footer.astro";
 import "@/styles/global.css";
@@ -39,7 +38,6 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : Astro.u
     <meta name="twitter:title" content={pageTitle} />
     <meta name="twitter:description" content={description} />
     <title>{pageTitle}</title>
-    <ClientRouter fallback="swap" />
     <script is:inline>
       (() => {
         const choice = localStorage.getItem("handbook-theme") || "system";
@@ -84,7 +82,6 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : Astro.u
   </head>
   <body>
     <Header />
-    <div class="route-navigation-progress" aria-hidden="true" transition:persist="route-progress"><span></span></div>
     <slot />
     <Footer />
     <script>
@@ -244,21 +241,6 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : Astro.u
         document.fonts?.ready.then(() => alignAnchor(location.hash, false));
       });
 
-      document.addEventListener("astro:before-preparation", () => document.documentElement.classList.add("route-loading"));
-      document.addEventListener("astro:before-swap", (event) => {
-        const nextRoot = (event as Event & { newDocument: Document }).newDocument.documentElement;
-        const currentRoot = document.documentElement;
-        for (const attribute of ["data-theme", "data-theme-choice", "data-custom-accent", "data-custom-background", "data-custom-text", "data-hide-sidebar", "data-hide-toc", "style"]) {
-          const value = currentRoot.getAttribute(attribute);
-          if (value === null) nextRoot.removeAttribute(attribute);
-          else nextRoot.setAttribute(attribute, value);
-        }
-      });
-      document.addEventListener("astro:page-load", () => {
-        document.documentElement.classList.remove("route-loading");
-        initializePage();
-        if (location.hash) requestAnimationFrame(() => alignAnchor(location.hash, false));
-      });
       initializePage();
     </script>
   </body>

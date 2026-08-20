@@ -7,7 +7,8 @@ Thank you for helping the Developer Master Handbook remain accurate, clear, and 
 - Correct inaccurate or outdated information.
 - Add practical examples, exercises, diagrams, or references.
 - Improve clarity, accessibility, grammar, and translations.
-- Add a handbook under `assets/handbook/<Category>/`.
+- Add or improve a handbook in the separate
+  [`syndreno/handbooks`](https://github.com/syndreno/handbooks) repository.
 - Improve the website, search, navigation, performance, or build tooling.
 
 ## Content standards
@@ -21,10 +22,15 @@ Thank you for helping the Developer Master Handbook remain accurate, clear, and 
 
 ## Add or update a handbook
 
-1. Edit or create a Markdown file under `assets/handbook/`.
-2. Use a clear first H1. Optional frontmatter may provide a title, description, category, tags, and order.
+1. Open the `syndreno/handbooks` repository and edit or create a Markdown file
+   anywhere under the appropriate category and subcategory folders. Folder
+   nesting may be as deep as the topic requires.
+2. Use a clear first H1. Optional frontmatter may provide a title, description,
+   tags, and order. An optional folder `INDEX.md` may set the navigation label
+   with its first H1; it is not published as a handbook.
 3. Keep relative links and image paths valid.
-4. Run the project checks.
+4. Commit the content change there. To test it with this website, push the
+   branch or point the local handbook checkout at it, then run the site checks.
 
 ```bash
 npm install
@@ -34,6 +40,9 @@ npm run build
 ```
 
 5. Explain what changed, why it helps learners, and which sources were used.
+
+Website code changes belong in this repository. `npm run build` synchronizes
+the configured handbook repository before validating and generating the site.
 
 Substantial reorganizations, new policies, or large learning paths should begin with a repository issue so the community can discuss scope and maintenance.
 

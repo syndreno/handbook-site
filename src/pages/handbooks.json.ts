@@ -8,7 +8,7 @@ export const GET: APIRoute = async () => {
     title: document.title,
     description: document.description,
     url: withBase(document.route),
-    category: document.category,
+    category: document.sections.map((section) => section.name).join(" / "),
     tags: document.tags
   }))), {
     headers: { "Content-Type": "application/json; charset=utf-8" }

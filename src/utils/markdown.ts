@@ -1,3 +1,8 @@
+import fs from "node:fs";
+import path from "node:path";
+import GithubSlugger from "github-slugger";
+import matter from "gray-matter";
+import { toString } from "mdast-util-to-string";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
@@ -16,53 +21,53 @@ import { getDocuments } from "@/utils/documents";
 import { withBase } from "@/utils/path";
 
 const imageExtensions = /\.(png|jpe?g|webp|gif|svg)$/i;
-const renderedMarkdownCache = new Map<string, string>();
+const renderedMarkdownCache = new Map<
+  string,
+  { modified: number; html: string; headings: DocumentMetadata["headings"] }
+>();
 
 function removeSourceTitle() {
   return (tree: MdastRoot) => {
-    const firstMeaningful = tree.children.findIndex((node: any) => node.type !== "html" || String(node.value).trim());
+    const firstMeaningful = tree.children.findIndex(
+      (node: any) => node.type !== "html" || String(node.value).trim()
+    );
     const node: any = tree.children[firstMeaningful];
     if (node?.type === "heading" && node.depth === 1) tree.children.splice(firstMeaningful, 1);
   };
 }
 
+function collectHeadings(document: DocumentMetadata) {
+  return (tree: MdastRoot) => {
+    const slugger = new GithubSlugger();
+    const headings: DocumentMetadata["headings"] = [];
+    visit(tree, "heading", (node) => {
+      const text = toString(node).trim();
+      headings.push({ depth: node.depth, text, slug: slugger.slug(text) });
+    });
+    document.headings = headings;
+  };
+}
+
 function rewriteLinks(document: DocumentMetadata, documents: DocumentMetadata[]) {
   const bySource = new Map(documents.map((item) => [item.sourcePath.toLowerCase(), item]));
-  
+
   return () => (tree: MdastRoot) => {
     visit(tree, ["link", "image"], (node: any) => {
       const url = String(node.url || "");
       if (!url || /^(https?:|mailto:|tel:|data:|#)/i.test(url)) return;
-      
+
       const [pathname, anchor = ""] = url.split("#", 2);
       const decodedPath = decodeURIComponent(pathname).replaceAll("\\", "/");
-      
-      // Resolve relative path
-      const resolved = document.sourceDirectory
-        ? decodedPath.startsWith("../")
-          ? decodedPath.split("/").reduce((acc, part, i) => {
-              if (part === "..") return acc.split("/").slice(0, -1).join("/");
-              if (i === 0) return part;
-              return acc + "/" + part;
-            }, document.sourceDirectory)
-          : document.sourceDirectory + "/" + decodedPath
-        : decodedPath;
+      const resolved = path.posix
+        .normalize(path.posix.join(document.sourceDirectory, decodedPath))
+        .replace(/^\.\//, "");
 
       if (/\.md$/i.test(pathname)) {
         const target = bySource.get(resolved.toLowerCase());
         if (target) node.url = `${withBase(target.route)}${anchor ? `#${anchor}` : ""}`;
       } else if (node.type === "image" || imageExtensions.test(pathname)) {
-        // For GitHub content, resolve image URLs to GitHub raw
-        const imagePath = resolved.split("/").map(encodeURIComponent).join("/");
-        const isGithubUrl = document.absolutePath.includes("github.com");
-        
-        if (isGithubUrl) {
-          // Link directly to GitHub raw content for images
-          const githubPath = document.sourcePath.split("/").slice(0, -1).join("/") + "/" + imagePath;
-          node.url = `https://raw.githubusercontent.com/syndreno/handbooks/master/${githubPath}`;
-        } else {
-          node.url = withBase(`/content/${imagePath}`);
-        }
+        const encodedPath = resolved.split("/").map(encodeURIComponent).join("/");
+        node.url = withBase(`/content/${encodedPath}`);
       }
     });
   };
@@ -74,7 +79,11 @@ function secureExternalLinks() {
       if (node.tagName !== "a") return;
       const href = String(node.properties?.href ?? "");
       if (/^https?:\/\//i.test(href)) {
-        node.properties = { ...node.properties, target: "_blank", rel: ["noopener", "noreferrer"] };
+        node.properties = {
+          ...node.properties,
+          target: "_blank",
+          rel: ["noopener", "noreferrer"]
+        };
       }
     });
   };
@@ -91,16 +100,20 @@ const schema = {
 } as typeof defaultSchema;
 
 export async function renderMarkdown(document: DocumentMetadata): Promise<string> {
-  // Check cache
-  const cached = renderedMarkdownCache.get(document.sourcePath);
-  if (cached) return cached;
+  const modified = fs.statSync(document.absolutePath).mtimeMs;
+  const cached = renderedMarkdownCache.get(document.absolutePath);
+  if (cached?.modified === modified) {
+    document.headings = cached.headings;
+    return cached.html;
+  }
 
   const documents = await getDocuments();
-  
+  const source = matter(fs.readFileSync(document.absolutePath, "utf8")).content;
   const result = await unified()
     .use(remarkParse)
     .use(remarkGfm)
     .use(removeSourceTitle)
+    .use(collectHeadings, document)
     .use(rewriteLinks(document, documents))
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeRaw)
@@ -117,9 +130,13 @@ export async function renderMarkdown(document: DocumentMetadata): Promise<string
     })
     .use(secureExternalLinks)
     .use(rehypeStringify)
-    .process(document.rawContent);
-  
+    .process(source);
+
   const html = String(result);
-  renderedMarkdownCache.set(document.sourcePath, html);
+  renderedMarkdownCache.set(document.absolutePath, {
+    modified,
+    html,
+    headings: document.headings
+  });
   return html;
 }

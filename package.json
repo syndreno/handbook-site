@@ -7,9 +7,12 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "astro dev",
-    "generate-index": "node scripts/generate-index.mjs",
-    "build": "npm run lint:docs && astro build && pagefind --site dist",
+    "sync:handbooks": "node scripts/sync-handbooks.mjs",
+    "dev": "npm run sync:handbooks && astro dev",
+    "dev:force": "npm run sync:handbooks && astro dev --force",
+    "dev:status": "astro dev status",
+    "dev:stop": "astro dev stop",
+    "build": "npm run sync:handbooks && npm run lint:docs && astro build && pagefind --site dist",
     "preview": "astro preview",
     "check": "astro check",
     "lint:docs": "node scripts/validate-docs.mjs"

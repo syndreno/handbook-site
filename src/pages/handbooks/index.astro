@@ -21,34 +21,3 @@ const categories = await getCategories(documents);
     <div class="empty-state" data-library-empty hidden><h2>No matching handbooks</h2><p>Try a broader title or choose another category.</p></div>
   </main>
 </BaseLayout>
-
-<script>
-  const initializeLibrary = () => {
-    const grid = document.querySelector<HTMLElement>("[data-library-grid]");
-    const search = document.querySelector<HTMLInputElement>("[data-library-search]");
-    const category = document.querySelector<HTMLSelectElement>("[data-library-category]");
-    const sort = document.querySelector<HTMLSelectElement>("[data-library-sort]");
-    const count = document.querySelector<HTMLElement>("[data-result-count]");
-    const empty = document.querySelector<HTMLElement>("[data-library-empty]");
-    if (!grid || grid.dataset.enhanced) return;
-    grid.dataset.enhanced = "true";
-    const filter = () => {
-      if (!search || !category || !sort) return;
-      const cards = [...grid.querySelectorAll<HTMLElement>(".handbook-card")];
-      const query = search.value.trim().toLowerCase();
-      cards.sort((a, b) => (sort.value === "za" ? -1 : 1) * (a.dataset.title || "").localeCompare(b.dataset.title || ""));
-      cards.forEach((card) => grid.append(card));
-      let visible = 0;
-      cards.forEach((card) => {
-        const show = (!query || card.textContent?.toLowerCase().includes(query)) && (category.value === "all" || card.dataset.category === category.value);
-        card.hidden = !show;
-        if (show) visible++;
-      });
-      if (count) count.textContent = `${visible} handbook${visible === 1 ? "" : "s"}`;
-      if (empty) empty.hidden = visible !== 0;
-    };
-    [search, category, sort].forEach((control) => control?.addEventListener("input", filter));
-  };
-  initializeLibrary();
-  document.addEventListener("astro:page-load", initializeLibrary);
-</script>

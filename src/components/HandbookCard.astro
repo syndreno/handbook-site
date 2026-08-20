@@ -10,7 +10,7 @@ const { document } = Astro.props;
 <article class="handbook-card" data-title={document.title.toLowerCase()} data-category={document.categorySlug}>
   <div class="card-icon"><BookOpen size={20} /></div>
   <div>
-    <span class="eyebrow">{document.category}</span>
+    <span class="eyebrow">{document.sections.map((section) => section.name).join(" / ")}</span>
     <h3><a href={withBase(document.route)}>{document.title}</a></h3>
     <p>{document.description}</p>
     <div class="card-meta"><span>{document.readingMinutes} min</span><span>{document.wordCount.toLocaleString()} words</span></div>

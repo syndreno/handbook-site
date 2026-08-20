@@ -1,0 +1,41 @@
+---
+import type { SectionMetadata } from "@/types/documents";
+import { withBase } from "@/utils/path";
+
+interface Props {
+  sections: SectionMetadata[];
+  currentRoute?: string;
+}
+
+const { sections, currentRoute = "" } = Astro.props;
+---
+
+<ul class="sidebar-tree">
+  {sections.map((section) => {
+    const active = section.documents.some((document) => document.route === currentRoute);
+    return (
+      <li class="sidebar-section">
+        <details open={active}>
+          <summary><span>{section.name}</span><small>{section.documents.length}</small></summary>
+          {section.directDocuments.length > 0 && (
+            <ul class="sidebar-documents">
+              {section.directDocuments.map((document) => (
+                <li>
+                  <a
+                    href={withBase(document.route)}
+                    aria-current={document.route === currentRoute ? "page" : undefined}
+                  >
+                    {document.title}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+          {section.children.length > 0 && (
+            <Astro.self sections={section.children} currentRoute={currentRoute} />
+          )}
+        </details>
+      </li>
+    );
+  })}
+</ul>

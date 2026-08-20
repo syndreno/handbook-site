@@ -10,7 +10,9 @@ const { document } = Astro.props;
 <nav class="breadcrumbs" aria-label="Breadcrumb">
   <ol>
     <li><a href={withBase("/")}>Home</a></li>
-    <li><ChevronRight size={14} aria-hidden="true" /><a href={withBase(`/categories/${document.categorySlug}/`)}>{document.category}</a></li>
+    {document.sections.map((section) => (
+      <li><ChevronRight size={14} aria-hidden="true" /><a href={withBase(`/categories/${section.path}/`)}>{section.name}</a></li>
+    ))}
     <li><ChevronRight size={14} aria-hidden="true" /><span aria-current="page">{document.title}</span></li>
   </ol>
 </nav>

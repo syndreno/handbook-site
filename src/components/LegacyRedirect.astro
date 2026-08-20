@@ -1,0 +1,24 @@
+---
+interface Props {
+  to: string;
+}
+
+const { to } = Astro.props;
+const canonical = Astro.site ? new URL(to, Astro.site) : to;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta http-equiv="refresh" content={`0;url=${to}`} />
+    <meta name="robots" content="noindex" />
+    <link rel="canonical" href={canonical} />
+    <title>Handbook moved</title>
+  </head>
+  <body>
+    <main><p>This handbook moved. <a href={to}>Continue to its new location</a>.</p></main>
+    <script is:inline define:vars={{ to }}>location.replace(to);</script>
+  </body>
+</html>

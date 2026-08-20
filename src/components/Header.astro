@@ -8,7 +8,7 @@ import AppearanceControl from "@/components/AppearanceControl.astro";
 
 ---
 
-<header class="site-header" transition:persist="site-header">
+<header class="site-header">
   <a class="skip-link" href="#main-content" data-astro-reload>Skip to content</a>
   <div class="header-inner">
     <button class="icon-button mobile-menu-button" type="button" data-menu-toggle aria-controls="site-sidebar" aria-expanded="false" title="Open navigation" aria-label="Open navigation"><Menu size={21} /></button>
@@ -32,7 +32,7 @@ import AppearanceControl from "@/components/AppearanceControl.astro";
     </div>
   </div>
 </header>
-<button class="drawer-scrim" type="button" data-drawer-close aria-label="Close navigation panels" tabindex="-1" transition:persist="drawer-scrim"></button>
+<button class="drawer-scrim" type="button" data-drawer-close aria-label="Close navigation panels" tabindex="-1"></button>
 <SearchDialog />
 
 <script>
@@ -69,5 +69,4 @@ import AppearanceControl from "@/components/AppearanceControl.astro";
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") { closeMenu(); closeToc(); }
   });
-  document.addEventListener("astro:before-swap", () => { closeMenu(); closeToc(); });
 </script>

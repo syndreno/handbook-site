@@ -6,7 +6,6 @@ import Sidebar from "@/components/Sidebar.astro";
 import Breadcrumbs from "@/components/Breadcrumbs.astro";
 import TableOfContents from "@/components/TableOfContents.astro";
 import HandbookCard from "@/components/HandbookCard.astro";
-import { siteConfig } from "@/config/site";
 import { withBase } from "@/utils/path";
 
 interface Props {
@@ -18,9 +17,7 @@ interface Props {
   related: DocumentMetadata[];
 }
 const { document, categories, html, previous, next, related } = Astro.props;
-const sourceUrl = siteConfig.github.repositoryUrl
-  ? `${siteConfig.github.repositoryUrl}/blob/${siteConfig.github.branch}/${document.repositoryPath.split("/").map(encodeURIComponent).join("/")}`
-  : "";
+const sourceUrl = document.sourceUrl;
 ---
 
 <BaseLayout title={document.title} description={document.description} type="article">
@@ -31,13 +28,13 @@ const sourceUrl = siteConfig.github.repositoryUrl
       <Breadcrumbs document={document} />
       <article class="document" data-pagefind-body>
         <header class="document-header">
-          <span class="eyebrow" data-pagefind-meta="category">{document.category}</span>
+          <span class="eyebrow" data-pagefind-meta="category">{document.sections.map((section) => section.name).join(" / ")}</span>
           <h1 data-pagefind-meta="title">{document.title}</h1>
           <p>{document.description}</p>
           <div class="document-stats">
             <span>{document.readingMinutes} min read</span>
             <span>{document.wordCount.toLocaleString()} words</span>
-            <span>{document.headings.length} sections</span>
+            <span>{document.headingCount} sections</span>
           </div>
         </header>
         <div class="markdown-body" set:html={html}></div>
@@ -62,64 +59,3 @@ const sourceUrl = siteConfig.github.repositoryUrl
   </div>
   <button class="back-to-top icon-button" type="button" data-back-to-top title="Back to top" aria-label="Back to top"><ArrowUp size={19} /></button>
 </BaseLayout>
-
-<script>
-  let cleanupHandbook = () => {};
-
-  const initializeHandbook = () => {
-    cleanupHandbook();
-    const progress = document.querySelector<HTMLElement>("[data-reading-progress]");
-    const backToTop = document.querySelector<HTMLElement>("[data-back-to-top]");
-    if (!progress || !backToTop) return;
-
-    const updateScroll = () => {
-      const scrollable = document.documentElement.scrollHeight - innerHeight;
-      const ratio = scrollable > 0 ? Math.min(1, scrollY / scrollable) : 0;
-      progress.style.transform = `scaleX(${ratio})`;
-      backToTop.classList.toggle("visible", scrollY > 700);
-    };
-    addEventListener("scroll", updateScroll, { passive: true });
-    updateScroll();
-
-    if (!backToTop.dataset.enhanced) {
-      backToTop.dataset.enhanced = "true";
-      backToTop.addEventListener("click", () => scrollTo({ top: 0, behavior: "smooth" }));
-    }
-
-    const copyPage = document.querySelector<HTMLElement>("[data-copy-page]");
-    if (copyPage && !copyPage.dataset.enhanced) {
-      copyPage.dataset.enhanced = "true";
-      copyPage.addEventListener("click", async (event) => {
-        await navigator.clipboard.writeText(location.href);
-        const button = event.currentTarget as HTMLElement;
-        const original = button.innerHTML;
-        button.textContent = "Copied";
-        setTimeout(() => { button.innerHTML = original; }, 1500);
-      });
-    }
-
-    document.querySelectorAll<HTMLElement>(".markdown-body pre").forEach((pre) => {
-      if (pre.previousElementSibling?.classList.contains("code-toolbar")) return;
-      const code = pre.querySelector("code");
-      if (!code) return;
-      const match = [...code.classList].find((name) => name.startsWith("language-"));
-      const language = pre.dataset.language || code.dataset.language || match?.replace("language-", "") || "text";
-      const toolbar = document.createElement("div");
-      toolbar.className = "code-toolbar";
-      toolbar.innerHTML = `<span>${language}</span><button type="button" aria-label="Copy ${language} code">Copy</button>`;
-      toolbar.querySelector("button")?.addEventListener("click", async (event) => {
-        await navigator.clipboard.writeText(code.textContent || "");
-        const button = event.currentTarget as HTMLButtonElement;
-        button.textContent = "Copied!";
-        setTimeout(() => { button.textContent = "Copy"; }, 1400);
-      });
-      pre.parentElement?.insertBefore(toolbar, pre);
-    });
-
-    cleanupHandbook = () => removeEventListener("scroll", updateScroll);
-    window.dispatchEvent(new Event("handbook:layout-ready"));
-  };
-
-  initializeHandbook();
-  document.addEventListener("astro:page-load", initializeHandbook);
-</script>

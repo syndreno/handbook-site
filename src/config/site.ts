@@ -1,4 +1,6 @@
 const githubRepository = process.env.GITHUB_REPOSITORY;
+const handbookRepository = process.env.HANDBOOK_REPOSITORY || "syndreno/handbooks";
+const handbookBranch = process.env.HANDBOOK_BRANCH || "main";
 
 export const siteConfig = {
   title: "Developer Master Handbook",
@@ -20,11 +22,16 @@ export const siteConfig = {
     }
   },
   github: {
-    repositoryUrl: githubRepository ? `https://github.com/${githubRepository}` : "",
-    branch: "master"
+    repositoryUrl: `https://github.com/${githubRepository || "syndreno/handbook-site-code"}`,
+    branch: process.env.GITHUB_REF_NAME || "main"
   },
   content: {
-    rootDirectory: "assets/handbook",
+    repository: handbookRepository,
+    repositoryUrl: `https://github.com/${handbookRepository}`,
+    branch: handbookBranch,
+    repositoryRoot: "",
+    rootDirectory:
+      process.env.HANDBOOK_CONTENT_DIR || ".cache/handbook-repository",
     excludedDirectories: [
       ".git",
       ".github",
@@ -38,7 +45,19 @@ export const siteConfig = {
       "scripts",
       "src"
     ],
-    excludedFiles: ["agents.md", "AGENTS.md", "README.md", "CONTRIBUTING.md", "CHANGELOG.md"]
+    excludedFiles: [
+      "agents.md",
+      "AGENTS.md",
+      "Agentguide.md",
+      "README.md",
+      "CONTRIBUTING.md",
+      "CHANGELOG.md",
+      "INDEX.md",
+      "HANDBOOK_INDEX.md",
+      "currentstatus.md",
+      "needtoimplement.md",
+      "handbook_review_and_improvement_guide.md"
+    ]
   },
   features: {
     search: true,

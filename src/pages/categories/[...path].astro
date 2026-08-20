@@ -1,0 +1,71 @@
+---
+import type { GetStaticPaths } from "astro";
+import { ArrowRight, ChevronRight, Folder } from "@lucide/astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import HandbookCard from "@/components/HandbookCard.astro";
+import { flattenSections, getCategories } from "@/utils/documents";
+import { withBase } from "@/utils/path";
+
+export const getStaticPaths = (async () => {
+  const categories = await getCategories();
+  const sections = flattenSections(categories);
+  return sections.map((section) => ({
+    params: { path: section.path },
+    props: {
+      section,
+      trail: sections.filter(
+        (candidate) => section.path === candidate.path || section.path.startsWith(`${candidate.path}/`)
+      )
+    }
+  }));
+}) satisfies GetStaticPaths;
+
+const { section, trail } = Astro.props;
+---
+
+<BaseLayout title={section.name} description={`Explore ${section.documents.length} ${section.name} handbooks.`}>
+  <main class="listing-page" id="main-content">
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <ol>
+        <li><a href={withBase("/")}>Home</a></li>
+        <li><ChevronRight size={14} aria-hidden="true" /><a href={withBase("/categories/")}>Categories</a></li>
+        {trail.map((item, index) => (
+          <li>
+            <ChevronRight size={14} aria-hidden="true" />
+            {index === trail.length - 1
+              ? <span aria-current="page">{item.name}</span>
+              : <a href={withBase(`/categories/${item.path}/`)}>{item.name}</a>}
+          </li>
+        ))}
+      </ol>
+    </nav>
+    <header class="listing-header">
+      <span class="eyebrow">{section.children.length > 0 ? "Learning path" : "Topic"}</span>
+      <h1>{section.name}</h1>
+      <p>{section.documents.length} handbook{section.documents.length === 1 ? "" : "s"} · {section.wordCount.toLocaleString()} words of learning material</p>
+    </header>
+
+    {section.children.length > 0 && (
+      <section class="listing-section">
+        <div class="section-heading"><div><span class="eyebrow">Explore further</span><h2>Subcategories</h2></div></div>
+        <div class="category-grid large">
+          {section.children.map((child) => (
+            <a class="category-card" href={withBase(`/categories/${child.path}/`)}>
+              <span class="card-icon"><Folder size={21} /></span>
+              <strong>{child.name}</strong>
+              <span>{child.documents.length} handbook{child.documents.length === 1 ? "" : "s"}</span>
+              <ArrowRight size={17} />
+            </a>
+          ))}
+        </div>
+      </section>
+    )}
+
+    {section.directDocuments.length > 0 && (
+      <section class="listing-section">
+        <div class="section-heading"><div><span class="eyebrow">In this section</span><h2>Handbooks</h2></div></div>
+        <div class="handbook-grid">{section.directDocuments.map((document) => <HandbookCard document={document} />)}</div>
+      </section>
+    )}
+  </main>
+</BaseLayout>
